@@ -11,7 +11,7 @@ from anthropic import Anthropic
 
 from roscode.config import load_settings
 from roscode.prompts import build_system_prompt
-from roscode.tools import TOOL_DEFINITIONS, TOOL_MAP
+from roscode.tools import TOOL_DEFINITIONS, TOOL_MAP, set_workspace
 from roscode.ui import (
     confirm_action,
     print_agent_message,
@@ -48,6 +48,8 @@ def run(
     """
     settings = load_settings()
     model_id = model or settings.model
+
+    set_workspace(workspace_path)
 
     client = Anthropic()
     system_prompt = build_system_prompt(workspace_path)
