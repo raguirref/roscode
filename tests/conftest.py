@@ -53,3 +53,16 @@ def fake_shell(monkeypatch, shell_result):
         return fake
 
     return install
+
+
+@pytest.fixture
+def workspace(tmp_path):
+    """Point roscode.tools.get_workspace() at a tmp dir and yield the Path.
+
+    Creates workspace/src/ automatically since most fs/build tests need it.
+    """
+    from roscode.tools._state import set_workspace
+
+    set_workspace(tmp_path)
+    (tmp_path / "src").mkdir(exist_ok=True)
+    return tmp_path.resolve()

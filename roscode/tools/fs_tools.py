@@ -1,26 +1,86 @@
-"""Source-file access tools (read-only in this module — writes live in build_tools).
+"""Source-file access tools (read-only here; writes live in build_tools).
 
-Both tools must validate that the target path lives inside the active workspace
-so the agent can't accidentally escape the sandbox via `..` traversal. The
-scaffolded bodies raise NotImplementedError; Task 3 in the brief fleshes them
-out.
+Both tools validate that the target lives inside the active workspace so the
+agent can't escape the sandbox via `..` traversal.
 """
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
+
+from roscode.tools._state import get_workspace
+
+_MAX_READ_LINES = 300
+_SOURCE_SUFFIXES = {".py", ".cpp", ".hpp", ".h", ".c", ".cc"}
+
+
+def _resolve_inside_workspace(file_path: str) -> Path:
+    """Resolve `file_path` against the workspace and assert it stays inside.
+
+    Raises ValueError if the resolved path escapes the workspace (via `..` or
+    an absolute path outside it).
+    """
+    workspace = get_workspace()
+    candidate = Path(file_path)
+    if not candidate.is_absolute():
+        candidate = workspace / candidate
+    resolved = candidate.resolve()
+    try:
+        resolved.relative_to(workspace)
+    except ValueError as exc:
+        raise ValueError(
+            f"Path {file_path!r} resolves outside workspace {workspace}"
+        ) from exc
+    return resolved
 
 
 def read_source_file(file_path: str) -> str:
     """Read a source file inside the workspace. Caps output at 300 lines."""
-    raise NotImplementedError(
-        "read_source_file — validate path is within workspace, cap at 300 lines"
-    )
+    try:
+        path = _resolve_inside_workspace(file_path)
+    except ValueError as exc:
+        return f"Error: {exc}"
+
+    if not path.exists():
+        return f"Error: File not found: {file_path}"
+    if not path.is_file():
+        return f"Error: Not a file: {file_path}"
+
+    lines = path.read_text(errors="replace").splitlines()
+    total = len(lines)
+    rel = path.relative_to(get_workspace())
+    header = f"# {rel.as_posix()} ({total} line{'s' if total != 1 else ''})"
+
+    if total > _MAX_READ_LINES:
+        body = "\n".join(lines[:_MAX_READ_LINES])
+        suffix = f"\n... [truncated: showing {_MAX_READ_LINES}/{total} lines]"
+        return f"{header}\n{body}{suffix}"
+    return f"{header}\n" + "\n".join(lines)
 
 
 def list_workspace(package: str | None = None) -> str:
-    """List .py and .cpp files in the workspace `src/`, optionally filtered by package."""
-    raise NotImplementedError("list_workspace — os.walk(workspace/src)")
+    """List source files under workspace/src, optionally filtered by package."""
+    workspace = get_workspace()
+    src = workspace / "src"
+    if not src.exists():
+        return f"Error: No src/ directory under {workspace}"
+
+    root = src / package if package else src
+    if package and not root.exists():
+        return f"Error: Package {package!r} not found under {src.as_posix()}"
+
+    files = sorted(
+        p.relative_to(workspace).as_posix()
+        for p in root.rglob("*")
+        if p.is_file() and p.suffix in _SOURCE_SUFFIXES
+    )
+    if not files:
+        scope = f"package {package!r}" if package else "workspace/src"
+        return f"No source files ({', '.join(sorted(_SOURCE_SUFFIXES))}) under {scope}."
+
+    header = f"# {len(files)} source file(s) under {root.relative_to(workspace).as_posix()}"
+    return f"{header}\n" + "\n".join(files)
 
 
 SCHEMAS: list[dict[str, Any]] = [
@@ -49,7 +109,7 @@ SCHEMAS: list[dict[str, Any]] = [
     {
         "name": "list_workspace",
         "description": (
-            "Return a tree of .py and .cpp source files in the workspace's src/ "
+            "Return a list of .py/.cpp/.h source files in the workspace's src/ "
             "directory. Optionally restrict to a single package. Use this to discover "
             "the codebase before reading specific files."
         ),
