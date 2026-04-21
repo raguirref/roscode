@@ -7,14 +7,18 @@ running — do not remove this gate.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from anthropic import Anthropic
 
+from roscode import container
 from roscode.config import load_settings
 from roscode.prompts import build_system_prompt
 from roscode.tools import TOOL_DEFINITIONS, TOOL_MAP, set_workspace
 from roscode.ui import (
     confirm_action,
     print_agent_message,
+    print_status,
     print_tool_call,
     print_tool_result,
 )
@@ -50,6 +54,12 @@ def run(
     model_id = model or settings.model
 
     set_workspace(workspace_path)
+
+    if container.is_needed():
+        rt = container.detect_runtime()
+        print_status(f"ros2 not found locally — starting ROS 2 Humble container via {rt}...")
+        container.ensure_running(Path(workspace_path))
+        print_status("Container ready.")
 
     client = Anthropic()
     system_prompt = build_system_prompt(workspace_path)

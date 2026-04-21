@@ -31,6 +31,12 @@ from roscode.config import load_settings
     help="Max agent loop iterations. Default: 20.",
 )
 @click.option(
+    "--no-container",
+    is_flag=True,
+    default=False,
+    help="Disable the automatic Docker/Podman container backend. Use when ros2 is installed locally.",
+)
+@click.option(
     "--no-confirm",
     is_flag=True,
     default=False,
@@ -48,10 +54,15 @@ def main(
     workspace: Path | None,
     model: str | None,
     max_iterations: int | None,
+    no_container: bool,
     no_confirm: bool,
     interactive: bool,
 ) -> None:
     """roscode — debug and extend ROS 2 robots with natural language."""
+    if no_container:
+        from roscode import container as _container
+        _container.disable()
+
     settings = load_settings()
     ws = workspace or settings.workspace
     iters = max_iterations or settings.max_iterations

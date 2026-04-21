@@ -13,6 +13,11 @@ from rich.syntax import Syntax
 _console = Console()
 
 
+def print_status(text: str) -> None:
+    """Print an informational status line (container startup, etc.)."""
+    _console.print(f"[dim]▸ {text}[/dim]")
+
+
 def print_agent_message(text: str) -> None:
     _console.print(f"[bold cyan]🤖[/bold cyan]  {text}")
 
