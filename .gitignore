@@ -1,0 +1,79 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ---- Virtual envs ----
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# ---- Packaging / tooling ----
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+*.log
+
+# ---- Secrets / local env ----
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# ---- ROS 2 / colcon ----
+build/
+install/
+log/
+*.bag
+*.bag.active
+*.mcap
+devel/
+*.ros2rc
+
+# ---- IDEs / editors ----
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ---- Jupyter ----
+.ipynb_checkpoints/
+
+# ---- Node (just in case we add any tooling) ----
+node_modules/
