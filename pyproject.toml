@@ -45,9 +45,9 @@ dev = [
 roscode = "roscode.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/rickycrack/roscode"
-Repository = "https://github.com/rickycrack/roscode"
-Issues = "https://github.com/rickycrack/roscode/issues"
+Homepage = "https://github.com/raguirref/roscode"
+Repository = "https://github.com/raguirref/roscode"
+Issues = "https://github.com/raguirref/roscode/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["roscode"]

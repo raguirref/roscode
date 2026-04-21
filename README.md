@@ -54,7 +54,7 @@ into the model on the next turn.
 
 ```bash
 # 1. Clone
-git clone https://github.com/rickycrack/roscode.git
+git clone https://github.com/raguirref/roscode.git
 cd roscode
 
 # 2. Open in the devcontainer (VS Code: "Reopen in Container")
