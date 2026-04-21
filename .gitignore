@@ -77,3 +77,6 @@ Desktop.ini
 
 # ---- Node (just in case we add any tooling) ----
 node_modules/
+
+# ---- Claude Code session transcripts ----
+[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-*-local-command-*.txt
