@@ -1,0 +1,36 @@
+demo_safety — expected agent trace (target for the demo video)
+
+User: add a node that monitors /scan and publishes True to /obstacle_detected
+      if anything within 30cm
+
+1. ros_graph
+   -> /fake_lidar (pub /scan). No safety node exists.
+
+2. topic_echo /scan duration=2
+   -> LaserScan: ranges[0..359] in meters, angle_min=-pi, angle_max=pi
+   -> confirms message type and that ranges is a flat float32 array
+
+3. package_scaffold safety_stop safety_node
+   "Publishes True on /obstacle_detected when any /scan range < 0.30 m"
+   -> [CONFIRM] user approves
+   -> creates src/safety_stop/{package.xml, setup.py, setup.cfg,
+                              resource/safety_stop,
+                              safety_stop/__init__.py,
+                              safety_stop/safety_node.py}
+
+4. write_source_file safety_stop/safety_node.py
+   -> ~20 lines: rclpy.Node, subscribes /scan (LaserScan),
+      publishes Bool on /obstacle_detected, threshold 0.30
+   -> [CONFIRM] user approves
+
+5. workspace_build --packages-select safety_stop  -> Build succeeded
+
+6. node_spawn safety_stop safety_node  -> pid 2345
+
+7. topic_echo /obstacle_detected duration=2
+   -> False, False, False  (no synthetic obstacles within 30cm yet)
+
+Agent: "safety_stop package created, built, and running. Publish a
+LaserScan with any range < 0.30 to /scan and /obstacle_detected will
+flip to True. Threshold is hardcoded; expose it as a ROS parameter
+if you need to tune it."
