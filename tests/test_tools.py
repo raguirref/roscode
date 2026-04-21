@@ -1,12 +1,10 @@
-"""Unit tests for individual tool wrappers.
+"""Cross-module tool-registry sanity tests.
 
-Scaffold only — real per-tool tests (mocking subprocess, asserting output
-formatting, path-traversal rejection in fs_tools, etc.) land in Task 9.
+Per-module behaviour tests live in test_ros_tools.py, test_fs_tools.py,
+test_build_tools.py.
 """
 
 from __future__ import annotations
-
-import pytest
 
 from roscode.tools import TOOL_DEFINITIONS, TOOL_MAP
 
@@ -35,15 +33,3 @@ def test_schemas_have_required_keys():
         assert "input_schema" in tool and tool["input_schema"].get("type") == "object"
 
 
-@pytest.mark.parametrize("name", list(TOOL_MAP))
-def test_stubs_raise_not_implemented_for_now(name):
-    """Scaffold marker: every tool body is currently a NotImplementedError stub.
-
-    Delete this test once real implementations land in Task 3 of the brief.
-    """
-    fn = TOOL_MAP[name]
-    schema = next(t for t in TOOL_DEFINITIONS if t["name"] == name)
-    required = schema["input_schema"].get("required", [])
-    dummy_args = {k: "x" for k in required}
-    with pytest.raises(NotImplementedError):
-        fn(**dummy_args)
