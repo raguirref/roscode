@@ -6,39 +6,18 @@ agent can't escape the sandbox via `..` traversal.
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
-from roscode.tools._state import get_workspace
+from roscode.tools._state import get_workspace, resolve_inside_workspace
 
 _MAX_READ_LINES = 300
 _SOURCE_SUFFIXES = {".py", ".cpp", ".hpp", ".h", ".c", ".cc"}
 
 
-def _resolve_inside_workspace(file_path: str) -> Path:
-    """Resolve `file_path` against the workspace and assert it stays inside.
-
-    Raises ValueError if the resolved path escapes the workspace (via `..` or
-    an absolute path outside it).
-    """
-    workspace = get_workspace()
-    candidate = Path(file_path)
-    if not candidate.is_absolute():
-        candidate = workspace / candidate
-    resolved = candidate.resolve()
-    try:
-        resolved.relative_to(workspace)
-    except ValueError as exc:
-        raise ValueError(
-            f"Path {file_path!r} resolves outside workspace {workspace}"
-        ) from exc
-    return resolved
-
-
 def read_source_file(file_path: str) -> str:
     """Read a source file inside the workspace. Caps output at 300 lines."""
     try:
-        path = _resolve_inside_workspace(file_path)
+        path = resolve_inside_workspace(file_path)
     except ValueError as exc:
         return f"Error: {exc}"
 

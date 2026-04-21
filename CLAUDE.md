@@ -36,11 +36,17 @@ we use 4.7 because the hackathon itself is "Built with Opus 4.7".
   target is inside `workspace_path` (no `..` traversal).
 
 ## Current priorities (in order)
-1. All 13 tools implemented and manually tested against a live ROS graph.
-2. Demo 1 (drift fix) working end-to-end.
-3. Demo 2 (safety node creation) working end-to-end.
-4. Rich UI polished for the demo video.
-5. README with setup instructions + demo GIFs.
+1. ~~All 15 tools implemented with mocked unit tests~~ ✓ (56 tests pass)
+2. Manually drive the full tool surface against a live ROS graph inside
+   the devcontainer (no mocks) — smoke test before any demo recording.
+3. Demo 1 (drift fix) working end-to-end: populate
+   `demos/demo_drift/workspace/` with the `simple_odometry` package
+   including the injected `yaw_bias = 0.05` bug + fake IMU publisher.
+4. Demo 2 (safety node creation) working end-to-end: populate
+   `demos/demo_safety/workspace/` with the synthetic `fake_lidar`.
+5. Rich UI polished for the demo video (the write_source_file diff
+   preview already lands in ui.py; stress-test with long diffs).
+6. README with demo GIFs / screen recording.
 
 ## Known issues / watch out for
 - `colcon build` can be slow (60s+) — never set the build timeout under 120s.

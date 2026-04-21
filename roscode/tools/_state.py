@@ -27,3 +27,24 @@ def get_workspace() -> Path:
             "roscode.tools.set_workspace(...) must run before the agent loop."
         )
     return _workspace
+
+
+def resolve_inside_workspace(file_path: str) -> Path:
+    """Resolve `file_path` against the workspace and assert it stays inside.
+
+    Relative paths are resolved against the workspace root. Absolute paths must
+    already be inside the workspace. Raises ValueError on any escape (``..``
+    traversal, absolute path outside the workspace).
+    """
+    workspace = get_workspace()
+    candidate = Path(file_path)
+    if not candidate.is_absolute():
+        candidate = workspace / candidate
+    resolved = candidate.resolve()
+    try:
+        resolved.relative_to(workspace)
+    except ValueError as exc:
+        raise ValueError(
+            f"Path {file_path!r} resolves outside workspace {workspace}"
+        ) from exc
+    return resolved
