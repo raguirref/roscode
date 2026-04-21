@@ -3,13 +3,27 @@
 TOOL_DEFINITIONS is the JSON-schema list passed to `messages.create(tools=…)`.
 TOOL_MAP routes Anthropic tool-use blocks back to Python callables.
 
-Tool modules (ros_tools, fs_tools, build_tools) are scaffolded in Task 6 and
-will register their entries here via extend/update.
+Tool modules each export:
+  * SCHEMAS — list of Anthropic tool definition dicts
+  * TOOLS   — dict mapping tool name -> callable returning str
 """
 
 from __future__ import annotations
 
 from typing import Any, Callable
 
-TOOL_DEFINITIONS: list[dict[str, Any]] = []
-TOOL_MAP: dict[str, Callable[..., str]] = {}
+from roscode.tools import build_tools, fs_tools, ros_tools
+
+TOOL_DEFINITIONS: list[dict[str, Any]] = [
+    *ros_tools.SCHEMAS,
+    *fs_tools.SCHEMAS,
+    *build_tools.SCHEMAS,
+]
+
+TOOL_MAP: dict[str, Callable[..., str]] = {
+    **ros_tools.TOOLS,
+    **fs_tools.TOOLS,
+    **build_tools.TOOLS,
+}
+
+__all__ = ["TOOL_DEFINITIONS", "TOOL_MAP"]
