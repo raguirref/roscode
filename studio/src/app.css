@@ -1,0 +1,46 @@
+:root {
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif;
+  font-size: 14px;
+  color-scheme: dark;
+
+  --bg-0: #0b0d10;
+  --bg-1: #12161c;
+  --bg-2: #1a1f27;
+  --fg-0: #e6e9ef;
+  --fg-1: #a0a7b3;
+  --fg-2: #5b6472;
+  --accent: #4cc9f0;
+  --accent-warm: #f59e0b;
+  --border: #222831;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  background: var(--bg-0);
+  color: var(--fg-0);
+  overflow: hidden;
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  background: var(--bg-2);
+  color: var(--fg-0);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--border);
+}
