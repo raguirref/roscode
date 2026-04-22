@@ -29,7 +29,7 @@ from pathlib import Path
 # Module-level state
 # ---------------------------------------------------------------------------
 
-_IMAGE = "osrf/ros:humble-desktop"
+_IMAGE = "ros:humble-ros-base"
 _CONTAINER = "roscode-ros"
 
 _runtime: str | None = None        # "docker" | "podman"

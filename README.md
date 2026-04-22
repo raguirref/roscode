@@ -67,7 +67,7 @@ roscode "list everything running on the graph" --workspace ~/ros2_ws
 ### macOS or Windows — no ROS install required
 
 roscode ships a **transparent container backend**. If `ros2` isn't on your
-`PATH`, it auto-pulls `osrf/ros:humble-desktop`, mounts your workspace, and
+`PATH`, it auto-pulls `ros:humble-ros-base`, mounts your workspace, and
 routes every `ros2` / `colcon` call through `docker exec`. You never touch
 Docker manually.
 
@@ -112,6 +112,25 @@ The agent will subscribe to `/odom`, notice yaw is drifting while the robot
 is stationary, grep the source tree, find `self.yaw_bias = 0.05` in
 `odometry_node.py`, propose a patch (you approve the diff), rebuild with
 `colcon`, and respawn the node.
+
+### Running demo_safety
+
+```bash
+# Terminal 1: build and launch the fake lidar
+cd demos/demo_safety
+./setup.sh
+
+# Terminal 2: hand the agent the task
+roscode "add a node that monitors /scan and publishes True to /obstacle_detected if anything within 30cm" \
+        --workspace "$PWD/demos/demo_safety/workspace"
+```
+
+The agent will inspect the live `/scan` topic, scaffold a brand-new `safety_stop`
+ROS 2 package from scratch, write a `~20-line` subscriber that publishes
+`Bool` on `/obstacle_detected`, build it with `colcon`, spawn the node, and
+verify it by echoing the output topic. Rays 0–4 in the fake lidar are at
+0.25 m (inside the 30 cm threshold), so `/obstacle_detected` should
+immediately publish `True`.
 
 ## CLI
 

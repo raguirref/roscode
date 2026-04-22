@@ -28,9 +28,10 @@ User: add a node that monitors /scan and publishes True to /obstacle_detected
 6. node_spawn safety_stop safety_node  -> pid 2345
 
 7. topic_echo /obstacle_detected duration=2
-   -> False, False, False  (no synthetic obstacles within 30cm yet)
+   -> True, True, True  (rays 0-4 at 0.25 m are inside the 0.30 m threshold)
 
-Agent: "safety_stop package created, built, and running. Publish a
-LaserScan with any range < 0.30 to /scan and /obstacle_detected will
-flip to True. Threshold is hardcoded; expose it as a ROS parameter
+Agent: "safety_stop package created, built, and running. Rays 0-4 of the
+lidar are at 0.25 m (inside the 0.30 m threshold), so /obstacle_detected
+is already publishing True. Remove or raise those rays above 0.30 m and it
+will flip to False. Threshold is hardcoded; expose it as a ROS parameter
 if you need to tune it."
