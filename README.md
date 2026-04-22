@@ -52,46 +52,72 @@ into the model on the next turn.
 
 ## Quick start
 
+### Linux with ROS 2 Humble already installed
+
 ```bash
-# 1. Clone
 git clone https://github.com/raguirref/roscode.git
 cd roscode
-
-# 2. Open in the devcontainer (VS Code: "Reopen in Container")
-#    OR install locally on a ROS 2 Humble box:
 pip install -e '.[dev]'
 source /opt/ros/humble/setup.bash
 
-# 3. Add your Anthropic API key
-cp .env.example .env
-# edit .env: ANTHROPIC_API_KEY=sk-...
-
-# 4. Talk to your robot
+cp .env.example .env                      # add ANTHROPIC_API_KEY=sk-...
 roscode "list everything running on the graph" --workspace ~/ros2_ws
 ```
 
+### macOS or Windows — no ROS install required
+
+roscode ships a **transparent container backend**. If `ros2` isn't on your
+`PATH`, it auto-pulls `osrf/ros:humble-desktop`, mounts your workspace, and
+routes every `ros2` / `colcon` call through `docker exec`. You never touch
+Docker manually.
+
+```bash
+# Prereq: Docker Desktop or Podman installed and running.
+git clone https://github.com/raguirref/roscode.git
+cd roscode
+pip install -e '.[dev]'
+
+cp .env.example .env                      # add ANTHROPIC_API_KEY=sk-...
+roscode "list everything running on the graph" --workspace ./demos/demo_drift/workspace
+#        ^ roscode spots no local ros2, starts the container, and runs in it.
+```
+
+Pass `--no-container` (or set `ROSCODE_NO_CONTAINER=1`) to force native mode
+even when Docker is available — useful when you've already sourced ROS 2.
+
 ## Demos
 
-Two reproducible demos ship with the repo under `demos/`:
+Two reproducible demos ship with the repo under `demos/`. Each is a real
+ROS 2 workspace with a `setup.sh` that builds the packages, launches the
+nodes, and prints the exact agent prompt to run in a second terminal.
 
 | Demo           | Prompt                                                           | What the agent does                              |
 | -------------- | ---------------------------------------------------------------- | ------------------------------------------------ |
-| `demo_drift`   | *"the robot drifts left when rotating, fix it"*                  | Finds `yaw_bias = 0.05` in source, patches, rebuilds, verifies |
-| `demo_safety`  | *"add a node that publishes True if anything within 30cm"*       | Scaffolds a brand-new ROS 2 package from scratch |
+| `demo_drift`   | *"the robot drifts left when rotating, fix it"*                  | Reads the live `/odom`, pulls source, finds the injected `yaw_bias = 0.05` bug, patches, rebuilds, verifies |
+| `demo_safety`  | *"add a node that monitors /scan and publishes True to /obstacle_detected if anything within 30cm"* | Scaffolds a brand-new `safety_stop` ROS 2 package from scratch, subscribes, builds, spawns |
 
-Each has a `setup.sh` and an `expected_output.txt` with the target agent trace.
+### Running demo_drift
 
 ```bash
+# Terminal 1: launch the fake IMU + buggy odometry node
 cd demos/demo_drift
 ./setup.sh
-roscode "the robot drifts left when rotating, fix it" --workspace ./workspace
+
+# Terminal 2: hand the agent the problem
+roscode "the robot drifts left when rotating, fix it" \
+        --workspace "$PWD/demos/demo_drift/workspace"
 ```
+
+The agent will subscribe to `/odom`, notice yaw is drifting while the robot
+is stationary, grep the source tree, find `self.yaw_bias = 0.05` in
+`odometry_node.py`, propose a patch (you approve the diff), rebuild with
+`colcon`, and respawn the node.
 
 ## CLI
 
 ```
 roscode [REQUEST] [--workspace PATH] [--model MODEL] [--max-iterations N]
-                  [--interactive] [--no-confirm]
+                  [--interactive] [--no-confirm] [--no-container]
 ```
 
 - `REQUEST` — natural-language task (omit to enter interactive mode).
@@ -99,6 +125,7 @@ roscode [REQUEST] [--workspace PATH] [--model MODEL] [--max-iterations N]
 - `--model` — Claude model ID (default `claude-opus-4-7`).
 - `--max-iterations` — hard cap on the agent loop (default 20).
 - `--interactive / -i` — keep prompting until you exit.
+- `--no-container` — force native mode; don't start a Docker/Podman container.
 - `--no-confirm` — **dangerous**, skips the confirmation gate. Testing only.
 
 ## Tool surface
@@ -123,10 +150,11 @@ roscode [REQUEST] [--workspace PATH] [--model MODEL] [--max-iterations N]
 
 ## Status
 
-Initial scaffold. Package skeleton, tool schemas, agent loop, CLI,
-devcontainer, and demo placeholders are in place. Tool bodies are
-currently `NotImplementedError` stubs — fleshing them out against a
-live ROS graph is next.
+- ✅ 15 tools implemented end-to-end (ros / fs / build), 56 unit tests passing.
+- ✅ Transparent container backend for macOS / Windows (Docker or Podman).
+- ✅ Rich UI with diff previews for `write_source_file` and a confirmation gate on every destructive call.
+- ✅ Two reproducible demo workspaces under `demos/` with real ROS 2 packages.
+- ⏳ Demo recordings and walkthrough GIFs — coming before the hackathon deadline.
 
 See `CLAUDE.md` for the project's live context and development rules.
 

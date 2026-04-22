@@ -18,9 +18,13 @@ from roscode.tools import TOOL_DEFINITIONS, TOOL_MAP, set_workspace
 from roscode.ui import (
     confirm_action,
     print_agent_message,
+    print_reasoning,
+    print_session_banner,
     print_status,
+    print_step,
     print_tool_call,
     print_tool_result,
+    thinking,
 )
 
 DESTRUCTIVE_TOOLS: set[str] = {
@@ -55,24 +59,31 @@ def run(
 
     set_workspace(workspace_path)
 
+    container_status: str | None = None
     if container.is_needed():
         rt = container.detect_runtime()
+        container_status = f"{rt} container (ROS 2 Humble)"
         print_status(f"ros2 not found locally — starting ROS 2 Humble container via {rt}...")
         container.ensure_running(Path(workspace_path))
-        print_status("Container ready.")
+        print_status("container ready.")
+
+    print_session_banner(model=model_id, workspace=workspace_path, container_status=container_status)
 
     client = Anthropic()
     system_prompt = build_system_prompt(workspace_path)
     messages: list[dict] = [{"role": "user", "content": user_request}]
 
-    for _ in range(max_iterations):
-        response = client.messages.create(
-            model=model_id,
-            max_tokens=4096,
-            system=system_prompt,
-            tools=TOOL_DEFINITIONS,
-            messages=messages,
-        )
+    for step_idx in range(1, max_iterations + 1):
+        print_step(step_idx, max_iterations)
+
+        with thinking():
+            response = client.messages.create(
+                model=model_id,
+                max_tokens=4096,
+                system=system_prompt,
+                tools=TOOL_DEFINITIONS,
+                messages=messages,
+            )
 
         if response.stop_reason == "end_turn":
             for block in response.content:
@@ -82,6 +93,12 @@ def run(
 
         if response.stop_reason == "tool_use":
             messages.append({"role": "assistant", "content": response.content})
+
+            # Show any interstitial reasoning text the model emitted before/between
+            # tool_use blocks. Previously this was silently dropped.
+            for block in response.content:
+                if getattr(block, "type", None) == "text" and getattr(block, "text", ""):
+                    print_reasoning(block.text)
 
             tool_results: list[dict] = []
             for block in response.content:
