@@ -23,6 +23,7 @@ def test_destructive_tools_set_is_frozen():
         "ros_launch",
         "param_set",
         "package_scaffold",
+        "pkg_install",
     }
     assert agent.DESTRUCTIVE_TOOLS == expected
 

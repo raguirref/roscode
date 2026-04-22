@@ -93,6 +93,31 @@ def pkg_info(package_name: str) -> str:
         return result.stdout.strip()
 
 
+_ALLOWED_APT_PREFIXES = ("ros-", "python3-", "libopencv", "libeigen")
+
+
+def pkg_install(apt_package: str) -> str:
+    """Install a package inside the container via apt-get. DESTRUCTIVE."""
+    if not any(apt_package.startswith(p) for p in _ALLOWED_APT_PREFIXES):
+        return (
+            f"Error: only ros-*, python3-*, and common robotics libs are allowed "
+            f"(got {apt_package!r}). Ask the user to install system packages manually."
+        )
+
+    result = _shell.run(
+        ["apt-get", "install", "-y", "--no-install-recommends", apt_package],
+        timeout=180.0,
+    )
+
+    if result.returncode == 127:
+        return "Error: apt-get not found — package installation only works inside the container."
+    if not result.ok:
+        stderr_tail = "\n".join((result.stderr or result.stdout).splitlines()[-10:])
+        return f"Error: apt-get install {apt_package} failed (exit {result.returncode}):\n{stderr_tail}"
+
+    return f"Installed {apt_package}.\nSource the workspace again if you need the new package in Python: source /opt/ros/humble/setup.bash"
+
+
 SCHEMAS: list[dict[str, Any]] = [
     {
         "name": "pkg_search",
@@ -131,9 +156,31 @@ SCHEMAS: list[dict[str, Any]] = [
             "required": ["package_name"],
         },
     },
+    {
+        "name": "pkg_install",
+        "description": (
+            "Install a ROS 2 or Python package inside the container via apt-get. DESTRUCTIVE. "
+            "Use this when the user asks to add a library (e.g. robot_localization for EKF noise "
+            "filtering, ackermann_msgs for Ackermann steering, nav2 for navigation, slam_toolbox "
+            "for SLAM, imu_tools for complementary/Madgwick filters). "
+            "Always run pkg_search first to confirm the exact apt package name. "
+            "After installing, update the package.xml <depend> tags and rebuild."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "apt_package": {
+                    "type": "string",
+                    "description": "Full apt package name, e.g. 'ros-humble-robot-localization', 'ros-humble-ackermann-msgs'.",
+                },
+            },
+            "required": ["apt_package"],
+        },
+    },
 ]
 
 TOOLS = {
     "pkg_search": pkg_search,
     "pkg_info": pkg_info,
+    "pkg_install": pkg_install,
 }

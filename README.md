@@ -170,6 +170,7 @@ roscode [REQUEST] [--workspace PATH] [--model MODEL] [--max-iterations N]
 | `package_scaffold`  | `build_tools`  |      ✓       |
 | `pkg_search`        | `pkg_tools`    |              |
 | `pkg_info`          | `pkg_tools`    |              |
+| `pkg_install`       | `pkg_tools`    |      ✓       |
 | `open_rviz`         | `gui_tools`    |              |
 | `open_rqt_plot`     | `gui_tools`    |              |
 | `open_rqt_multiplot`| `gui_tools`    |              |
@@ -182,7 +183,7 @@ apt-get install -y ros-humble-rviz2 ros-humble-rqt ros-humble-rqt-plot ros-humbl
 
 ## Status
 
-- ✅ 23 tools implemented end-to-end (analysis / ros / fs / build / pkg / gui), 78 unit tests passing.
+- ✅ 24 tools implemented end-to-end (analysis / ros / fs / build / pkg / gui), 78 unit tests passing.
 - ✅ Transparent container backend for macOS / Windows (Docker or Podman).
 - ✅ Rich UI with diff previews for `write_source_file` and a confirmation gate on every destructive call.
 - ✅ Two reproducible demo workspaces under `demos/` with real ROS 2 packages.

@@ -35,6 +35,7 @@ DESTRUCTIVE_TOOLS: set[str] = {
     "ros_launch",
     "param_set",
     "package_scaffold",
+    "pkg_install",
 }
 
 

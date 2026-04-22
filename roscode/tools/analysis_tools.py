@@ -143,14 +143,20 @@ def _pkg_deps(package_xml: Path) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
-# workspace_map
+# workspace_map — data layer (used by both text and Rich renderers)
 # ---------------------------------------------------------------------------
 
-def workspace_map() -> str:
-    """Build a full semantic map of the workspace: packages, nodes, topics, params.
+def _get_workspace_data() -> dict | str:
+    """Return structured workspace analysis dict, or an error string.
 
-    Uses AST analysis — no ROS runtime needed. Call this at the start of any
-    session to understand the codebase before touching files or running tools.
+    Dict shape:
+      {
+        "src": str,
+        "packages": { pkg_name: { "deps": [...], "files": { rel_path: <analysis> } } },
+        "topic_graph": { topic: { "pubs": [...], "subs": [...] } },
+        "total_nodes": int,
+        "total_topics": int,
+      }
     """
     workspace = get_workspace()
     src = workspace / "src"
@@ -161,27 +167,22 @@ def workspace_map() -> str:
     if not packages:
         return "Workspace src/ is empty — no packages found."
 
-    # ── Pass 1: collect per-file analysis ────────────────────────────────
+    # Pass 1 — per-file analysis
     pkg_data: dict[str, dict] = {}
     for pkg_dir in packages:
         deps = _pkg_deps(pkg_dir / "package.xml") if (pkg_dir / "package.xml").exists() else []
         files: dict[str, dict] = {}
-
         for py_file in sorted(pkg_dir.rglob("*.py")):
-            # Skip __init__, setup, and test files
             if py_file.name in ("__init__.py", "setup.py") or "test" in py_file.parts:
                 continue
             analysis = _analyze_file(py_file)
             if any(analysis.values()):
                 rel = py_file.relative_to(workspace).as_posix()
                 files[rel] = analysis
-
         pkg_data[pkg_dir.name] = {"deps": deps, "files": files}
 
-    # ── Pass 2: build cross-package topic graph ───────────────────────────
-    # topic → {"pubs": [NodeClass, ...], "subs": [NodeClass, ...]}
+    # Pass 2 — cross-package topic graph
     topic_graph: dict[str, dict[str, list[str]]] = {}
-
     for pkg_name, data in pkg_data.items():
         for file_rel, analysis in data["files"].items():
             label = analysis["node_classes"][0] if analysis["node_classes"] else Path(file_rel).stem
@@ -194,40 +195,54 @@ def workspace_map() -> str:
                 if label not in tg["subs"]:
                     tg["subs"].append(label)
 
-    # ── Pass 3: render ────────────────────────────────────────────────────
     total_nodes = sum(
-        len(a["node_classes"])
-        for d in pkg_data.values()
-        for a in d["files"].values()
+        len(a["node_classes"]) for d in pkg_data.values() for a in d["files"].values()
     )
-    lines: list[str] = [
-        f"WORKSPACE MAP  ─  {src.as_posix()}",
-        f"  {len(packages)} package(s)  ·  {total_nodes} ROS node(s)  ·  {len(topic_graph)} topic(s)\n",
-    ]
+    return {
+        "src": src.as_posix(),
+        "packages": pkg_data,
+        "topic_graph": topic_graph,
+        "total_nodes": total_nodes,
+        "total_topics": len(topic_graph),
+    }
 
+
+def workspace_map() -> str:
+    """Build a full semantic map of the workspace: packages, nodes, topics, params.
+
+    Uses AST analysis — no ROS runtime needed. Call this at the start of any
+    session to understand the codebase before touching files or running tools.
+    """
+    data = _get_workspace_data()
+    if isinstance(data, str):
+        return data  # error
+
+    pkg_data = data["packages"]
+    topic_graph = data["topic_graph"]
     sep = "─" * 68
 
-    for pkg_name, data in pkg_data.items():
+    lines: list[str] = [
+        f"WORKSPACE MAP  ─  {data['src']}",
+        f"  {len(pkg_data)} package(s)  ·  {data['total_nodes']} ROS node(s)  ·  {data['total_topics']} topic(s)\n",
+    ]
+
+    for pkg_name, pdata in pkg_data.items():
         lines.append(sep)
-        meaningful_deps = [d for d in data["deps"] if d != "rclpy"]
+        meaningful_deps = [d for d in pdata["deps"] if d != "rclpy"]
         dep_str = f"  deps: {', '.join(meaningful_deps)}" if meaningful_deps else ""
         lines.append(f"  {pkg_name}{dep_str}")
         lines.append("")
 
-        files = data["files"]
-        if not files:
+        if not pdata["files"]:
             lines.append("    (no annotated Python nodes found)")
             lines.append("")
             continue
 
-        for file_rel, a in files.items():
+        for file_rel, a in pdata["files"].items():
             fname = Path(file_rel).name
             node_classes = ", ".join(a["node_classes"]) or "(no Node subclass)"
-            hz_str = ""
-            if a["timer_hz"]:
-                hz_str = "  @ " + ", ".join(f"{h} Hz" for h in sorted(set(a["timer_hz"])))
+            hz_str = ("  @ " + ", ".join(f"{h} Hz" for h in sorted(set(a["timer_hz"])))) if a["timer_hz"] else ""
             lines.append(f"    {fname} :: {node_classes}{hz_str}")
-
             for topic, msg_type in a["publishers"]:
                 lines.append(f"      pub   {topic:<36} [{msg_type}]")
             for topic, msg_type in a["subscribers"]:
@@ -239,7 +254,6 @@ def workspace_map() -> str:
                 lines.append(f"      param {pname}{dstr}")
             lines.append("")
 
-    # ── Topic graph ───────────────────────────────────────────────────────
     if topic_graph:
         lines.append(sep)
         lines.append("  DATA FLOW GRAPH  (source code connections)\n")
