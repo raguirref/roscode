@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 
 import pytest
+
+# Disable the container backend for the entire test suite so tests never try
+# to start Docker/Podman, even on machines where ros2 is not installed.
+os.environ.setdefault("ROSCODE_NO_CONTAINER", "1")
 
 
 @dataclass

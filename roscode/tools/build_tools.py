@@ -51,8 +51,44 @@ def workspace_build(package: str | None = None) -> str:
     return f"{header}\n{tail}\n\nBuild FAILED (exit {result.returncode})."
 
 
-def _popen(cmd: list[str]) -> subprocess.Popen:
-    """Dependency-injection seam for tests — override via monkeypatch."""
+class _ContainerNode:
+    """Duck-type for subprocess.Popen when the node runs inside a container.
+
+    ``node_spawn`` stores one of these in ``_SPAWNED`` so that ``node_kill``
+    can call ``proc.terminate()`` without knowing whether the node is local
+    or inside Docker/Podman.
+    """
+
+    def __init__(self, cmd: list[str]) -> None:
+        self._cmd_str = " ".join(cmd)
+        self.pid: int = -1          # real pid is inside the container
+        self.returncode: int | None = None
+
+    def poll(self) -> int | None:
+        return self.returncode
+
+    def terminate(self) -> None:
+        from roscode import container
+        container.kill_background(self._cmd_str)
+        self.returncode = 0
+
+    def kill(self) -> None:
+        self.terminate()
+
+    def wait(self, timeout: float | None = None) -> int:
+        return self.returncode or 0
+
+
+def _popen(cmd: list[str]) -> subprocess.Popen | _ContainerNode:
+    """Dependency-injection seam for tests — override via monkeypatch.
+
+    In container mode, spawns the process inside the container and returns
+    a ``_ContainerNode`` handle that supports the same interface as Popen.
+    """
+    from roscode import container
+    if container.is_needed():
+        container.spawn_background(cmd)
+        return _ContainerNode(cmd)
     return subprocess.Popen(
         cmd,
         stdin=subprocess.DEVNULL,
@@ -61,7 +97,7 @@ def _popen(cmd: list[str]) -> subprocess.Popen:
     )
 
 
-_SPAWNED: dict[str, subprocess.Popen] = {}
+_SPAWNED: dict[str, subprocess.Popen | _ContainerNode] = {}
 
 
 def node_spawn(package: str, executable: str, node_name: str | None = None) -> str:
@@ -77,7 +113,8 @@ def node_spawn(package: str, executable: str, node_name: str | None = None) -> s
         return "Error: ros2 not found on PATH (have you sourced /opt/ros/humble/setup.bash?)"
 
     _SPAWNED[name] = proc
-    return f"Spawned {name} (pid {proc.pid})"
+    pid_str = str(proc.pid) if proc.pid != -1 else "inside container"
+    return f"Spawned {name} (pid {pid_str})"
 
 
 def node_kill(node_name: str) -> str:

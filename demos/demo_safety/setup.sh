@@ -1,22 +1,45 @@
 #!/usr/bin/env bash
-# demo_safety — launch a fake LaserScan publisher on /scan, no safety node yet.
+# demo_safety — build and launch the fake_lidar workspace.
 #
-# PLACEHOLDER: this is the Task 8 scaffold. The real implementation will:
-#   1. colcon build --packages-select fake_lidar
-#   2. ros2 run fake_lidar fake_lidar &   # 10 Hz synthetic LaserScan
-#
-# The agent is expected to scaffold the safety_stop package itself.
+# Run this inside the devcontainer (ROS 2 Humble must be sourced).
+# In a second terminal, run the agent:
+#   roscode "add a node that monitors /scan and publishes True to
+#            /obstacle_detected if anything is within 30 cm" \
+#           --workspace "$(dirname "$0")/workspace"
 
 set -euo pipefail
 
-echo "[demo_safety] PLACEHOLDER — ROS 2 workspace not yet populated."
-echo "[demo_safety] Will eventually:"
-echo "  - source /opt/ros/humble/setup.bash"
-echo "  - colcon build --packages-select fake_lidar"
-echo "  - source install/setup.bash"
-echo "  - ros2 run fake_lidar fake_lidar &"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+WS="$SCRIPT_DIR/workspace"
+
+echo "[demo_safety] Sourcing ROS 2 Humble..."
+# shellcheck disable=SC1091
+source /opt/ros/humble/setup.bash
+
+echo "[demo_safety] Building fake_lidar..."
+cd "$WS"
+colcon build --packages-select fake_lidar --symlink-install
+
+echo "[demo_safety] Sourcing install space..."
+# shellcheck disable=SC1091
+source "$WS/install/setup.bash"
+
+echo "[demo_safety] Launching fake_lidar..."
+ros2 run fake_lidar fake_lidar &
+LIDAR_PID=$!
+
 echo ""
-echo "[demo_safety] Then run: roscode \"add a node that monitors /scan and publishes \\"
-echo "                         True to /obstacle_detected if anything within 30cm\" \\"
-echo "                         --workspace ./workspace"
-exit 0
+echo "  fake_lidar  pid=$LIDAR_PID  (publishes /scan at 10 Hz)"
+echo "  Rays 0-4 report an obstacle at 0.25 m — inside the 0.30 m threshold."
+echo "  No safety_stop node exists yet. The agent will create it."
+echo ""
+echo "Now open a second terminal (in the same container) and run:"
+echo ""
+echo "  roscode \"add a node that monitors /scan and publishes True to \\"
+echo "           /obstacle_detected if anything is within 30 cm\" \\"
+echo "          --workspace $WS"
+echo ""
+echo "Press Ctrl+C here to stop all nodes."
+
+trap "kill $LIDAR_PID 2>/dev/null; echo '[demo_safety] Stopped.'; exit 0" INT TERM
+wait
