@@ -7,7 +7,7 @@ Built for the Anthropic "Built with Opus 4.7" hackathon (Anthropic + Cerebral Va
 **Deadline: Sunday April 26 2026, 8:00 PM EST.**
 
 ## Stack
-Python 3.11+, `anthropic` SDK, `rclpy`, `rich`, `pydantic`, ROS 2 Humble (Docker / devcontainer).
+Python 3.10+, `anthropic` SDK, `rclpy`, `rich`, `pydantic`, ROS 2 Humble (Docker / devcontainer).
 
 ## Model
 Default model is `claude-opus-4-7` (Opus 4.7). Override via `ROSCODE_MODEL` env var
@@ -37,16 +37,20 @@ we use 4.7 because the hackathon itself is "Built with Opus 4.7".
 
 ## Current priorities (in order)
 1. ~~All 15 tools implemented with mocked unit tests~~ ✓ (56 tests pass)
-2. Manually drive the full tool surface against a live ROS graph inside
+2. ~~20 tools: added pkg_search, pkg_info, open_rviz, open_rqt_plot, open_rqt_multiplot~~ ✓
+3. Manually drive the full tool surface against a live ROS graph inside
    the devcontainer (no mocks) — smoke test before any demo recording.
-3. Demo 1 (drift fix) working end-to-end: populate
-   `demos/demo_drift/workspace/` with the `simple_odometry` package
-   including the injected `yaw_bias = 0.05` bug + fake IMU publisher.
-4. Demo 2 (safety node creation) working end-to-end: populate
-   `demos/demo_safety/workspace/` with the synthetic `fake_lidar`.
-5. Rich UI polished for the demo video (the write_source_file diff
-   preview already lands in ui.py; stress-test with long diffs).
-6. README with demo GIFs / screen recording.
+4. Demo 1 (drift fix) working end-to-end: verify colcon build + node
+   restart succeed; `ros2 topic echo /odom` shows twist.angular.z ≈ 0.
+5. Demo 2 (safety node creation) working end-to-end — agent scaffolds
+   `safety_stop`, builds, spawns; /obstacle_detected → True immediately.
+6. Rich UI polished for the demo video.
+7. README with demo GIFs / screen recording.
+
+## GUI tools (new — 2026-04-22)
+`open_rviz`, `open_rqt_plot`, `open_rqt_multiplot` are in `gui_tools.py`.
+They forward $DISPLAY to the container. Packages needed (not in ros:humble-ros-base):
+  apt-get install -y ros-humble-rviz2 ros-humble-rqt ros-humble-rqt-plot ros-humble-rqt-multiplot
 
 ## Known issues / watch out for
 - `colcon build` can be slow (60s+) — never set the build timeout under 120s.

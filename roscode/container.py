@@ -187,6 +187,35 @@ def spawn_background(cmd: list[str]) -> None:
     )
 
 
+def spawn_gui_background(cmd: list[str]) -> None:
+    """Start a GUI tool as a detached process inside the container with DISPLAY forwarded.
+
+    On Linux desktops and Lima VMs (Mac + XQuartz), the GUI window appears on
+    the host display. On Docker Desktop for Mac without X11 forwarding the
+    process starts but cannot open a window — users should install XQuartz and
+    set DISPLAY, or use native ROS with ``--no-container``.
+    """
+    import os
+
+    if _runtime is None:
+        raise RuntimeError("Container not started — call ensure_running() first.")
+
+    display = os.environ.get("DISPLAY", ":0")
+    ros_cmd = (
+        "source /opt/ros/humble/setup.bash && "
+        + " ".join(shlex.quote(c) for c in cmd)
+    )
+    subprocess.run(
+        [
+            _runtime, "exec", "-d",
+            "-e", f"DISPLAY={display}",
+            _CONTAINER,
+            "bash", "-c", ros_cmd,
+        ],
+        capture_output=True,
+    )
+
+
 def kill_background(pattern: str) -> "ShellResult":  # noqa: F821
     """Kill background processes inside the container matching *pattern*."""
     return exec_cmd(["pkill", "-f", pattern], timeout=5.0)
