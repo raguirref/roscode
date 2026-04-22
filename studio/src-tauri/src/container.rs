@@ -11,7 +11,12 @@
 
 use crate::lima;
 
-pub const ROS_IMAGE: &str = "osrf/ros:humble-desktop";
+// `osrf/ros:humble-desktop` is amd64-only, so it crashes immediately on
+// Apple Silicon with "exec format error". `ros:humble-ros-base` ships a
+// real linux/arm64 manifest and contains everything we need (colcon,
+// rclpy, common msg packages, ros2 CLI). The "desktop" bits (rviz,
+// gazebo, rqt) aren't used — Foxglove handles visualization.
+pub const ROS_IMAGE: &str = "ros:humble-ros-base";
 pub const CONTAINER_NAME: &str = "roscode-ros";
 pub const AGENT_SRC_MOUNT: &str = "/opt/roscode-src";
 pub const WORKSPACE_MOUNT: &str = "/workspace";
@@ -75,6 +80,9 @@ pub async fn start(
         return Ok(());
     }
 
+    // Look for any container (running, stopped, or crashed) by our name.
+    // Format: "<name>\t<status>" — Status looks like "Up 5 minutes" when
+    // healthy, "Exited (255)" when the last run failed, etc.
     let existing = lima::shell_exec(&[
         "nerdctl",
         "ps",
@@ -82,14 +90,30 @@ pub async fn start(
         "--filter",
         &format!("name={CONTAINER_NAME}"),
         "--format",
-        "{{.Names}}",
+        "{{.Names}}\t{{.Status}}",
     ])
     .await?;
 
-    if existing.lines().any(|l| l.trim() == CONTAINER_NAME) {
-        tracing::info!(container = CONTAINER_NAME, "starting existing stopped container");
-        lima::shell_exec(&["nerdctl", "start", CONTAINER_NAME]).await?;
-        return Ok(());
+    if let Some(line) = existing.lines().find(|l| l.starts_with(CONTAINER_NAME)) {
+        let status = line.splitn(2, '\t').nth(1).unwrap_or("").trim();
+        if status.starts_with("Up") {
+            // Shouldn't reach here — is_running() would have caught it — but be safe.
+            return Ok(());
+        }
+        if status.starts_with("Exited") && !status.contains("(0)") {
+            // Previous run crashed. Nuke and recreate so the caller isn't
+            // stuck reusing a container that will just die again on start.
+            tracing::warn!(
+                container = CONTAINER_NAME,
+                %status,
+                "existing container in failed state — removing and recreating"
+            );
+            let _ = lima::shell_exec(&["nerdctl", "rm", "-f", CONTAINER_NAME]).await;
+        } else {
+            tracing::info!(container = CONTAINER_NAME, %status, "starting existing container");
+            lima::shell_exec(&["nerdctl", "start", CONTAINER_NAME]).await?;
+            return Ok(());
+        }
     }
 
     tracing::info!(
@@ -139,18 +163,36 @@ pub async fn start(
 }
 
 /// Install the roscode Python package inside the container in editable mode.
-/// Idempotent — pip notices the package is already installed and exits fast.
+/// Idempotent — pip skips already-installed packages fast.
+///
+/// `ros:humble-ros-base` is Ubuntu 22.04 (Jammy) based and doesn't ship `pip`;
+/// we apt-install it once. The container runs as root (ROS's default) so no
+/// sudo is needed. We detect pip's version to add `--break-system-packages`
+/// only where needed (pip 23+ / Ubuntu 24+) — the flag is rejected by pip 22
+/// shipped in Jammy, so unconditional use fails.
 pub async fn bootstrap_agent() -> Result<(), ContainerError> {
-    tracing::info!("pip install -e /opt/roscode-src inside container");
-    // `--break-system-packages` is needed on Ubuntu 22.04+ with PEP 668.
-    // The container is throwaway, so polluting its system site-packages is fine.
+    tracing::info!("installing roscode into container");
+    let script = r#"
+set -e
+if ! python3 -m pip --version >/dev/null 2>&1; then
+    echo "pip missing — installing via apt"
+    apt-get update -qq
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq apt-utils python3-pip >/dev/null
+fi
+# Conditionally add --break-system-packages (pip 23+ only).
+BSP=""
+if python3 -m pip install --help 2>&1 | grep -q -- '--break-system-packages'; then
+    BSP="--break-system-packages"
+fi
+python3 -m pip install $BSP --quiet -e /opt/roscode-src
+"#;
     let out = lima::shell_exec(&[
         "nerdctl",
         "exec",
         CONTAINER_NAME,
         "bash",
         "-lc",
-        "pip install --break-system-packages --quiet -e /opt/roscode-src",
+        script,
     ])
     .await?;
     tracing::debug!(%out, "pip install complete");
@@ -161,25 +203,43 @@ pub async fn bootstrap_agent() -> Result<(), ContainerError> {
 /// inside the container. Port 9000 is mapped host ← VM ← container by
 /// Lima's portForwards + the container's `--net=host`.
 ///
-/// Writes server logs to `/tmp/roscode-server.log` inside the container.
+/// We use **`nerdctl exec -d`** (native detach) rather than the usual
+/// shell `& disown` pattern because the latter hangs: `bash -lc` doesn't
+/// exit until every child has closed its stdout/stderr, and backgrounding
+/// with `&` doesn't close those fds. With `-d` nerdctl itself handles
+/// detachment and returns immediately.
+///
+/// We **must** source `/opt/ros/humble/setup.bash` before launching,
+/// otherwise ros2 / rclpy calls made by the agent's tools will fail with
+/// `ros2: command not found`. `nerdctl exec` does not re-run the image
+/// ENTRYPOINT (which is where setup.bash normally gets sourced), so we do
+/// it inline. `exec` at the end replaces the shell with python so our PID
+/// is the python server itself (makes pkill/restart robust).
+///
+/// Server logs land in `/tmp/roscode-server.log` inside the container.
 pub async fn start_server(port: u16) -> Result<(), ContainerError> {
-    // Kill any previous instance so we don't accumulate zombies across restarts.
+    // Stop any previous instance so we don't accumulate zombies across
+    // host-side restarts. `pkill` runs in the foreground but returns in ms.
     let _ = lima::shell_exec(&[
         "nerdctl",
         "exec",
         CONTAINER_NAME,
-        "bash",
-        "-lc",
+        "sh",
+        "-c",
         "pkill -f 'roscode.server' || true",
     ])
     .await;
 
     let cmd = format!(
-        "nohup python3 -m roscode.server --port {port} \
-         >/tmp/roscode-server.log 2>&1 &"
+        "source /opt/ros/humble/setup.bash && \
+         exec python3 -m roscode.server --port {port} \
+         >/tmp/roscode-server.log 2>&1"
     );
-    lima::shell_exec(&["nerdctl", "exec", CONTAINER_NAME, "bash", "-lc", &cmd]).await?;
-    tracing::info!(port, "roscode server spawned inside container");
+    lima::shell_exec(&[
+        "nerdctl", "exec", "-d", CONTAINER_NAME, "bash", "-c", &cmd,
+    ])
+    .await?;
+    tracing::info!(port, "roscode server spawned inside container (detached)");
     Ok(())
 }
 

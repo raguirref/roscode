@@ -54,7 +54,10 @@ export class AgentClient {
   connect(port: number): Promise<void> {
     return new Promise((resolve, reject) => {
       this._setState("connecting");
-      const ws = new WebSocket(`ws://localhost:${port}`);
+      // 127.0.0.1 rather than "localhost" — Lima's portForwards bind the
+      // guest port to the host's IPv4 loopback only, and many browsers
+      // resolve "localhost" to IPv6 (::1) first and fail the connection.
+      const ws = new WebSocket(`ws://127.0.0.1:${port}`);
       this.ws = ws;
       ws.onopen = () => {
         this._setState("open");

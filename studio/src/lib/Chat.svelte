@@ -39,7 +39,7 @@
     } catch (e) {
       messages = [
         ...messages,
-        { kind: "error", text: `could not connect to ws://localhost:${port}: ${e}` },
+        { kind: "error", text: `could not connect to ws://127.0.0.1:${port}: ${e}` },
       ];
     }
   });
@@ -215,7 +215,7 @@
       bind:value={input}
       placeholder={connState === "open"
         ? "describe the bug, the feature, whatever. the agent will work on it."
-        : `connecting to ws://localhost:${port}…`}
+        : `connecting to ws://127.0.0.1:${port}…`}
       disabled={connState !== "open" || sessionActive}
       on:keydown={(e) => {
         if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {

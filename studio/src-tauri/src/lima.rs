@@ -127,7 +127,7 @@ pub async fn start_or_create_vm() -> Result<(), LimaError> {
             run_limactl(&["start", VM_NAME, "--tty=false"], "start").await?;
         }
         None => {
-            tracing::info!(vm = VM_NAME, "VM does not exist — creating from template://default");
+            tracing::info!(vm = VM_NAME, "VM does not exist — creating from template:default");
             // The JQ expression appends our two port forwards to whatever the
             // default template already defines. Port `hostPort=0` would let
             // Lima pick, but we want predictable localhost ports.
@@ -135,10 +135,12 @@ pub async fn start_or_create_vm() -> Result<(), LimaError> {
                 r#".portForwards += [{{"guestPort":{},"hostPort":{}}},{{"guestPort":{},"hostPort":{}}}]"#,
                 FOXGLOVE_BRIDGE_PORT, FOXGLOVE_BRIDGE_PORT, ROSCODE_WS_PORT, ROSCODE_WS_PORT
             );
+            // Lima 2.0 switched to the `template:` scheme — `template://` still
+            // resolves but emits a deprecation warning. Use the new form.
             run_limactl(
                 &[
                     "start",
-                    "template://default",
+                    "template:default",
                     "--name",
                     VM_NAME,
                     "--tty=false",

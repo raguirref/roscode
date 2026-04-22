@@ -239,11 +239,20 @@ async def _handle_connection(websocket: ServerConnection) -> None:
 async def _run_prompt(
     websocket: ServerConnection, sink: WebsocketSink, msg: dict[str, Any]
 ) -> None:
+    # The webview sends the *host* path for display purposes, but the agent
+    # runs inside the ROS container where that path doesn't exist. The
+    # studio always bind-mounts the workspace to ``/workspace``, so we pin
+    # it here rather than trust whatever the client sent. If the server is
+    # launched from a CLI (native Linux, no container), the env var
+    # ``ROSCODE_CONTAINER_WORKSPACE`` overrides this.
+    import os
+    container_workspace = os.environ.get("ROSCODE_CONTAINER_WORKSPACE", "/workspace")
+
     try:
         await asyncio.to_thread(
             agent.run,
             user_request=msg["text"],
-            workspace_path=msg["workspace"],
+            workspace_path=container_workspace,
             model=msg.get("model"),
             max_iterations=int(msg.get("max_iterations", 20)),
             sink=sink,
