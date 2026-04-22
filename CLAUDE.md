@@ -38,6 +38,7 @@ we use 4.7 because the hackathon itself is "Built with Opus 4.7".
 ## Current priorities (in order)
 1. ~~All 15 tools implemented with mocked unit tests~~ ✓ (56 tests pass)
 2. ~~20 tools: added pkg_search, pkg_info, open_rviz, open_rqt_plot, open_rqt_multiplot~~ ✓
+   ~~23 tools: added workspace_map, code_search, ros_launch~~ ✓  (78 tests pass)
 3. Manually drive the full tool surface against a live ROS graph inside
    the devcontainer (no mocks) — smoke test before any demo recording.
 4. Demo 1 (drift fix) working end-to-end: verify colcon build + node
