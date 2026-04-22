@@ -34,13 +34,27 @@
 
   onMount(async () => {
     client = new AgentClient(handleEvent, (s) => (connState = s));
-    try {
-      await client.connect(port);
-    } catch (e) {
-      messages = [
-        ...messages,
-        { kind: "error", text: `could not connect to ws://127.0.0.1:${port}: ${e}` },
-      ];
+    // Retry the WebSocket connection a few times: the server spawn is
+    // detached and may still be binding when we mount. 8 × 750ms = 6s
+    // of patience before giving up.
+    const attempts = 8;
+    for (let i = 1; i <= attempts; i++) {
+      try {
+        await client.connect(port);
+        return;
+      } catch (e) {
+        if (i === attempts) {
+          messages = [
+            ...messages,
+            {
+              kind: "error",
+              text: `could not connect to ws://127.0.0.1:${port} after ${attempts} tries: ${e}`,
+            },
+          ];
+        } else {
+          await new Promise((r) => setTimeout(r, 750));
+        }
+      }
     }
   });
 

@@ -9,6 +9,11 @@
 //! binds on port 8765/9000 in the VM is transparently forwarded to the same
 //! ports on the Mac by Lima's portForwards.
 
+use std::time::Duration;
+
+use tokio::net::TcpStream;
+use tokio::time::sleep;
+
 use crate::lima;
 
 // `osrf/ros:humble-desktop` is amd64-only, so it crashes immediately on
@@ -240,7 +245,28 @@ pub async fn start_server(port: u16) -> Result<(), ContainerError> {
     ])
     .await?;
     tracing::info!(port, "roscode server spawned inside container (detached)");
-    Ok(())
+
+    // `nerdctl exec -d` returns as soon as the process forks — not when it's
+    // actually listening. The webview tries to connect the instant the UI
+    // goes Ready, so without this poll the Chat component races the server
+    // and renders "websocket error" forever (it doesn't retry on its own).
+    wait_for_port(port, Duration::from_secs(20)).await
+}
+
+async fn wait_for_port(port: u16, timeout: Duration) -> Result<(), ContainerError> {
+    let deadline = tokio::time::Instant::now() + timeout;
+    let addr = ("127.0.0.1", port);
+    while tokio::time::Instant::now() < deadline {
+        if TcpStream::connect(addr).await.is_ok() {
+            tracing::info!(port, "server is accepting connections");
+            return Ok(());
+        }
+        sleep(Duration::from_millis(250)).await;
+    }
+    Err(ContainerError::Nerdctl(format!(
+        "server never started listening on port {port} within {}s",
+        timeout.as_secs()
+    )))
 }
 
 /// Stop + remove the container. Safe to call even if nothing is running.
