@@ -1,4 +1,9 @@
-"""Thin subprocess wrapper used by every tool. Centralised so tests can mock one place."""
+"""Thin subprocess wrapper used by every tool. Centralised so tests can mock one place.
+
+When ``roscode.container.is_needed()`` returns True (no local ros2, but Docker/Podman
+is available), ``run()`` transparently routes commands through the managed container
+instead of the local subprocess — no changes needed in individual tool modules.
+"""
 
 from __future__ import annotations
 
@@ -24,12 +29,21 @@ def run(
     cwd: str | None = None,
     check: bool = False,
 ) -> ShellResult:
-    """Run `cmd` and return a ShellResult. Always captures stdout+stderr as text.
+    """Run *cmd* and return a ShellResult. Always captures stdout+stderr as text.
 
-    On timeout, returns a ShellResult with returncode=124 (matches POSIX `timeout`),
-    empty stdout, and a synthetic stderr. Callers never see a TimeoutExpired so
-    error-to-string formatting can stay in the tool wrappers.
+    If a ROS 2 container is active (macOS/Windows without native ros2), the
+    command is forwarded to the container via ``docker exec`` / ``podman exec``.
+
+    On timeout, returns returncode=124 (matches POSIX ``timeout`` convention).
+    Callers never see a ``TimeoutExpired`` exception.
     """
+    # Lazy import avoids circular dependency (container imports ShellResult from here)
+    from roscode import container as _container  # noqa: PLC0415
+
+    if _container.is_needed():
+        return _container.exec_cmd(cmd, timeout=timeout, cwd=cwd)
+
+    # --- Native path ---
     try:
         proc = subprocess.run(
             cmd,

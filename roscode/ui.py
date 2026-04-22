@@ -1,29 +1,104 @@
-"""Rich-based terminal UI for roscode."""
+"""Rich-based terminal UI for roscode.
+
+This is the demo surface — keep it clean.  Every public helper here is called
+from ``roscode.agent``; no other module should print directly.
+"""
 
 from __future__ import annotations
 
 import difflib
-from typing import Any
+from contextlib import contextmanager
+from typing import Any, Iterator
 
 from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Confirm
 from rich.syntax import Syntax
+from rich.text import Text
 
 _console = Console()
 
+# Tools that mutate the workspace or the live ROS graph.  Kept in sync with
+# ``roscode.agent.DESTRUCTIVE_TOOLS`` — used only for UI styling, not gating.
+_DESTRUCTIVE_TOOLS: frozenset[str] = frozenset(
+    {
+        "write_source_file",
+        "workspace_build",
+        "node_spawn",
+        "node_kill",
+        "param_set",
+        "package_scaffold",
+    }
+)
+
+
+def print_session_banner(model: str, workspace: str, container_status: str | None) -> None:
+    """Opening panel shown once per session.  Sets the stage for the demo video."""
+    lines = [
+        Text.assemble(("roscode", "bold cyan"), (" — ROS 2 agent powered by ", "dim"), (model, "bold")),
+        Text.assemble(("workspace ", "dim"), (workspace, "white")),
+    ]
+    if container_status:
+        lines.append(Text.assemble(("runtime   ", "dim"), (container_status, "white")))
+    else:
+        lines.append(Text.assemble(("runtime   ", "dim"), ("native ros2 on PATH", "white")))
+
+    body = Text("\n").join(lines)
+    _console.print(Panel(body, border_style="cyan", padding=(0, 2)))
+
+
+def print_status(text: str) -> None:
+    """Dim single-line status (container startup, shutdown, etc.)."""
+    _console.print(f"[dim]▸ {text}[/dim]")
+
+
+def print_reasoning(text: str) -> None:
+    """Interstitial text the model emits alongside tool_use — the chain-of-thought."""
+    stripped = text.strip()
+    if not stripped:
+        return
+    _console.print(Text.assemble(("🤔  ", "magenta"), (stripped, "italic dim")))
+
 
 def print_agent_message(text: str) -> None:
-    _console.print(f"[bold cyan]🤖[/bold cyan]  {text}")
+    """Final end-of-turn message from the agent.  Visually prominent."""
+    stripped = text.strip()
+    if not stripped:
+        return
+    _console.print(
+        Panel(
+            Text(stripped, style="cyan"),
+            title="🤖 agent",
+            border_style="cyan",
+            padding=(0, 1),
+        )
+    )
+
+
+def print_step(n: int, total: int) -> None:
+    """Small ticker so demo viewers can follow loop progress."""
+    _console.print(f"[dim]─── step {n}/{total} ───[/dim]")
+
+
+@contextmanager
+def thinking(label: str = "thinking") -> Iterator[None]:
+    """Spinner shown while the model is generating.  ``client.messages.create``
+    can take several seconds — without this the UI looks frozen.
+    """
+    with _console.status(f"[cyan]{label}…[/cyan]", spinner="dots"):
+        yield
 
 
 def print_tool_call(name: str, args: dict[str, Any]) -> None:
+    destructive = name in _DESTRUCTIVE_TOOLS
+    icon = "✏️ " if destructive else "🔍"
+    border = "yellow" if destructive else "blue"
     args_block = "\n".join(f"  {k}: {_fmt_arg(v)}" for k, v in args.items()) or "  (no args)"
     _console.print(
         Panel.fit(
             args_block,
-            title=f"🔧 {name}",
-            border_style="blue",
+            title=f"{icon} {name}",
+            border_style=border,
         )
     )
 
@@ -35,11 +110,14 @@ def print_tool_result(name: str, result: Any) -> None:
     if body.count("\n") > 60:
         lines = body.splitlines()
         body = "\n".join(lines[:30] + ["  …", f"  ({len(lines) - 40} lines elided)", "  …"] + lines[-10:])
+
+    border = "red" if _is_error(body) else "green"
+    icon = "⚠️ " if _is_error(body) else "✅"
     _console.print(
         Panel.fit(
             body,
-            title=f"✅ {name} result",
-            border_style="green",
+            title=f"{icon} {name} result",
+            border_style=border,
         )
     )
 
@@ -59,13 +137,19 @@ def confirm_action(name: str, args: dict[str, Any]) -> bool:
     return Confirm.ask("Approve?", default=False)
 
 
+def _is_error(body: str) -> bool:
+    head = body.lstrip()[:64].lower()
+    return head.startswith("error") or head.startswith("build failed") or "traceback" in head
+
+
 def _fmt_arg(value: Any) -> str:
     """Collapse multi-line / long values in the argument panels."""
-    text = repr(value)
     if isinstance(value, str) and ("\n" in value or len(value) > 80):
         first_line = value.splitlines()[0] if value else ""
-        return f"<{len(value)} chars, {value.count(chr(10)) + 1} lines> {first_line!r}…"
-    return text
+        preview = first_line if len(first_line) <= 60 else first_line[:60] + "…"
+        n_lines = value.count("\n") + 1
+        return f"<{len(value)} chars, {n_lines} lines> {preview!r}"
+    return repr(value)
 
 
 def _render_write_preview(args: dict[str, Any]) -> None:

@@ -1,24 +1,45 @@
 #!/usr/bin/env bash
-# demo_drift — launch the buggy simple_odometry node + a fake IMU publisher.
+# demo_drift — build and launch the simple_odometry workspace.
 #
-# PLACEHOLDER: this is the Task 8 scaffold. The real implementation will:
-#   1. colcon build --packages-select simple_odometry
-#   2. ros2 run simple_odometry fake_imu &         # 20 Hz synthetic IMU
-#   3. ros2 run simple_odometry odometry_node &    # buggy integrator
-#   4. print the PIDs + a test script that rotates the sim 360°
-#
-# Until Task 8 is implemented this script just tells you what will happen.
+# Run this inside the devcontainer (ROS 2 Humble must be sourced).
+# In a second terminal, run the agent:
+#   roscode "the robot drifts left when rotating, fix it" \
+#           --workspace "$(dirname "$0")/workspace"
 
 set -euo pipefail
 
-echo "[demo_drift] PLACEHOLDER — ROS 2 workspace not yet populated."
-echo "[demo_drift] Will eventually:"
-echo "  - source /opt/ros/humble/setup.bash"
-echo "  - colcon build --packages-select simple_odometry"
-echo "  - source install/setup.bash"
-echo "  - ros2 run simple_odometry fake_imu &"
-echo "  - ros2 run simple_odometry odometry_node &"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+WS="$SCRIPT_DIR/workspace"
+
+echo "[demo_drift] Sourcing ROS 2 Humble..."
+# shellcheck disable=SC1091
+source /opt/ros/humble/setup.bash
+
+echo "[demo_drift] Building simple_odometry..."
+cd "$WS"
+colcon build --packages-select simple_odometry --symlink-install
+
+echo "[demo_drift] Sourcing install space..."
+# shellcheck disable=SC1091
+source "$WS/install/setup.bash"
+
+echo "[demo_drift] Launching nodes..."
+ros2 run simple_odometry fake_imu &
+IMU_PID=$!
+sleep 0.5
+ros2 run simple_odometry odometry_node &
+ODOM_PID=$!
+
 echo ""
-echo "[demo_drift] Then run: roscode \"the robot drifts left when rotating, fix it\" \\"
-echo "                        --workspace ./workspace"
-exit 0
+echo "  fake_imu       pid=$IMU_PID   (publishes /imu  at 20 Hz, angular_velocity.z = 0)"
+echo "  odometry_node  pid=$ODOM_PID  (publishes /odom at 20 Hz, has yaw_bias bug)"
+echo ""
+echo "Now open a second terminal (in the same container) and run:"
+echo ""
+echo "  roscode \"the robot drifts left when rotating, fix it\" \\"
+echo "          --workspace $WS"
+echo ""
+echo "Press Ctrl+C here to stop all nodes."
+
+trap "kill $IMU_PID $ODOM_PID 2>/dev/null; echo '[demo_drift] Stopped.'; exit 0" INT TERM
+wait
