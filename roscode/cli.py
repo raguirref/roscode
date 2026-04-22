@@ -5,9 +5,15 @@ from __future__ import annotations
 from pathlib import Path
 
 import click
+from dotenv import load_dotenv
 
 from roscode.agent import run
 from roscode.config import load_settings
+
+# Pull ANTHROPIC_API_KEY (and friends) into os.environ so the Anthropic
+# SDK finds them without any explicit plumbing. Walks up from CWD until
+# it finds a .env; no-op if none is present.
+load_dotenv()
 
 
 @click.command(context_settings={"help_option_names": ["-h", "--help"]})

@@ -46,9 +46,15 @@ from contextlib import AbstractContextManager, nullcontext
 from typing import Any
 
 import websockets
+from dotenv import load_dotenv
 from websockets.asyncio.server import ServerConnection, serve
 
 from roscode import agent
+
+# Load .env from CWD or any parent so the Anthropic SDK picks up the key
+# whether the server is launched from the host CLI or spawned inside the
+# container (where we also bind-mount the repo root).
+load_dotenv()
 
 log = logging.getLogger("roscode.server")
 

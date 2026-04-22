@@ -27,6 +27,12 @@ pub struct RuntimeState {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Load the repo-root .env so ANTHROPIC_API_KEY is in our process env
+    // before we fork into Tauri. Fails silently if missing; the startup
+    // flow later logs a warning and still brings the container up.
+    let dotenv_path = std::path::PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../../.env"));
+    let _ = dotenvy::from_path(&dotenv_path);
+
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
