@@ -175,10 +175,10 @@ def tf_lookup(source_frame: str, target_frame: str) -> str:
         return _error(
             f"tf2_echo {source_frame} -> {target_frame}", result.stderr
         )
-    return (
-        f"Transform {source_frame} -> {target_frame}:\n{result.stdout.strip()}"
-        or f"No transform available {source_frame} -> {target_frame}."
-    )
+    body = result.stdout.strip()
+    if not body:
+        return f"No transform available from {source_frame} to {target_frame}."
+    return f"Transform {source_frame} -> {target_frame}:\n{body}"
 
 
 SCHEMAS: list[dict[str, Any]] = [

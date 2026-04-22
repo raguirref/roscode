@@ -20,6 +20,7 @@ def test_destructive_tools_set_is_frozen():
         "workspace_build",
         "node_spawn",
         "node_kill",
+        "ros_launch",
         "param_set",
         "package_scaffold",
     }

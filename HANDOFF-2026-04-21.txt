@@ -1,0 +1,116 @@
+====================================================
+roscode studio — session handoff  2026-04-21
+====================================================
+
+DEADLINE: Sunday April 26 2026, 8:00 PM EST (hackathon)
+BRANCH: studio  (fallback snapshot: v1-hackathon-cli)
+
+----------------------------------------------------
+WHAT WAS BUILT TODAY
+----------------------------------------------------
+The full end-to-end pipeline works:
+
+  Mac app (Tauri)
+    → starts Lima VM ("roscode")
+    → pulls ros:humble-ros-base inside VM via nerdctl
+    → mounts workspace + roscode src into container
+    → pip-installs roscode in editable mode
+    → spawns `python -m roscode.server --port 9000`
+    → Svelte chat UI connects via WebSocket
+    → user types prompt → Claude Opus 4.7 runs tools → diff card appears → user approves → file patched
+
+We ran demo 1 (drift fix) live:
+  - Fake IMU published 0.0 rad/s, odometry reported ~45 rad/s (45 min of 0.05 bias)
+  - Agent found yaw_bias = 0.05 in odometry_node.py, diffed it, user approved
+  - Fix: yaw_bias = 0.05 → 0.0
+
+Last commit: 493555b
+  fix(studio): eliminate ws race condition with port-poll + client retry
+
+----------------------------------------------------
+KEY ARCHITECTURE
+----------------------------------------------------
+roscode/
+  agent.py          — agentic loop, NEVER remove DESTRUCTIVE_TOOLS gate
+  server.py         — asyncio WebSocket server (ws://127.0.0.1:9000)
+                      workspace_path is always "/workspace" (container-side)
+  ui_protocol.py    — UiSink protocol (TerminalSink + WebsocketSink)
+  tools/            — 15 ROS/fs/build tools
+
+studio/
+  src-tauri/src/
+    lima.rs         — Lima VM lifecycle (detect, start_or_create_vm, shell_exec)
+    container.rs    — nerdctl container lifecycle + wait_for_port()
+    lib.rs          — Tauri commands + startup orchestration
+  src/
+    App.svelte      — 2×2 grid layout (editor / chat / foxglove / terminal)
+    lib/Chat.svelte — WebSocket chat UI (retry loop, confirm cards, diff preview)
+    lib/chat.ts     — WebSocket client (use 127.0.0.1 NOT localhost — IPv6 issue)
+
+----------------------------------------------------
+CRITICAL DECISIONS / KNOWN GOTCHAS
+----------------------------------------------------
+- Lima VM name: "roscode"
+- Container name: "roscode-ros"
+- ROS image: ros:humble-ros-base  (NOT osrf/ros:humble-desktop — amd64 only, crashes ARM)
+- WebSocket port: 9000 (agent server), 8765 (foxglove-bridge — future)
+- Use ws://127.0.0.1:9000 NOT ws://localhost — Lima portForwards bind IPv4 only
+- Lima 2.0 mounts are writable:false by default — baked into JQ --set in lima.rs
+- nerdctl exec -d for detached server (bash -lc "& disown" hangs forever)
+- pyproject.toml requires-python = ">=3.10" (container has Python 3.10, not 3.11)
+- /workspace is the container-side path; host path is irrelevant to the agent
+
+----------------------------------------------------
+WHAT'S BROKEN / NOT DONE
+----------------------------------------------------
+1. Chat scroll fix landed last (hot-reload, not yet committed):
+   - App.svelte: .pane.chat { overflow: hidden } + h3 { flex-shrink: 0 }
+   - Chat.svelte: .chat { min-height: 0 } added
+   COMMIT THESE FIRST TOMORROW.
+
+2. Demo 1 (drift fix) — agent ran successfully, user approved the diff.
+   NOT verified: did colcon build + node restart succeed after approval?
+   Confirm by checking odom twist.angular.z is back to 0.
+
+3. Demo 2 (safety node) — not started. demos/demo_safety/ workspace needs:
+   - fake_lidar node publishing /scan
+   - gap_detector.py (scaffold, agent writes the logic)
+   Prompt: "create a safety node that stops the robot if any lidar reading is under 0.5m"
+
+4. Monaco editor pane — placeholder "Monaco editor lands day 4."
+5. Foxglove pane — placeholder "Foxglove embed lands day 4."
+6. Terminal pane — placeholder "xterm.js pty into the container, day 3."
+
+----------------------------------------------------
+TOMORROW PRIORITIES (in order)
+----------------------------------------------------
+1. git commit the scroll fix (Chat.svelte + App.svelte)
+2. Verify demo 1 result: ros2 topic echo /odom → twist.angular.z ≈ 0
+3. Build demo 2 workspace (fake_lidar + skeleton safety node)
+4. Run demo 2 end-to-end: agent scaffolds gap_detector.py, user approves
+5. Polish: smoother progress bar, better error messages, maybe workspace picker
+6. README + screen recording for submission
+
+----------------------------------------------------
+HOW TO START THE APP
+----------------------------------------------------
+1. cd /Users/rickyaguirre/development/roscode
+2. Make sure .env exists with ANTHROPIC_API_KEY=sk-ant-...
+3. cd studio && cargo tauri dev   (or: pnpm tauri dev)
+4. Click "start ROS runtime" — wait ~2 min first run, ~30s after that
+5. When banner shows "runtime ready · ros:humble-ros-base" → chat is live
+
+----------------------------------------------------
+DEMO 1 WORKSPACE
+----------------------------------------------------
+demos/demo_drift/workspace/src/simple_odometry/
+  setup.py
+  simple_odometry/
+    __init__.py
+    fake_imu.py        — publishes 0.0 rad/s on /imu at 20 Hz
+    odometry_node.py   — integrates IMU, had yaw_bias=0.05 bug (NOW FIXED)
+
+Nodes are started inside the container by the agent's node_spawn tool.
+Check with: limactl shell roscode -- nerdctl exec roscode-ros ros2 node list
+
+====================================================

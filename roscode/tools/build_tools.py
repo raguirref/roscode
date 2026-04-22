@@ -41,7 +41,8 @@ def workspace_build(package: str | None = None) -> str:
     workspace = get_workspace()
     result = _shell.run(cmd, timeout=120.0, cwd=str(workspace))
 
-    tail = "\n".join((result.stdout or result.stderr).splitlines()[-30:])
+    combined = "\n".join(filter(None, [result.stdout.strip(), result.stderr.strip()]))
+    tail = "\n".join(combined.splitlines()[-30:])
     header = f"$ {' '.join(cmd)}   (cwd={workspace.as_posix()})"
 
     if result.returncode == 0:
@@ -139,6 +140,24 @@ def node_kill(node_name: str) -> str:
 
     _SPAWNED.pop(node_name, None)
     return f"Killed {node_name}"
+
+
+def ros_launch(package: str, launch_file: str, args: list[str] | None = None) -> str:
+    """Run a ROS 2 launch file in the background. DESTRUCTIVE."""
+    key = f"{package}/{launch_file}"
+    existing = _SPAWNED.get(key)
+    if existing is not None and existing.poll() is None:
+        return f"Error: launch {key!r} is already running"
+
+    cmd = ["ros2", "launch", package, launch_file] + (args or [])
+    try:
+        proc = _popen(cmd)
+    except FileNotFoundError:
+        return "Error: ros2 not found on PATH (have you sourced /opt/ros/humble/setup.bash?)"
+
+    _SPAWNED[key] = proc
+    pid_str = str(proc.pid) if proc.pid != -1 else "inside container"
+    return f"Launched {key} (pid {pid_str})"
 
 
 _PACKAGE_XML = """<?xml version="1.0"?>
@@ -378,6 +397,34 @@ SCHEMAS: list[dict[str, Any]] = [
             "required": ["package_name", "node_name", "description"],
         },
     },
+    {
+        "name": "ros_launch",
+        "description": (
+            "Run a ROS 2 launch file in the background via `ros2 launch`. DESTRUCTIVE — "
+            "starts one or more nodes and changes the live graph. Use this to bring up a "
+            "full robot stack, sensor suite, or any launch-file-based system. The process "
+            "is tracked so node_kill can stop it later (use the '<package>/<launch_file>' key)."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "package": {
+                    "type": "string",
+                    "description": "Package that contains the launch file.",
+                },
+                "launch_file": {
+                    "type": "string",
+                    "description": "Launch file name, e.g. 'robot.launch.py' or 'bringup.launch.xml'.",
+                },
+                "args": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Optional launch arguments, e.g. ['use_sim_time:=true', 'robot_name:=r1'].",
+                },
+            },
+            "required": ["package", "launch_file"],
+        },
+    },
 ]
 
 TOOLS = {
@@ -386,4 +433,5 @@ TOOLS = {
     "node_spawn": node_spawn,
     "node_kill": node_kill,
     "package_scaffold": package_scaffold,
+    "ros_launch": ros_launch,
 }

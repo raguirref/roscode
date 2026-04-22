@@ -32,6 +32,7 @@ DESTRUCTIVE_TOOLS: set[str] = {
     "workspace_build",
     "node_spawn",
     "node_kill",
+    "ros_launch",
     "param_set",
     "package_scaffold",
 }
@@ -55,6 +56,13 @@ def run(
             DANGEROUS — only for automated testing.
     """
     settings = load_settings()
+    if not settings.anthropic_api_key:
+        print_agent_message(
+            "ANTHROPIC_API_KEY is not set.\n"
+            "Add it to a .env file or export it in your shell:\n"
+            "  export ANTHROPIC_API_KEY=sk-ant-..."
+        )
+        return
     model_id = model or settings.model
 
     set_workspace(workspace_path)
@@ -79,7 +87,7 @@ def run(
         with thinking():
             response = client.messages.create(
                 model=model_id,
-                max_tokens=4096,
+                max_tokens=8192,
                 system=system_prompt,
                 tools=TOOL_DEFINITIONS,
                 messages=messages,
@@ -107,14 +115,22 @@ def run(
 
                 print_tool_call(block.name, block.input)
 
-                if block.name in DESTRUCTIVE_TOOLS and not auto_confirm:
+                if block.name not in TOOL_MAP:
+                    result: object = f"Error: unknown tool {block.name!r}."
+                elif block.name in DESTRUCTIVE_TOOLS and not auto_confirm:
                     approved = confirm_action(block.name, block.input)
                     if not approved:
-                        result: object = "Action declined by user."
+                        result = "Action declined by user."
                     else:
-                        result = TOOL_MAP[block.name](**block.input)
+                        try:
+                            result = TOOL_MAP[block.name](**block.input)
+                        except Exception as exc:
+                            result = f"Error: tool {block.name!r} raised {type(exc).__name__}: {exc}"
                 else:
-                    result = TOOL_MAP[block.name](**block.input)
+                    try:
+                        result = TOOL_MAP[block.name](**block.input)
+                    except Exception as exc:
+                        result = f"Error: tool {block.name!r} raised {type(exc).__name__}: {exc}"
 
                 print_tool_result(block.name, result)
                 tool_results.append(

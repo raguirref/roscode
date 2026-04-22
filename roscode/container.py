@@ -243,22 +243,30 @@ def _start_container(runtime: str, workspace_path: Path) -> None:
     ros_log = Path.home() / ".ros"
     ros_log.mkdir(parents=True, exist_ok=True)
 
-    subprocess.run(
-        [
-            runtime, "run", "--detach",
-            "--name", _CONTAINER,
-            # Workspace bind-mount (writable — write_source_file writes here on host)
-            "--volume", f"{workspace_path}:/workspace",
-            # Share ROS log dir so log_tail's host-side filesystem reads work
-            "--volume", f"{ros_log}:/root/.ros",
-            # Stable ROS domain to avoid collisions with other DDS traffic
-            "--env", "ROS_DOMAIN_ID=42",
-            _IMAGE,
-            "tail", "-f", "/dev/null",  # keep the container alive
-        ],
-        check=True,
-        capture_output=True,
-    )
+    try:
+        subprocess.run(
+            [
+                runtime, "run", "--detach",
+                "--name", _CONTAINER,
+                # Workspace bind-mount (writable — write_source_file writes here on host)
+                "--volume", f"{workspace_path}:/workspace",
+                # Share ROS log dir so log_tail's host-side filesystem reads work
+                "--volume", f"{ros_log}:/root/.ros",
+                # Stable ROS domain to avoid collisions with other DDS traffic
+                "--env", "ROS_DOMAIN_ID=42",
+                _IMAGE,
+                "tail", "-f", "/dev/null",  # keep the container alive
+            ],
+            check=True,
+            capture_output=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        stderr = exc.stderr.decode(errors="replace") if exc.stderr else ""
+        raise RuntimeError(
+            f"Failed to start ROS 2 container (exit {exc.returncode}).\n"
+            f"{stderr.strip()}\n"
+            f"Ensure {runtime} is running and can pull '{_IMAGE}' from the internet."
+        ) from exc
 
 
 def _translate_cwd(cwd: str | None) -> str:
