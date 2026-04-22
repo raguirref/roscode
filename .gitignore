@@ -80,3 +80,7 @@ Desktop.ini
 
 # ---- Node (just in case we add any tooling) ----
 node_modules/
+
+# ---- Local handoff notes ----
+HANDOFF-2026-04-21.txt
+handoff-2026-04-21.txt
