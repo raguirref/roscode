@@ -1,11 +1,29 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { getRuntimeStatus, startRuntime, type RuntimeStatus } from "./lib/tauri";
+  import {
+    getRuntimeStatus,
+    startRuntime,
+    type RuntimeStatus,
+    type StartupEvent,
+  } from "./lib/tauri";
 
   let status: RuntimeStatus = { kind: "uninitialized" };
   let booting = false;
+  let stageLabel = "";
+  let stagePercent = 0;
+  let logLines: string[] = [];
+
+  // Default workspace: the demo_drift package that ships with roscode.
+  // Post-MVP this becomes user-configurable via a folder picker.
+  let workspacePath = "";
 
   onMount(async () => {
+    // Seed a sensible default for Ricardo's dev machine. Users will pick
+    // via a dialog once we add one.
+    workspacePath = `${
+      (window as any).__ROSCODE_HOME__ ?? "/Users/rickyaguirre"
+    }/development/roscode/demos/demo_drift/workspace`;
+
     try {
       status = await getRuntimeStatus();
     } catch (e) {
@@ -15,12 +33,34 @@
 
   async function boot() {
     booting = true;
+    logLines = [];
+    stageLabel = "";
+    stagePercent = 0;
+
     try {
-      status = await startRuntime();
+      status = await startRuntime(workspacePath, handleEvent);
     } catch (e) {
       status = { kind: "error", message: String(e) };
     } finally {
       booting = false;
+    }
+  }
+
+  function handleEvent(ev: StartupEvent) {
+    switch (ev.event) {
+      case "stage":
+        stageLabel = ev.label;
+        stagePercent = ev.percent;
+        break;
+      case "log":
+        logLines = [...logLines, ev.line].slice(-20);
+        break;
+      case "done":
+        status = ev.status;
+        break;
+      case "failed":
+        status = { kind: "error", message: ev.message };
+        break;
     }
   }
 </script>
@@ -39,12 +79,25 @@
         error: {status.message}
       {/if}
     </span>
-    {#if status.kind === "uninitialized" || status.kind === "error"}
-      <button on:click={boot} disabled={booting}>
+    {#if status.kind !== "ready"}
+      <button on:click={boot} disabled={booting || !workspacePath}>
         {booting ? "starting…" : "start ROS runtime"}
       </button>
     {/if}
   </header>
+
+  {#if booting || (status.kind === "starting")}
+    <section class="progress">
+      <div class="bar" style="--p: {Math.round(stagePercent * 100)}%"></div>
+      <div class="stage">
+        <span class="label">{stageLabel || "…"}</span>
+        <span class="pct">{Math.round(stagePercent * 100)}%</span>
+      </div>
+      {#if logLines.length}
+        <pre class="log">{logLines.join("\n")}</pre>
+      {/if}
+    </section>
+  {/if}
 
   <div class="grid">
     <section class="pane editor">
@@ -108,6 +161,58 @@
 
   .status[data-kind="error"] {
     color: var(--accent-warm);
+  }
+
+  .progress {
+    padding: 10px 16px;
+    background: var(--bg-1);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .progress .bar {
+    height: 3px;
+    background: var(--bg-2);
+    border-radius: 2px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .progress .bar::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: var(--p, 0%);
+    background: var(--accent);
+    transition: width 150ms ease;
+  }
+
+  .progress .stage {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--fg-1);
+  }
+
+  .progress .pct {
+    font-variant-numeric: tabular-nums;
+    color: var(--fg-2);
+  }
+
+  .progress .log {
+    margin: 8px 0 0;
+    padding: 8px 10px;
+    background: var(--bg-0);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-family: "SF Mono", Menlo, monospace;
+    font-size: 11px;
+    color: var(--fg-2);
+    max-height: 120px;
+    overflow: auto;
+    white-space: pre-wrap;
   }
 
   .grid {
