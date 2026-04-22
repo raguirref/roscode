@@ -46,6 +46,7 @@ When the user gives you a task:
 | Read a specific file                    | `read_source_file`            |
 | List packages / check file exists       | `list_workspace`              |
 | Search for a ROS package to install     | `pkg_search`                  |
+| Install a ROS/Python library (apt)      | `pkg_install`                 |
 | Open a visualization window             | `open_rviz` / `open_rqt_plot` |
 | Start a launch file                     | `ros_launch`                  |
 
