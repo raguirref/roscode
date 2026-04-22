@@ -128,11 +128,14 @@ pub async fn start_or_create_vm() -> Result<(), LimaError> {
         }
         None => {
             tracing::info!(vm = VM_NAME, "VM does not exist — creating from template:default");
-            // The JQ expression appends our two port forwards to whatever the
-            // default template already defines. Port `hostPort=0` would let
-            // Lima pick, but we want predictable localhost ports.
+            // The JQ expression:
+            //   (a) appends our two port forwards on top of the default template's,
+            //   (b) forces the home-directory mount to writable. Lima 2.0's
+            //       default is `writable: false`, which makes `colcon build`
+            //       and `write_source_file` fail with EROFS when the agent
+            //       tries to modify files in the mounted workspace.
             let set_expr = format!(
-                r#".portForwards += [{{"guestPort":{},"hostPort":{}}},{{"guestPort":{},"hostPort":{}}}]"#,
+                r#".portForwards += [{{"guestPort":{},"hostPort":{}}},{{"guestPort":{},"hostPort":{}}}] | .mounts[0].writable = true"#,
                 FOXGLOVE_BRIDGE_PORT, FOXGLOVE_BRIDGE_PORT, ROSCODE_WS_PORT, ROSCODE_WS_PORT
             );
             // Lima 2.0 switched to the `template:` scheme — `template://` still
