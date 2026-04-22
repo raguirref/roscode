@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import Chat from "./lib/Chat.svelte";
   import {
     getRuntimeStatus,
     startRuntime,
@@ -107,7 +108,11 @@
 
     <section class="pane chat">
       <h3>chat</h3>
-      <p class="hint">roscode agent chat lands day 3.</p>
+      {#if status.kind === "ready"}
+        <Chat port={status.agent_ws_port} workspace={workspacePath} />
+      {:else}
+        <p class="hint">start the ROS runtime to begin a chat session.</p>
+      {/if}
     </section>
 
     <section class="pane foxglove">
@@ -228,6 +233,23 @@
     background: var(--bg-1);
     padding: 14px 18px;
     overflow: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .pane.chat {
+    padding: 0;
+  }
+
+  .pane.chat h3 {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    margin: 0;
+  }
+
+  .pane.chat :global(.chat) {
+    flex: 1;
+    min-height: 0;
   }
 
   .pane h3 {

@@ -8,7 +8,7 @@ import { invoke, Channel } from "@tauri-apps/api/core";
 export type RuntimeStatus =
   | { kind: "uninitialized" }
   | { kind: "starting"; message: string }
-  | { kind: "ready"; vm_name: string; image: string }
+  | { kind: "ready"; vm_name: string; image: string; agent_ws_port: number }
   | { kind: "error"; message: string };
 
 export type StartupEvent =

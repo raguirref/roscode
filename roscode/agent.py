@@ -3,6 +3,10 @@
 The loop alternates between Anthropic model calls and tool execution. Tools
 whose names appear in DESTRUCTIVE_TOOLS require human confirmation before
 running — do not remove this gate.
+
+All output goes through a [`UiSink`][roscode.ui_protocol.UiSink] — either
+the terminal renderer (``TerminalSink``) or the studio WebSocket bridge
+(``WebsocketSink``). The agent itself never prints.
 """
 
 from __future__ import annotations
@@ -15,17 +19,8 @@ from roscode import container
 from roscode.config import load_settings
 from roscode.prompts import build_system_prompt
 from roscode.tools import TOOL_DEFINITIONS, TOOL_MAP, set_workspace
-from roscode.ui import (
-    confirm_action,
-    print_agent_message,
-    print_reasoning,
-    print_session_banner,
-    print_status,
-    print_step,
-    print_tool_call,
-    print_tool_result,
-    thinking,
-)
+from roscode.ui import TerminalSink
+from roscode.ui_protocol import UiSink
 
 DESTRUCTIVE_TOOLS: set[str] = {
     "write_source_file",
@@ -43,6 +38,7 @@ def run(
     model: str | None = None,
     max_iterations: int = 20,
     auto_confirm: bool = False,
+    sink: UiSink | None = None,
 ) -> None:
     """Run the roscode agentic loop until end_turn or iteration cap.
 
@@ -53,30 +49,34 @@ def run(
         max_iterations: Hard stop on loop length. Defaults to 20.
         auto_confirm: If True, bypass the destructive-tool confirmation gate.
             DANGEROUS — only for automated testing.
+        sink: Output surface. Defaults to a new [`TerminalSink`]; the studio
+            passes a ``WebsocketSink`` so the same loop streams to the webview.
     """
     settings = load_settings()
     model_id = model or settings.model
 
     set_workspace(workspace_path)
 
+    ui: UiSink = sink or TerminalSink()
+
     container_status: str | None = None
     if container.is_needed():
         rt = container.detect_runtime()
         container_status = f"{rt} container (ROS 2 Humble)"
-        print_status(f"ros2 not found locally — starting ROS 2 Humble container via {rt}...")
+        ui.status(f"ros2 not found locally — starting ROS 2 Humble container via {rt}...")
         container.ensure_running(Path(workspace_path))
-        print_status("container ready.")
+        ui.status("container ready.")
 
-    print_session_banner(model=model_id, workspace=workspace_path, container_status=container_status)
+    ui.session_banner(model=model_id, workspace=workspace_path, container_status=container_status)
 
     client = Anthropic()
     system_prompt = build_system_prompt(workspace_path)
     messages: list[dict] = [{"role": "user", "content": user_request}]
 
     for step_idx in range(1, max_iterations + 1):
-        print_step(step_idx, max_iterations)
+        ui.step(step_idx, max_iterations)
 
-        with thinking():
+        with ui.thinking():
             response = client.messages.create(
                 model=model_id,
                 max_tokens=4096,
@@ -88,7 +88,7 @@ def run(
         if response.stop_reason == "end_turn":
             for block in response.content:
                 if hasattr(block, "text"):
-                    print_agent_message(block.text)
+                    ui.agent_message(block.text)
             return
 
         if response.stop_reason == "tool_use":
@@ -98,17 +98,17 @@ def run(
             # tool_use blocks. Previously this was silently dropped.
             for block in response.content:
                 if getattr(block, "type", None) == "text" and getattr(block, "text", ""):
-                    print_reasoning(block.text)
+                    ui.reasoning(block.text)
 
             tool_results: list[dict] = []
             for block in response.content:
                 if block.type != "tool_use":
                     continue
 
-                print_tool_call(block.name, block.input)
+                ui.tool_call(block.name, block.input)
 
                 if block.name in DESTRUCTIVE_TOOLS and not auto_confirm:
-                    approved = confirm_action(block.name, block.input)
+                    approved = ui.confirm_action(block.name, block.input)
                     if not approved:
                         result: object = "Action declined by user."
                     else:
@@ -116,7 +116,7 @@ def run(
                 else:
                     result = TOOL_MAP[block.name](**block.input)
 
-                print_tool_result(block.name, result)
+                ui.tool_result(block.name, result)
                 tool_results.append(
                     {
                         "type": "tool_result",
@@ -128,9 +128,7 @@ def run(
             messages.append({"role": "user", "content": tool_results})
             continue
 
-        print_agent_message(
-            f"Unexpected stop_reason: {response.stop_reason!r}. Halting."
-        )
+        ui.agent_message(f"Unexpected stop_reason: {response.stop_reason!r}. Halting.")
         return
 
-    print_agent_message("Max iterations reached. Stopping.")
+    ui.agent_message("Max iterations reached. Stopping.")

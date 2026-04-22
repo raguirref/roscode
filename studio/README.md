@@ -86,7 +86,7 @@ studio/
 
 - ~~**Day 1** — scaffold: Tauri project structure, placeholder UI.~~ ✓
 - ~~**Day 2** — real Lima VM lifecycle, `nerdctl` container management via `limactl shell`, streaming progress events from Rust → webview.~~ ✓
-- **Day 3** — run the roscode Python agent inside the ROS container; wire the chat panel to it via WebSocket.
+- ~~**Day 3** — roscode agent runs inside the container (`python -m roscode.server`), exposed on `ws://localhost:9000`. Chat pane streams tool calls, diffs, and confirmation prompts live.~~ ✓
 - **Day 4** — Monaco editor + Foxglove embed working. Demo recordings.
 - **Day 5** — polish + submit.
 
