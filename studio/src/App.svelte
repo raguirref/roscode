@@ -5,6 +5,7 @@
   import PackageStore from "./lib/PackageStore.svelte";
   import Terminal from "./lib/Terminal.svelte";
   import type { SvelteComponent } from "svelte";
+  import logoUrl from "./assets/logo.png";
   import {
     getRuntimeStatus,
     startRuntime,
@@ -60,6 +61,7 @@
   <!-- ── Header ── -->
   <header>
     <div class="brand">
+      <img src={logoUrl} alt="roscode" class="brand-logo" />
       <span class="brand-name">roscode</span>
       <span class="brand-tag">studio</span>
     </div>
@@ -219,7 +221,14 @@
     opacity: 0.4;
   }
 
-  .brand { display: flex; align-items: baseline; gap: 4px; }
+  .brand { display: flex; align-items: center; gap: 6px; }
+  .brand-logo {
+    height: 28px;
+    width: 28px;
+    object-fit: contain;
+    border-radius: 6px;
+    flex-shrink: 0;
+  }
   .brand-name {
     font-size: 15px;
     font-weight: 600;
