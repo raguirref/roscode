@@ -3,6 +3,7 @@
   import Chat from "./lib/Chat.svelte";
   import RosMap from "./lib/RosMap.svelte";
   import PackageStore from "./lib/PackageStore.svelte";
+  import Terminal from "./lib/Terminal.svelte";
   import type { SvelteComponent } from "svelte";
 
   let leftTab: "packages" | "editor" = "packages";
@@ -139,7 +140,11 @@
 
     <section class="pane terminal">
       <h3>terminal</h3>
-      <p class="hint">xterm.js pty into the container, day 3.</p>
+      {#if status.kind === "ready"}
+        <Terminal port={status.agent_ws_port} />
+      {:else}
+        <p class="hint">start the ROS runtime to open a terminal.</p>
+      {/if}
     </section>
   </div>
 </main>
@@ -305,6 +310,23 @@
     flex: 1;
     min-height: 0;
     overflow: hidden;
+  }
+
+  .pane.terminal {
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .pane.terminal h3 {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    margin: 0;
+    flex-shrink: 0;
+  }
+
+  .pane.terminal :global(.term-wrap) {
+    flex: 1;
+    min-height: 0;
   }
 
   .pane.rosmap {

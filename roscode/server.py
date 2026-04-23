@@ -38,8 +38,13 @@ from __future__ import annotations
 import argparse
 import asyncio
 import difflib
+import fcntl
 import json
 import logging
+import os
+import pty
+import struct
+import termios
 import threading
 import uuid
 from contextlib import AbstractContextManager, nullcontext
@@ -227,6 +232,11 @@ async def _handle_connection(websocket: ServerConnection) -> None:
                 sink.deliver_confirm_response(msg["id"], bool(msg.get("approved", False)))
             elif kind == "graph_request":
                 asyncio.create_task(_handle_graph_request(websocket))
+            elif kind == "terminal_open":
+                cols = int(msg.get("cols", 80))
+                rows = int(msg.get("rows", 24))
+                await _run_terminal_session(websocket, cols, rows)
+                return  # connection is owned by the terminal session now
             else:
                 await websocket.send(
                     json.dumps({"type": "error", "message": f"unknown type: {kind}"})
@@ -267,6 +277,69 @@ async def _run_prompt(
             await websocket.send(json.dumps({"type": "session_end"}))
         except websockets.ConnectionClosed:
             pass
+
+
+async def _run_terminal_session(
+    websocket: ServerConnection, cols: int = 80, rows: int = 24
+) -> None:
+    master_fd, slave_fd = pty.openpty()
+    _pty_set_winsize(master_fd, rows, cols)
+
+    env = {**os.environ, "TERM": "xterm-256color", "COLORTERM": "truecolor"}
+    proc = await asyncio.create_subprocess_exec(
+        "/bin/bash",
+        stdin=slave_fd,
+        stdout=slave_fd,
+        stderr=slave_fd,
+        env=env,
+    )
+    os.close(slave_fd)
+
+    loop = asyncio.get_running_loop()
+
+    async def _pump_output() -> None:
+        try:
+            while True:
+                data = await loop.run_in_executor(None, lambda: os.read(master_fd, 4096))
+                await websocket.send(
+                    json.dumps({"type": "terminal_output", "data": list(data)})
+                )
+        except (OSError, websockets.ConnectionClosed):
+            pass
+
+    pump_task = asyncio.create_task(_pump_output())
+    try:
+        async for raw in websocket:
+            try:
+                msg = json.loads(raw)
+            except json.JSONDecodeError:
+                continue
+            t = msg.get("type")
+            if t == "terminal_input":
+                os.write(master_fd, bytes(msg["data"]))
+            elif t == "terminal_resize":
+                _pty_set_winsize(master_fd, int(msg["rows"]), int(msg["cols"]))
+    except websockets.ConnectionClosed:
+        pass
+    finally:
+        pump_task.cancel()
+        try:
+            os.close(master_fd)
+        except OSError:
+            pass
+        try:
+            proc.kill()
+        except ProcessLookupError:
+            pass
+        await proc.wait()
+
+
+def _pty_set_winsize(fd: int, rows: int, cols: int) -> None:
+    winsize = struct.pack("HHHH", rows, cols, 0, 0)
+    try:
+        fcntl.ioctl(fd, termios.TIOCSWINSZ, winsize)
+    except OSError:
+        pass
 
 
 async def _handle_graph_request(websocket: ServerConnection) -> None:
