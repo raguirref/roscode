@@ -7,16 +7,32 @@
   type Pkg = (typeof registry)[number];
 
   const CATEGORIES = [
-    { id: "all",          label: "All" },
-    { id: "manipulators", label: "Manipulators" },
-    { id: "mobile",       label: "Mobile bases" },
-    { id: "sensors",      label: "Sensors" },
-    { id: "simulation",   label: "Simulation" },
-    { id: "utilities",    label: "Utilities" },
+    { id: "all",          label: "All",           icon: "◉" },
+    { id: "manipulators", label: "Manipulators",  icon: "⚙" },
+    { id: "mobile",       label: "Mobile",        icon: "◎" },
+    { id: "sensors",      label: "Sensors",       icon: "◈" },
+    { id: "simulation",   label: "Simulation",    icon: "⬡" },
+    { id: "utilities",    label: "Utilities",     icon: "◻" },
   ] as const;
 
+  const CAT_COLOR: Record<string, string> = {
+    manipulators: "#4cc9f0",
+    mobile:       "#3dd68c",
+    sensors:      "#f0a050",
+    simulation:   "#a78bfa",
+    utilities:    "#888",
+  };
+
+  const CAT_ICON: Record<string, string> = {
+    manipulators: "⚙",
+    mobile:       "◎",
+    sensors:      "◈",
+    simulation:   "⬡",
+    utilities:    "◻",
+  };
+
   let query = "";
-  let activeCategory: string = "all";
+  let activeCategory = "all";
 
   $: filtered = (registry as Pkg[]).filter((p) => {
     const matchCat = activeCategory === "all" || p.category === activeCategory;
@@ -32,78 +48,93 @@
   function installPrompt(p: Pkg): string {
     const how = p.apt
       ? `apt install ${p.apt}`
-      : `clone and build from ${p.repo}`;
-    return `install the ${p.name} ROS 2 package (${how}) inside the container and verify it is available`;
+      : `clone and build from source (${p.repo})`;
+    return `install the ${p.name} ROS 2 package (${how}) inside the container and confirm it is available`;
   }
-
-  const CATEGORY_COLORS: Record<string, string> = {
-    manipulators: "#4cc9f0",
-    mobile:       "#7ee787",
-    sensors:      "#f0a050",
-    simulation:   "#a78bfa",
-    utilities:    "#888",
-  };
 </script>
 
 <div class="store">
-  <div class="toolbar">
+  <!-- Search -->
+  <div class="search-wrap">
+    <span class="search-icon">⌕</span>
     <input
       class="search"
       type="search"
-      placeholder="search packages…"
+      placeholder="Search packages…"
       bind:value={query}
     />
-    <div class="cats">
-      {#each CATEGORIES as cat}
-        <button
-          class="cat"
-          class:active={activeCategory === cat.id}
-          on:click={() => (activeCategory = cat.id)}
-        >{cat.label}</button>
-      {/each}
-    </div>
   </div>
 
+  <!-- Category filter -->
+  <div class="cats">
+    {#each CATEGORIES as cat}
+      <button
+        class="cat-chip"
+        class:active={activeCategory === cat.id}
+        on:click={() => (activeCategory = cat.id)}
+        style={activeCategory === cat.id && cat.id !== "all"
+          ? `--chip-color: ${CAT_COLOR[cat.id] ?? "var(--accent)"}`
+          : ""}
+      >
+        <span class="cat-icon">{cat.icon}</span>
+        {cat.label}
+      </button>
+    {/each}
+  </div>
+
+  <!-- Results count -->
+  <div class="results-meta">
+    {filtered.length} package{filtered.length !== 1 ? "s" : ""}
+    {#if query || activeCategory !== "all"} matching{/if}
+  </div>
+
+  <!-- Card grid -->
   <div class="grid">
     {#each filtered as pkg (pkg.id)}
-      <div class="card">
-        <div class="card-top">
-          <span class="badge" style="border-color: {CATEGORY_COLORS[pkg.category]}; color: {CATEGORY_COLORS[pkg.category]}">
-            {pkg.category}
-          </span>
-          {#if pkg.dof}
-            <span class="pill">{pkg.dof} DOF</span>
-          {/if}
-          {#if pkg.holonomic === true}
-            <span class="pill">holonomic</span>
-          {:else if pkg.holonomic === false}
-            <span class="pill">non-holonomic</span>
-          {/if}
-        </div>
+      {@const color = CAT_COLOR[pkg.category] ?? "#888"}
+      <div class="card" style="--cat-color: {color}">
+        <div class="card-accent"></div>
+        <div class="card-inner">
+          <div class="card-top">
+            <span class="cat-badge" style="color:{color}">
+              {CAT_ICON[pkg.category]} {pkg.category}
+            </span>
+            <div class="meta-pills">
+              {#if pkg.dof}<span class="pill">{pkg.dof} DOF</span>{/if}
+              {#if pkg.holonomic === true}<span class="pill">holonomic</span>
+              {:else if pkg.holonomic === false}<span class="pill">non-holo</span>{/if}
+            </div>
+          </div>
 
-        <div class="name">{pkg.name}</div>
-        <p class="desc">{pkg.description}</p>
+          <div class="pkg-name">{pkg.name}</div>
+          <p class="pkg-desc">{pkg.description}</p>
 
-        <div class="tags">
-          {#each pkg.tags as t}
-            <span class="tag">{t}</span>
-          {/each}
-        </div>
+          <div class="tags">
+            {#each pkg.tags.slice(0, 4) as t}
+              <span class="tag">{t}</span>
+            {/each}
+          </div>
 
-        <div class="card-bottom">
-          {#if pkg.apt}
-            <code class="apt">{pkg.apt}</code>
-          {:else}
-            <code class="apt source">source build</code>
-          {/if}
-          <button
-            class="install-btn"
-            on:click={() => dispatch("install", { prompt: installPrompt(pkg) })}
-          >install</button>
+          <div class="card-footer">
+            {#if pkg.apt}
+              <code class="apt-cmd">{pkg.apt}</code>
+            {:else}
+              <code class="apt-cmd source">source build</code>
+            {/if}
+            <button
+              class="install-btn"
+              style="--btn-color: {color}"
+              on:click={() => dispatch("install", { prompt: installPrompt(pkg) })}
+            >
+              Install
+            </button>
+          </div>
         </div>
       </div>
     {:else}
-      <p class="empty">no packages match "{query}"</p>
+      <div class="no-results">
+        <span>No packages match "<strong>{query}</strong>"</span>
+      </div>
     {/each}
   </div>
 </div>
@@ -114,110 +145,154 @@
     flex-direction: column;
     height: 100%;
     min-height: 0;
+    background: var(--bg-1);
   }
 
-  .toolbar {
-    padding: 8px 12px 6px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+  /* ── Search ── */
+  .search-wrap {
+    position: relative;
+    padding: 10px 12px 0;
     flex-shrink: 0;
   }
-
+  .search-icon {
+    position: absolute;
+    left: 22px;
+    top: 50%;
+    transform: translateY(-4px);
+    font-size: 15px;
+    color: var(--fg-2);
+    pointer-events: none;
+  }
   .search {
     width: 100%;
-    background: var(--bg-0);
-    color: var(--fg-0);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 5px 8px;
+    padding: 7px 10px 7px 30px;
     font-size: 12px;
-    font-family: inherit;
-    box-sizing: border-box;
+    border-radius: var(--radius-sm);
   }
-  .search:focus { outline: none; border-color: var(--accent); }
+  .search::-webkit-search-cancel-button { display: none; }
 
+  /* ── Category chips ── */
   .cats {
     display: flex;
-    gap: 4px;
+    gap: 5px;
+    padding: 8px 12px 6px;
     flex-wrap: wrap;
+    flex-shrink: 0;
   }
-
-  .cat {
-    padding: 2px 8px;
-    font-size: 10px;
-    border-radius: 10px;
+  .cat-chip {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 9px;
+    font-size: 10.5px;
+    border-radius: 20px;
     background: var(--bg-2);
-    border: 1px solid var(--border);
+    border: 1px solid var(--border-bright);
     color: var(--fg-2);
     cursor: pointer;
-    letter-spacing: 0.4px;
+    transition: all 120ms;
   }
-  .cat.active {
-    background: var(--accent);
-    color: var(--bg-0);
-    border-color: var(--accent);
+  .cat-chip:hover { color: var(--fg-1); border-color: var(--fg-2); background: var(--bg-2); }
+  .cat-chip.active {
+    background: color-mix(in srgb, var(--chip-color, var(--accent)) 15%, transparent);
+    border-color: color-mix(in srgb, var(--chip-color, var(--accent)) 40%, transparent);
+    color: var(--chip-color, var(--accent));
+  }
+  .cat-icon { font-size: 9px; }
+
+  /* ── Results meta ── */
+  .results-meta {
+    padding: 0 12px 6px;
+    font-size: 10px;
+    color: var(--fg-2);
+    letter-spacing: 0.3px;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border);
   }
 
+  /* ── Card grid ── */
   .grid {
     flex: 1;
     overflow-y: auto;
-    padding: 10px 10px;
+    padding: 10px;
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 8px;
     align-content: start;
   }
 
+  /* ── Card ── */
   .card {
+    display: flex;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-bright);
     background: var(--bg-2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 10px 11px;
+    overflow: hidden;
+    transition: border-color 160ms, transform 160ms, box-shadow 160ms;
+    cursor: default;
+  }
+  .card:hover {
+    border-color: var(--cat-color);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  }
+  .card-accent {
+    width: 3px;
+    background: var(--cat-color);
+    flex-shrink: 0;
+    opacity: 0.7;
+  }
+  .card:hover .card-accent { opacity: 1; }
+  .card-inner {
+    flex: 1;
+    padding: 9px 10px;
     display: flex;
     flex-direction: column;
     gap: 5px;
+    min-width: 0;
   }
-  .card:hover { border-color: var(--accent); }
 
   .card-top {
     display: flex;
     align-items: center;
-    gap: 5px;
-    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 4px;
   }
 
-  .badge {
+  .cat-badge {
     font-size: 9px;
-    padding: 1px 6px;
-    border-radius: 8px;
-    border: 1px solid;
-    letter-spacing: 0.5px;
+    font-weight: 600;
+    letter-spacing: 0.6px;
     text-transform: uppercase;
   }
 
+  .meta-pills {
+    display: flex;
+    gap: 3px;
+  }
   .pill {
     font-size: 9px;
     padding: 1px 5px;
-    border-radius: 8px;
-    background: var(--bg-0);
-    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg-3);
+    border: 1px solid var(--border-bright);
     color: var(--fg-2);
-    letter-spacing: 0.4px;
   }
 
-  .name {
-    font-size: 12px;
+  .pkg-name {
+    font-size: 12.5px;
     font-weight: 600;
     color: var(--fg-0);
+    letter-spacing: -0.1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  .desc {
-    font-size: 11px;
+  .pkg-desc {
+    font-size: 10.5px;
     color: var(--fg-1);
-    margin: 0;
-    line-height: 1.4;
+    line-height: 1.45;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     line-clamp: 2;
@@ -230,7 +305,6 @@
     flex-wrap: wrap;
     gap: 3px;
   }
-
   .tag {
     font-size: 9px;
     padding: 1px 5px;
@@ -238,49 +312,55 @@
     border-radius: 4px;
     color: var(--fg-2);
     font-family: "SF Mono", Menlo, monospace;
+    letter-spacing: 0.2px;
   }
 
-  .card-bottom {
+  .card-footer {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 6px;
     margin-top: 2px;
   }
-
-  .apt {
-    font-size: 9.5px;
-    color: var(--fg-2);
-    font-family: "SF Mono", Menlo, monospace;
-    background: var(--bg-0);
-    padding: 1px 5px;
-    border-radius: 3px;
-    border: 1px solid var(--border);
+  .apt-cmd {
     flex: 1;
-    margin-right: 6px;
+    font-size: 9px;
+    font-family: "SF Mono", Menlo, monospace;
+    color: var(--fg-2);
+    background: var(--bg-0);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 6px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    min-width: 0;
   }
-  .apt.source { color: #f0a050; border-color: #f0a050; }
+  .apt-cmd.source { color: var(--accent-warm); border-color: rgba(245,158,11,0.25); }
 
   .install-btn {
-    font-size: 10px;
-    padding: 3px 10px;
-    border-radius: 4px;
-    background: var(--accent);
-    color: var(--bg-0);
-    border: none;
-    cursor: pointer;
-    font-weight: 600;
     flex-shrink: 0;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 5px;
+    background: color-mix(in srgb, var(--btn-color) 18%, transparent);
+    color: var(--btn-color);
+    border: 1px solid color-mix(in srgb, var(--btn-color) 35%, transparent);
+    letter-spacing: 0.2px;
+    transition: all 120ms;
   }
-  .install-btn:hover { opacity: 0.85; }
+  .install-btn:hover {
+    background: var(--btn-color);
+    color: var(--bg-0);
+    border-color: var(--btn-color);
+    transform: none;
+  }
 
-  .empty {
-    color: var(--fg-2);
-    font-size: 12px;
+  .no-results {
     grid-column: 1 / -1;
     text-align: center;
-    padding: 20px 0;
+    padding: 32px 16px;
+    color: var(--fg-2);
+    font-size: 12px;
   }
 </style>

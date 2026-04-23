@@ -1,46 +1,73 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap");
+
 :root {
-  font-family: -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif;
-  font-size: 14px;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-size: 13px;
   color-scheme: dark;
 
-  --bg-0: #0b0d10;
-  --bg-1: #12161c;
-  --bg-2: #1a1f27;
-  --fg-0: #e6e9ef;
-  --fg-1: #a0a7b3;
-  --fg-2: #5b6472;
+  --bg-0: #080b0f;
+  --bg-1: #0f1318;
+  --bg-2: #161b23;
+  --bg-3: #1e2430;
+  --fg-0: #e8ecf0;
+  --fg-1: #9aa3b0;
+  --fg-2: #4e5868;
   --accent: #4cc9f0;
+  --accent-dim: rgba(76, 201, 240, 0.12);
   --accent-warm: #f59e0b;
-  --border: #222831;
+  --accent-warm-dim: rgba(245, 158, 11, 0.12);
+  --green: #3dd68c;
+  --purple: #a78bfa;
+  --border: #1e2430;
+  --border-bright: #2a3340;
+  --radius: 8px;
+  --radius-sm: 5px;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
-html,
-body,
-#app {
-  margin: 0;
-  padding: 0;
+html, body, #app {
   height: 100%;
   width: 100%;
   background: var(--bg-0);
   color: var(--fg-0);
   overflow: hidden;
+  -webkit-font-smoothing: antialiased;
 }
 
 button {
   font-family: inherit;
-  font-size: inherit;
-  background: var(--bg-2);
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--bg-3);
   color: var(--fg-0);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 6px 12px;
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius-sm);
+  padding: 6px 14px;
   cursor: pointer;
+  transition: background 120ms, border-color 120ms, color 120ms;
+  letter-spacing: 0.2px;
 }
 
-button:hover {
-  background: var(--border);
+button:hover { background: var(--bg-2); border-color: var(--accent); color: var(--accent); }
+button:active { opacity: 0.8; }
+button:disabled { opacity: 0.35; cursor: default; pointer-events: none; }
+
+input, textarea {
+  font-family: inherit;
+  background: var(--bg-0);
+  color: var(--fg-0);
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color 120ms, box-shadow 120ms;
 }
+input:focus, textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--fg-2); }
