@@ -222,3 +222,71 @@ def test_robot_estop_publishes_zero_twist(fake_shell, shell_result):
     out = rt.robot_estop()
     assert "ESTOP" in out
     assert "/cmd_vel" in out
+
+
+# ---------------------------------------------------------------------------
+# Nonlinear / robust control tools
+# ---------------------------------------------------------------------------
+
+
+def test_sliding_mode_gains_recovers_lambda_from_settling():
+    out = json.loads(rt.sliding_mode_gains(settling_time_sec=0.4, uncertainty_bound=1.5))
+    # λ = 4/Ts = 10
+    assert out["sliding_slope_lambda"] == pytest.approx(10.0)
+    # k = F + η = 1.5 + 0.1 = 1.6
+    assert out["switching_gain_k"] == pytest.approx(1.6)
+
+
+def test_smith_predictor_default_tau_c_is_tau_over_3():
+    out = json.loads(rt.smith_predictor_gains(2.0, 3.0, 2.0))
+    # tc = tau/3 = 1, Kc = tau/(K*tc) = 3/(2*1) = 1.5
+    assert out["tau_c"] == pytest.approx(1.0)
+    assert out["Kp"] == pytest.approx(1.5)
+    assert out["Ti"] == pytest.approx(3.0)
+
+
+def test_cascaded_pid_inner_faster_than_outer():
+    out = json.loads(rt.cascaded_pid_design(1.0, 0.5, 0.05, bandwidth_ratio=5.0))
+    assert out["inner_loop"]["bandwidth_hz"] > out["outer_loop"]["bandwidth_hz"]
+    assert out["bandwidth_ratio"] == 5.0
+
+
+def test_gain_schedule_interp_midpoint():
+    table = json.dumps([
+        {"op": 0.0, "Kp": 1.0, "Ki": 0.0, "Kd": 0.0},
+        {"op": 1.0, "Kp": 3.0, "Ki": 0.4, "Kd": 0.08},
+    ])
+    out = json.loads(rt.gain_schedule_interp(table, 0.5))
+    assert out["Kp"] == pytest.approx(2.0)
+    assert out["Ki"] == pytest.approx(0.2)
+    assert out["Kd"] == pytest.approx(0.04)
+
+
+def test_gain_schedule_interp_clamps_high():
+    table = json.dumps([
+        {"op": 0.0, "Kp": 1.0, "Ki": 0.0, "Kd": 0.0},
+        {"op": 1.0, "Kp": 3.0, "Ki": 0.4, "Kd": 0.08},
+    ])
+    out = json.loads(rt.gain_schedule_interp(table, 5.0))
+    assert out["Kp"] == pytest.approx(3.0)
+    assert "clamped" in out["source"]
+
+
+def test_mrac_gamma_default_is_fraction_of_max():
+    out = json.loads(rt.mrac_adaptation_sizing(reference_omega_n=4.0, signal_rms_estimate=1.0))
+    assert out["gamma_recommended"] < out["gamma_stability_upper_bound"]
+    assert out["gamma_recommended"] == pytest.approx(0.2 * out["gamma_stability_upper_bound"])
+
+
+def test_relay_autotune_rejects_over_envelope():
+    out = rt.relay_autotune(
+        cmd_topic="/cmd_vel",
+        cmd_msg_type="geometry_msgs/msg/Twist",
+        cmd_field="angular.z",
+        feedback_topic="/odom",
+        feedback_msg_type="nav_msgs/msg/Odometry",
+        feedback_field="twist.twist.angular.z",
+        relay_amplitude=10.0,  # exceeds default cap 0.5 rad/s on angular.z
+    )
+    assert out.startswith("REJECTED")
+    assert "angular.z" in out

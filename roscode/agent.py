@@ -41,6 +41,7 @@ DESTRUCTIVE_TOOLS: set[str] = {
     # command; batch via count/rate_hz to keep confirmations per-burst.
     "topic_publish",
     "action_send_goal",
+    "relay_autotune",
     # robot_estop is intentionally NOT here — the agent must be able to
     # cut motion instantly when analyze_signal detects divergence.
 }
