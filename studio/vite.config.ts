@@ -1,9 +1,6 @@
 import { defineConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 
-// Vite config tuned for Tauri: fixed port, no error overlay on fullscreen,
-// and the dev server only listens on localhost so the embedded webview
-// picks it up without broadcasting to the network.
 export default defineConfig(async () => ({
   plugins: [svelte()],
 
@@ -13,7 +10,6 @@ export default defineConfig(async () => ({
     strictPort: true,
     host: "127.0.0.1",
     watch: {
-      // Tauri watches src-tauri/ itself; don't double-watch.
       ignored: ["**/src-tauri/**"],
     },
   },
@@ -22,5 +18,18 @@ export default defineConfig(async () => ({
   build: {
     target: "es2021",
     sourcemap: true,
+    rollupOptions: {
+      output: {
+        // Separate Monaco into its own chunk to avoid giant bundles
+        manualChunks: {
+          "monaco-editor": ["monaco-editor"],
+        },
+      },
+    },
+  },
+
+  // Monaco needs to load workers via blob URLs — tell Vite to allow it
+  optimizeDeps: {
+    include: ["monaco-editor/esm/vs/editor/editor.worker"],
   },
 }));
