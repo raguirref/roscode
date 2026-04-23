@@ -24,6 +24,8 @@ def test_destructive_tools_set_is_frozen():
         "param_set",
         "package_scaffold",
         "pkg_install",
+        "topic_publish",
+        "action_send_goal",
     }
     assert agent.DESTRUCTIVE_TOOLS == expected
 
