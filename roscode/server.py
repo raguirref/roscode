@@ -225,6 +225,8 @@ async def _handle_connection(websocket: ServerConnection) -> None:
                 current = asyncio.create_task(_run_prompt(websocket, sink, msg))
             elif kind == "confirm_response":
                 sink.deliver_confirm_response(msg["id"], bool(msg.get("approved", False)))
+            elif kind == "graph_request":
+                asyncio.create_task(_handle_graph_request(websocket))
             else:
                 await websocket.send(
                     json.dumps({"type": "error", "message": f"unknown type: {kind}"})
@@ -265,6 +267,84 @@ async def _run_prompt(
             await websocket.send(json.dumps({"type": "session_end"}))
         except websockets.ConnectionClosed:
             pass
+
+
+async def _handle_graph_request(websocket: ServerConnection) -> None:
+    try:
+        graph = await _build_ros_graph()
+        await websocket.send(json.dumps({"type": "graph", **graph}))
+    except Exception as e:  # noqa: BLE001
+        log.warning("graph_request failed: %s", e)
+        try:
+            await websocket.send(json.dumps({"type": "graph_error", "message": str(e)}))
+        except websockets.ConnectionClosed:
+            pass
+
+
+async def _build_ros_graph() -> dict[str, list]:
+    proc = await asyncio.create_subprocess_exec(
+        "ros2", "node", "list",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=10)
+    node_names = [l.strip() for l in stdout.decode().splitlines() if l.strip() and not l.strip().startswith("WARNING")]
+
+    infos = await asyncio.gather(
+        *[_get_node_info(n) for n in node_names], return_exceptions=True
+    )
+
+    cy_nodes: list[dict] = []
+    cy_edges: list[dict] = []
+    topic_seen: set[str] = set()
+
+    for name, info in zip(node_names, infos):
+        if isinstance(info, Exception):
+            continue
+        cy_nodes.append({"data": {"id": name, "label": name.lstrip("/"), "kind": "node"}})
+        for topic, msg_type in info.get("publishers", []):
+            if topic not in topic_seen:
+                topic_seen.add(topic)
+                cy_nodes.append({"data": {"id": topic, "label": topic.lstrip("/"), "kind": "topic", "msg_type": msg_type}})
+            cy_edges.append({"data": {"id": f"{name}>{topic}", "source": name, "target": topic, "rel": "pub"}})
+        for topic, msg_type in info.get("subscribers", []):
+            if topic not in topic_seen:
+                topic_seen.add(topic)
+                cy_nodes.append({"data": {"id": topic, "label": topic.lstrip("/"), "kind": "topic", "msg_type": msg_type}})
+            cy_edges.append({"data": {"id": f"{topic}>{name}", "source": topic, "target": name, "rel": "sub"}})
+
+    return {"nodes": cy_nodes, "edges": cy_edges}
+
+
+async def _get_node_info(node_name: str) -> dict[str, list]:
+    proc = await asyncio.create_subprocess_exec(
+        "ros2", "node", "info", node_name,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=10)
+    return _parse_node_info(stdout.decode())
+
+
+_SKIP_TOPICS = {"/parameter_events", "/rosout"}
+
+
+def _parse_node_info(text: str) -> dict[str, list]:
+    result: dict[str, list] = {"publishers": [], "subscribers": []}
+    section: str | None = None
+    for line in text.splitlines():
+        s = line.strip()
+        if s == "Subscribers:":
+            section = "subscribers"
+        elif s == "Publishers:":
+            section = "publishers"
+        elif s in ("Service Servers:", "Service Clients:", "Action Servers:", "Action Clients:"):
+            section = None
+        elif section and ": " in s and s.startswith("/"):
+            topic, msg_type = s.split(": ", 1)
+            if topic not in _SKIP_TOPICS:
+                result[section].append((topic, msg_type))
+    return result
 
 
 async def _serve(host: str, port: int) -> None:

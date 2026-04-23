@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import Chat from "./lib/Chat.svelte";
+  import RosMap from "./lib/RosMap.svelte";
   import {
     getRuntimeStatus,
     startRuntime,
@@ -115,9 +116,13 @@
       {/if}
     </section>
 
-    <section class="pane foxglove">
-      <h3>3D · topics · plots</h3>
-      <p class="hint">Foxglove embed lands day 4.</p>
+    <section class="pane rosmap">
+      <h3>ROS graph</h3>
+      {#if status.kind === "ready"}
+        <RosMap port={status.agent_ws_port} />
+      {:else}
+        <p class="hint">start the ROS runtime to view the live graph.</p>
+      {/if}
     </section>
 
     <section class="pane terminal">
@@ -239,15 +244,35 @@
 
   .pane.chat {
     padding: 0;
+    overflow: hidden;
   }
 
   .pane.chat h3 {
     padding: 10px 14px;
     border-bottom: 1px solid var(--border);
     margin: 0;
+    flex-shrink: 0;
   }
 
   .pane.chat :global(.chat) {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .pane.rosmap {
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .pane.rosmap h3 {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    margin: 0;
+    flex-shrink: 0;
+  }
+
+  .pane.rosmap :global(.rosmap) {
     flex: 1;
     min-height: 0;
   }
