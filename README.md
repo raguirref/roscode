@@ -12,6 +12,10 @@ and verifies the fix. All in one uninterrupted loop.
 Built for the **Built with Opus 4.7** hackathon (Anthropic + Cerebral Valley,
 deadline Sun Apr 26 2026 8:00 PM EST).
 
+ROS is a trademark of Open Source Robotics Foundation. roscode is an independent
+open-source tool developed for the Built with Opus 4.7 hackathon and is not
+affiliated with Open Robotics.
+
 ---
 
 ## Architecture
