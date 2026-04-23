@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import Chat from "./lib/Chat.svelte";
   import RosMap from "./lib/RosMap.svelte";
+  import type { SvelteComponent } from "svelte";
   import {
     getRuntimeStatus,
     startRuntime,
@@ -18,6 +19,7 @@
   // Default workspace: the demo_drift package that ships with roscode.
   // Post-MVP this becomes user-configurable via a folder picker.
   let workspacePath = "";
+  let chatRef: SvelteComponent & { fill: (text: string) => void };
 
   onMount(async () => {
     // Seed a sensible default for Ricardo's dev machine. Users will pick
@@ -110,7 +112,7 @@
     <section class="pane chat">
       <h3>chat</h3>
       {#if status.kind === "ready"}
-        <Chat port={status.agent_ws_port} workspace={workspacePath} />
+        <Chat bind:this={chatRef} port={status.agent_ws_port} workspace={workspacePath} />
       {:else}
         <p class="hint">start the ROS runtime to begin a chat session.</p>
       {/if}
@@ -119,7 +121,7 @@
     <section class="pane rosmap">
       <h3>ROS graph</h3>
       {#if status.kind === "ready"}
-        <RosMap port={status.agent_ws_port} />
+        <RosMap port={status.agent_ws_port} on:nodeclick={(e) => chatRef?.fill(e.detail.prompt)} />
       {:else}
         <p class="hint">start the ROS runtime to view the live graph.</p>
       {/if}

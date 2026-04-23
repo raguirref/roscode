@@ -5,6 +5,13 @@
   export let port: number;
   export let workspace: string;
 
+  let textarea: HTMLTextAreaElement;
+
+  export function fill(text: string) {
+    input = text;
+    tick().then(() => textarea?.focus());
+  }
+
   type Message =
     | { kind: "user"; text: string }
     | { kind: "status"; text: string }
@@ -226,6 +233,7 @@
 
   <form class="composer" on:submit|preventDefault={submit}>
     <textarea
+      bind:this={textarea}
       bind:value={input}
       placeholder={connState === "open"
         ? "describe the bug, the feature, whatever. the agent will work on it."

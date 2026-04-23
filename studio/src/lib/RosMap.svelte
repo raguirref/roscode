@@ -1,6 +1,8 @@
 <script lang="ts">
-  import { onDestroy, onMount } from "svelte";
+  import { createEventDispatcher, onDestroy, onMount } from "svelte";
   import cytoscape, { type Core } from "cytoscape";
+
+  const dispatch = createEventDispatcher<{ nodeclick: { prompt: string } }>();
 
   export let port: number;
 
@@ -85,6 +87,17 @@
       userZoomingEnabled: true,
       userPanningEnabled: true,
       boxSelectionEnabled: false,
+    });
+
+    cy.on("tap", "node", (evt) => {
+      const d = evt.target.data();
+      let prompt: string;
+      if (d.kind === "topic") {
+        prompt = `explain the ${d.id} topic — what message type does it use (${d.msg_type ?? "unknown"}), which nodes publish to it and which nodes subscribe to it?`;
+      } else {
+        prompt = `explain the ${d.id} ROS node — what does it do, what topics does it publish and subscribe to, and are there any issues with it?`;
+      }
+      dispatch("nodeclick", { prompt });
     });
 
     connect();
