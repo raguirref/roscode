@@ -911,6 +911,409 @@ def bag_info(bag_path: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Åström-Hägglund relay autotune (closed-loop, bounded-amplitude)
+# ---------------------------------------------------------------------------
+#
+# Ku and Tu identification by relay feedback — Åström & Hägglund, 1984.
+# Much safer than ramping Kp to find oscillation: the commanded
+# amplitude is bounded by relay_amplitude h, regardless of plant gain.
+# From the resulting limit cycle:  Ku = 4h / (π · a).
+#
+# Implemented as an embedded rclpy-based relay controller (pub+sub+timer
+# in one Python process) invoked via ``python3 -c``. Required because
+# per-message ros2 CLI spawns can't close a 10+ Hz control loop.
+# ---------------------------------------------------------------------------
+
+
+_RELAY_AUTOTUNE_SCRIPT = r"""
+import sys, json, math, time
+import rclpy
+from rclpy.node import Node
+from rclpy.executors import SingleThreadedExecutor
+
+def import_msg_type(type_str):
+    parts = type_str.split("/")
+    module_name = ".".join(parts[:-1])
+    class_name = parts[-1]
+    module = __import__(module_name, fromlist=[class_name])
+    return getattr(module, class_name)
+
+def get_field(msg, path):
+    for p in path.split("."):
+        msg = getattr(msg, p)
+    return float(msg)
+
+def set_field(msg, path, value):
+    parts = path.split(".")
+    for p in parts[:-1]:
+        msg = getattr(msg, p)
+    setattr(msg, parts[-1], float(value))
+
+def main(args):
+    rclpy.init()
+    node = Node("roscode_relay_autotune")
+
+    CmdType = import_msg_type(args["cmd_msg_type"])
+    FbType = import_msg_type(args["feedback_msg_type"])
+
+    pub = node.create_publisher(CmdType, args["cmd_topic"], 10)
+    cmd_msg = CmdType()
+
+    state = {
+        "current_sign": 1, "crossings": [], "amplitudes": [],
+        "last_value": None, "peak_val": None,
+        "setpoint": float(args["setpoint"]), "t0": None,
+    }
+
+    def cb(msg):
+        try:
+            v = get_field(msg, args["feedback_field"])
+        except Exception:
+            return
+        now = time.monotonic()
+        if state["t0"] is None:
+            state["t0"] = now
+        t = now - state["t0"]
+        if state["peak_val"] is None or abs(v - state["setpoint"]) > abs(state["peak_val"] - state["setpoint"]):
+            state["peak_val"] = v
+        if state["last_value"] is not None:
+            crossed = (state["last_value"] - state["setpoint"]) * (v - state["setpoint"]) < 0
+            if crossed:
+                state["crossings"].append(t)
+                if state["peak_val"] is not None:
+                    state["amplitudes"].append(abs(state["peak_val"] - state["setpoint"]))
+                state["peak_val"] = None
+                state["current_sign"] = -state["current_sign"]
+        state["last_value"] = v
+
+    node.create_subscription(FbType, args["feedback_topic"], cb, 10)
+
+    def pub_cb():
+        u = state["current_sign"] * float(args["relay_amplitude"])
+        set_field(cmd_msg, args["cmd_field"], u)
+        pub.publish(cmd_msg)
+
+    node.create_timer(1.0 / float(args.get("pub_rate_hz", 20.0)), pub_cb)
+
+    execu = SingleThreadedExecutor()
+    execu.add_node(node)
+
+    start = time.monotonic()
+    deadline = start + float(args["timeout_sec"])
+    target = int(args["num_cycles"]) * 2
+
+    while time.monotonic() < deadline and len(state["crossings"]) < target:
+        execu.spin_once(timeout_sec=0.05)
+
+    # return command to zero on exit
+    zero = CmdType()
+    for _ in range(5):
+        pub.publish(zero)
+        time.sleep(0.02)
+
+    crossings, amps = state["crossings"], state["amplitudes"]
+    if len(crossings) < 4:
+        print(json.dumps({
+            "error": "insufficient oscillation observed",
+            "n_crossings": len(crossings),
+            "duration_sec": round(time.monotonic() - start, 3),
+            "hint": "try larger relay_amplitude, longer timeout, or verify feedback topic is published.",
+        }))
+    else:
+        trim = 2 if len(crossings) >= 4 else 0
+        stable_cx = crossings[trim:]
+        half = [stable_cx[i+1] - stable_cx[i] for i in range(len(stable_cx) - 1)]
+        Tu = 2.0 * sum(half) / max(1, len(half))
+        stable_a = amps[1:] if len(amps) >= 3 else amps
+        a = sum(stable_a) / max(1, len(stable_a))
+        h = float(args["relay_amplitude"])
+        Ku = 4.0 * h / (math.pi * a) if a > 0 else 0.0
+        print(json.dumps({
+            "method": "Astrom-Hagglund relay autotune",
+            "Ku": round(Ku, 6),
+            "Tu": round(Tu, 6),
+            "relay_amplitude_h": h,
+            "process_amplitude_a": round(a, 8),
+            "num_cycles_observed": len(crossings) // 2,
+            "duration_sec": round(time.monotonic() - start, 3),
+            "note": "Feed Ku, Tu into tyreus_luyben_gains (preferred) or ziegler_nichols_gains.",
+        }))
+
+    node.destroy_node()
+    rclpy.shutdown()
+
+main(json.loads(sys.argv[1]))
+"""
+
+
+def relay_autotune(
+    cmd_topic: str,
+    cmd_msg_type: str,
+    cmd_field: str,
+    feedback_topic: str,
+    feedback_msg_type: str,
+    feedback_field: str,
+    relay_amplitude: float,
+    setpoint: float = 0.0,
+    num_cycles: int = 6,
+    timeout_sec: float = 30.0,
+    pub_rate_hz: float = 20.0,
+) -> str:
+    """Run a closed-loop Åström-Hägglund relay autotune. DESTRUCTIVE —
+    drives the plant. Safer than ramping Kp: commanded amplitude is
+    hard-bounded by relay_amplitude. Returns {Ku, Tu} ready for
+    tyreus_luyben_gains (recommended) or ziegler_nichols_gains."""
+    caps = SAFETY_CAPS.get(cmd_msg_type, {})
+    cap = caps.get(cmd_field)
+    peak = abs(setpoint) + abs(relay_amplitude)
+    if cap is not None and peak > cap + 1e-9:
+        return (
+            f"REJECTED by safety envelope: peak command |{setpoint}|+|{relay_amplitude}|"
+            f"={peak:.3f} exceeds cap {cap:.3f} on {cmd_field}. Lower relay_amplitude."
+        )
+
+    args = {
+        "cmd_topic": cmd_topic, "cmd_msg_type": cmd_msg_type, "cmd_field": cmd_field,
+        "feedback_topic": feedback_topic, "feedback_msg_type": feedback_msg_type,
+        "feedback_field": feedback_field,
+        "relay_amplitude": float(relay_amplitude), "setpoint": float(setpoint),
+        "num_cycles": int(num_cycles), "timeout_sec": float(timeout_sec),
+        "pub_rate_hz": float(pub_rate_hz),
+    }
+    result = _shell.run(
+        ["python3", "-c", _RELAY_AUTOTUNE_SCRIPT, json.dumps(args)],
+        timeout=timeout_sec + 15.0,
+    )
+    if not result.ok and result.returncode != 0:
+        return (
+            f"Error: relay_autotune script failed: "
+            f"{result.stderr.strip() or result.stdout.strip()}"
+        )
+    return result.stdout.strip() or "(no output from relay_autotune)"
+
+
+# ---------------------------------------------------------------------------
+# Sliding Mode Control (nonlinear, robust)
+# ---------------------------------------------------------------------------
+
+
+def sliding_mode_gains(
+    settling_time_sec: float,
+    uncertainty_bound: float,
+    reaching_rate_eta: float = 0.1,
+    boundary_layer_phi: float | None = None,
+) -> str:
+    """Design SMC for a 2nd-order mechanical system with matched
+    bounded uncertainty ẍ = f(x) + g·u, ‖f‖∞ ≤ F.
+
+        Sliding surface:  s = ẋ + λ·e,  λ = 4/T_settle
+        Control law:      u = -(k/g) · sat(s/Φ),  k ≥ F + η
+    """
+    Ts = float(settling_time_sec)
+    F = float(uncertainty_bound)
+    eta = float(reaching_rate_eta)
+    if Ts <= 0 or F < 0 or eta <= 0:
+        return "Error: Ts > 0, F ≥ 0, η > 0 required."
+    lam = 4.0 / Ts
+    k = F + eta
+    phi = float(boundary_layer_phi) if boundary_layer_phi is not None else max(1e-3, k * 0.01)
+    return json.dumps({
+        "method": "Sliding Mode Control (SMC) with boundary layer",
+        "sliding_slope_lambda": round(lam, 6),
+        "switching_gain_k": round(k, 6),
+        "boundary_layer_phi": round(phi, 6),
+        "sliding_surface": f"s = xdot + {round(lam, 4)}·(x - x_d)",
+        "control_law": f"u = -({round(k, 4)}/g) · sat(s / {round(phi, 4)})",
+        "note": (
+            "Robust to matched bounded uncertainty. Reduce chattering by "
+            "widening Φ (at the cost of steady-state tracking error ≤ Φ/λ)."
+        ),
+    })
+
+
+# ---------------------------------------------------------------------------
+# Smith Predictor (dead-time compensation)
+# ---------------------------------------------------------------------------
+
+
+def smith_predictor_gains(
+    process_gain_k: float,
+    time_constant_tau: float,
+    dead_time_l: float,
+    closed_loop_tau_c: float | None = None,
+) -> str:
+    """Design the Smith-predictor inner PI controller for a FOPDT plant
+    with non-negligible dead time (L/τ > 0.5). The inner PI is tuned to
+    the delay-free model K/(τs+1); the Smith structure compensates the
+    delay externally, enabling much higher closed-loop bandwidth than
+    raw Z-N / Tyreus-Luyben on the delayed plant."""
+    K, tau, L = float(process_gain_k), float(time_constant_tau), float(dead_time_l)
+    if K == 0 or tau <= 0 or L <= 0:
+        return "Error: K≠0, τ>0, L>0 required."
+    tc = float(closed_loop_tau_c) if closed_loop_tau_c is not None else tau / 3.0
+    if tc <= 0:
+        return "Error: τc must be positive."
+    Kc = tau / (K * tc)
+    Ti = tau
+    Ki = Kc / Ti
+    return json.dumps({
+        "method": "Smith predictor + IMC-PI inner controller",
+        "Kp": round(Kc, 6), "Ki": round(Ki, 6), "Ti": round(Ti, 6), "tau_c": tc,
+        "K": K, "tau": tau, "L": L,
+        "architecture": (
+            "Implement: u = C(s)·(r - y + P(s)·(1 - e^{-Ls})·u). "
+            "C(s) is the PI with {Kp, Ki} above."
+        ),
+        "note": (
+            "Highly sensitive to L accuracy — a 20%% error in L → instability. "
+            "Re-identify L with identify_fopdt on each deployment."
+        ),
+    })
+
+
+# ---------------------------------------------------------------------------
+# Cascaded PID (inner fast / outer slow)
+# ---------------------------------------------------------------------------
+
+
+def cascaded_pid_design(
+    inner_process_gain_k: float,
+    inner_time_constant_tau: float,
+    inner_dead_time_l: float,
+    bandwidth_ratio: float = 5.0,
+) -> str:
+    """Design gains for a two-level cascade (inner velocity / outer
+    position on a wheel, or inner torque / outer position on an arm).
+    bandwidth_ratio = ω_inner / ω_outer; 3–10 typical."""
+    K_i, tau_i, L_i = float(inner_process_gain_k), float(inner_time_constant_tau), float(inner_dead_time_l)
+    ratio = float(bandwidth_ratio)
+    if K_i == 0 or tau_i <= 0 or L_i < 0:
+        return "Error: inner K≠0, τ>0, L≥0 required."
+    if ratio <= 1.0:
+        return "Error: bandwidth_ratio > 1 required (inner must be faster than outer)."
+
+    tc_inner = max(L_i, 0.1 * tau_i)
+    Kp_i = tau_i / (K_i * (tc_inner + L_i))
+    Ti_i = min(tau_i, 4.0 * (tc_inner + L_i))
+    Ki_i = Kp_i / Ti_i
+
+    tc_outer = ratio * (tc_inner + L_i)
+    Kp_o = 1.0 / tc_outer
+    Ti_o = 4.0 * tc_outer
+    Ki_o = Kp_o / Ti_o
+
+    return json.dumps({
+        "method": "Cascaded SIMC (PI inner / PI outer)",
+        "bandwidth_ratio": ratio,
+        "inner_loop": {
+            "Kp": round(Kp_i, 6), "Ki": round(Ki_i, 6), "Ti": round(Ti_i, 6),
+            "tau_c": tc_inner,
+            "bandwidth_hz": round(1.0 / (2.0 * math.pi * tc_inner), 3),
+        },
+        "outer_loop": {
+            "Kp": round(Kp_o, 6), "Ki": round(Ki_o, 6), "Ti": round(Ti_o, 6),
+            "tau_c": tc_outer,
+            "bandwidth_hz": round(1.0 / (2.0 * math.pi * tc_outer), 3),
+        },
+        "note": (
+            "Inner must settle (~5·τc_inner) before outer reads feedback. "
+            "Outer sees the closed inner loop as unity-gain first-order "
+            "with τ ≈ τc_inner."
+        ),
+    })
+
+
+# ---------------------------------------------------------------------------
+# Gain scheduling (linear interpolation over operating-point table)
+# ---------------------------------------------------------------------------
+
+
+def gain_schedule_interp(schedule_json: str, current_operating_point: float) -> str:
+    """Linearly interpolate PID gains at the current operating point from
+    a lookup table. For nonlinear plants where no single gain-set covers
+    the range (e.g. wheel friction vs. speed, arm inertia vs. pose)."""
+    try:
+        table = json.loads(schedule_json)
+    except json.JSONDecodeError as e:
+        return f"Error: schedule_json parse: {e}"
+    if not isinstance(table, list) or len(table) < 2:
+        return "Error: schedule must be a list with ≥2 entries."
+
+    pts = sorted(table, key=lambda e: float(e["op"]))
+    op = float(current_operating_point)
+    src = ""
+    if op <= pts[0]["op"]:
+        chosen = pts[0]
+        out = {"Kp": chosen["Kp"], "Ki": chosen["Ki"], "Kd": chosen["Kd"]}
+        src = "clamped to low end"
+    elif op >= pts[-1]["op"]:
+        chosen = pts[-1]
+        out = {"Kp": chosen["Kp"], "Ki": chosen["Ki"], "Kd": chosen["Kd"]}
+        src = "clamped to high end"
+    else:
+        out = {}
+        for i in range(len(pts) - 1):
+            a, b = pts[i], pts[i + 1]
+            if a["op"] <= op <= b["op"]:
+                frac = (op - a["op"]) / (b["op"] - a["op"])
+                out = {
+                    "Kp": a["Kp"] + frac * (b["Kp"] - a["Kp"]),
+                    "Ki": a["Ki"] + frac * (b["Ki"] - a["Ki"]),
+                    "Kd": a["Kd"] + frac * (b["Kd"] - a["Kd"]),
+                }
+                src = f"interpolated op=[{a['op']}, {b['op']}], fraction={frac:.3f}"
+                break
+    return json.dumps({
+        "operating_point": op,
+        "Kp": round(out["Kp"], 6),
+        "Ki": round(out["Ki"], 6),
+        "Kd": round(out["Kd"], 6),
+        "source": src,
+    })
+
+
+# ---------------------------------------------------------------------------
+# MRAC (MIT rule) adaptation sizing
+# ---------------------------------------------------------------------------
+
+
+def mrac_adaptation_sizing(
+    reference_omega_n: float,
+    reference_zeta: float = 0.707,
+    signal_rms_estimate: float = 1.0,
+    learning_rate_gamma: float | None = None,
+) -> str:
+    """Size the MIT-rule learning rate γ for MRAC.
+
+        Adaptation:  dθ/dt = -γ · e · φ
+        Stability bound (Åström-Wittenmark): γ_max ≈ 2·τ_ref / E[φ²]
+
+    Use γ ≈ 0.1-0.3·γ_max; start conservative and grow if adaptation is
+    too slow. θ = adapted parameter (e.g. Kp or feedforward inertia)."""
+    wn = float(reference_omega_n)
+    zeta = float(reference_zeta)
+    rms = float(signal_rms_estimate)
+    if wn <= 0 or zeta <= 0 or rms <= 0:
+        return "Error: ω_n, ζ, signal_rms must be positive."
+    tau_ref = 1.0 / wn
+    gamma_max = 2.0 * tau_ref / (rms ** 2)
+    gamma = float(learning_rate_gamma) if learning_rate_gamma is not None else 0.2 * gamma_max
+    return json.dumps({
+        "method": "MRAC (MIT rule)",
+        "reference_model": "G_m(s) = ω_n² / (s² + 2·ζ·ω_n·s + ω_n²)",
+        "omega_n": wn, "zeta": zeta,
+        "gamma_recommended": round(gamma, 6),
+        "gamma_stability_upper_bound": round(gamma_max, 6),
+        "adaptation_law": "dθ/dt = -γ · e · φ",
+        "note": (
+            "Too-large γ → parameter drift + instability; too-small γ → slow "
+            "adaptation. Monitor parameter variance in a bag recording and "
+            "adjust iteratively."
+        ),
+    })
+
+
+# ---------------------------------------------------------------------------
 # Action goals
 # ---------------------------------------------------------------------------
 
@@ -1241,6 +1644,138 @@ SCHEMAS: list[dict[str, Any]] = [
         },
     },
     {
+        "name": "relay_autotune",
+        "description": (
+            "Åström-Hägglund relay autotune — the safest way to measure Ku and Tu on "
+            "a real robot. Drives the plant with a bounded square wave (+h, -h) "
+            "and reads the resulting limit cycle. Ku = 4h/(π·a). DESTRUCTIVE — "
+            "commands motion for the full session. MUCH preferred over manually "
+            "ramping Kp, because the amplitude stays bounded by relay_amplitude "
+            "regardless of plant gain. After it returns Ku/Tu, feed into "
+            "tyreus_luyben_gains (recommended for noisy real robots)."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "cmd_topic":         {"type": "string", "description": "Actuator topic, e.g. /cmd_vel"},
+                "cmd_msg_type":      {"type": "string", "description": "e.g. geometry_msgs/msg/Twist"},
+                "cmd_field":         {"type": "string", "description": "Dotted path to the command field, e.g. angular.z"},
+                "feedback_topic":    {"type": "string", "description": "Sensor topic, e.g. /odom"},
+                "feedback_msg_type": {"type": "string", "description": "e.g. nav_msgs/msg/Odometry"},
+                "feedback_field":    {"type": "string", "description": "e.g. twist.twist.angular.z"},
+                "relay_amplitude":   {"type": "number", "description": "h — bounded command swing. Must fit inside safety_envelope."},
+                "setpoint":          {"type": "number", "default": 0.0},
+                "num_cycles":        {"type": "integer", "default": 6, "description": "Target oscillation cycles to observe."},
+                "timeout_sec":       {"type": "number", "default": 30.0},
+                "pub_rate_hz":       {"type": "number", "default": 20.0},
+            },
+            "required": [
+                "cmd_topic", "cmd_msg_type", "cmd_field",
+                "feedback_topic", "feedback_msg_type", "feedback_field",
+                "relay_amplitude",
+            ],
+        },
+    },
+    {
+        "name": "sliding_mode_gains",
+        "description": (
+            "Design robust Sliding Mode Control (SMC) parameters for a 2nd-order "
+            "mechanical system with bounded matched uncertainty. Returns sliding "
+            "surface slope λ, switching gain k, and boundary-layer thickness Φ. "
+            "Use when the plant is nonlinear enough that a single FOPDT can't "
+            "capture it (friction, payload variation, contact dynamics)."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "settling_time_sec":   {"type": "number", "description": "Desired surface convergence time."},
+                "uncertainty_bound":   {"type": "number", "description": "‖f(x) − ẍ_d‖∞ upper estimate."},
+                "reaching_rate_eta":   {"type": "number", "default": 0.1},
+                "boundary_layer_phi":  {"type": "number", "description": "Optional; default k·0.01."},
+            },
+            "required": ["settling_time_sec", "uncertainty_bound"],
+        },
+    },
+    {
+        "name": "smith_predictor_gains",
+        "description": (
+            "Design the inner PI gains for a Smith predictor on a FOPDT plant with "
+            "large dead time (L/τ > 0.5). Compensates delay externally so the "
+            "closed-loop bandwidth is limited by τ, not by L. Sensitive to L accuracy "
+            "— run identify_fopdt fresh before deploying."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "process_gain_k":     {"type": "number"},
+                "time_constant_tau":  {"type": "number"},
+                "dead_time_l":        {"type": "number"},
+                "closed_loop_tau_c":  {"type": "number", "description": "Default τ/3."},
+            },
+            "required": ["process_gain_k", "time_constant_tau", "dead_time_l"],
+        },
+    },
+    {
+        "name": "cascaded_pid_design",
+        "description": (
+            "Design cascaded PI/PID gains for an inner-fast/outer-slow architecture "
+            "(velocity inner, position outer; torque inner, position outer; etc.). "
+            "Inner loop tuned via SIMC on the inner FOPDT; outer sees inner as "
+            "a closed unity-gain first-order. bandwidth_ratio = ω_inner/ω_outer."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "inner_process_gain_k":      {"type": "number"},
+                "inner_time_constant_tau":   {"type": "number"},
+                "inner_dead_time_l":         {"type": "number"},
+                "bandwidth_ratio":           {"type": "number", "default": 5.0},
+            },
+            "required": [
+                "inner_process_gain_k", "inner_time_constant_tau", "inner_dead_time_l",
+            ],
+        },
+    },
+    {
+        "name": "gain_schedule_interp",
+        "description": (
+            "Look up PID gains at the current operating point by linearly "
+            "interpolating a gain-scheduling table. For nonlinear plants (varying "
+            "friction, inertia, etc.) where one gain set can't cover the full range."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "schedule_json": {
+                    "type": "string",
+                    "description": (
+                        "JSON array: [{op, Kp, Ki, Kd}, ...] sorted or unsorted."
+                    ),
+                },
+                "current_operating_point": {"type": "number"},
+            },
+            "required": ["schedule_json", "current_operating_point"],
+        },
+    },
+    {
+        "name": "mrac_adaptation_sizing",
+        "description": (
+            "Size the MIT-rule learning rate γ for Model Reference Adaptive Control. "
+            "Returns γ_recommended and the stability upper bound. For adapting a "
+            "controller parameter online (e.g. Kp that tracks payload changes)."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "reference_omega_n":    {"type": "number"},
+                "reference_zeta":       {"type": "number", "default": 0.707},
+                "signal_rms_estimate":  {"type": "number", "default": 1.0},
+                "learning_rate_gamma":  {"type": "number", "description": "Override auto-sizing."},
+            },
+            "required": ["reference_omega_n"],
+        },
+    },
+    {
         "name": "action_send_goal",
         "description": (
             "Send a goal to a ROS 2 action server and wait for the result. "
@@ -1306,6 +1841,12 @@ TOOLS = {
     "sensor_sanity_check": sensor_sanity_check,
     "bag_record": bag_record,
     "bag_info": bag_info,
+    "relay_autotune": relay_autotune,
+    "sliding_mode_gains": sliding_mode_gains,
+    "smith_predictor_gains": smith_predictor_gains,
+    "cascaded_pid_design": cascaded_pid_design,
+    "gain_schedule_interp": gain_schedule_interp,
+    "mrac_adaptation_sizing": mrac_adaptation_sizing,
     "action_send_goal": action_send_goal,
     "robot_estop": robot_estop,
     "safety_envelope": safety_envelope,

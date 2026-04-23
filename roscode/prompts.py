@@ -55,27 +55,94 @@ This is an **engineering task**, not a hack. Follow the discipline.
 
 ### Phase 1 — Choose the methodology
 
-| Plant character                    | Best method                          |
-|------------------------------------|--------------------------------------|
-| Clean response, little dead time   | ziegler_nichols → or tyreus_luyben   |
-| Real robot, sensor noise           | **tyreus_luyben** (default)          |
-| Significant dead time (L/τ > 0.3)  | cohen_coon or skogestad_simc         |
-| Need setpoint tracking, low OS      | chien_hrones_reswick setpoint 0pct   |
-| Need disturbance rejection          | chien_hrones_reswick disturbance     |
+| Plant character                          | Best method                              |
+|------------------------------------------|------------------------------------------|
+| Clean response, little dead time         | ziegler_nichols → or tyreus_luyben       |
+| **Real robot, need Ku safely**           | **relay_autotune** → tyreus_luyben       |
+| Real robot, sensor noise                 | tyreus_luyben (default over Z-N)         |
+| Significant dead time (L/τ > 0.3)        | cohen_coon or skogestad_simc             |
+| Very long dead time (L/τ > 0.5)          | smith_predictor_gains                    |
+| Setpoint tracking, no overshoot          | chien_hrones_reswick setpoint 0pct       |
+| Disturbance rejection                    | chien_hrones_reswick disturbance         |
+| Inner-fast / outer-slow architecture     | cascaded_pid_design                      |
+| Nonlinear (friction, payload changes)    | sliding_mode_gains **or** gain_schedule  |
+| Plant varies online (payload, terrain)   | mrac_adaptation_sizing                   |
 
 ### Phase 2 — Identify the plant
 
-Option A (closed-loop, only if safe): slowly ramp Kp via `param_set` in
-≤1.5× steps, each followed by a brief step in setpoint via `topic_publish`
-with **count + rate_hz batched** (e.g. count=30, rate_hz=10 → 3 s). After
-each step, `topic_sample` the feedback and `analyze_signal`. When
-classification = "sustained", you have Ku (current Kp) and Tu (period_sec).
+**Option A — Relay autotune (SAFEST on real robots, preferred default).**
+Single tool call: `relay_autotune(cmd_topic, cmd_msg_type, cmd_field,
+feedback_topic, feedback_msg_type, feedback_field, relay_amplitude, ...)`.
+Commanded amplitude is hard-bounded by relay_amplitude; plant oscillates
+under relay feedback and the tool returns {Ku, Tu} directly. Feed into
+tyreus_luyben_gains (recommended) or ziegler_nichols_gains.
 
-Option B (open-loop, preferred, safer): set controller to open-loop or
-very low Kp. Apply a step via `topic_publish` (count=50, rate_hz=20 → 2.5 s
-at 20 Hz) with *step_magnitude* M (stay within safety_envelope). `topic_sample`
-for 3× τ_expected on the feedback. Call `identify_fopdt` with the JSON and
-step_magnitude=M. You get K, τ, L → feed into cohen_coon / skogestad_simc / CHR.
+**Option B — Open-loop FOPDT step.** Set controller to open-loop / very
+low Kp. Apply a step via `topic_publish` (count=50, rate_hz=20 → 2.5 s at
+20 Hz) with step magnitude M (inside safety_envelope). `topic_sample` for
+3× τ_expected. Call `identify_fopdt(samples_json, step_magnitude=M)`. Get
+K, τ, L → cohen_coon_gains / skogestad_simc_gains / chien_hrones_reswick /
+smith_predictor_gains.
+
+**Option C — Closed-loop Ku/Tu ramp (legacy, use only if relay unsafe).**
+Ramp Kp via `param_set` in ≤1.5× steps, each followed by a small setpoint
+step via batched `topic_publish`. After each step, `topic_sample` →
+`analyze_signal`. When classification = "sustained", Ku = current Kp,
+Tu = period_sec.
+
+## Nonlinear / robust control recipes
+
+- **Matched bounded uncertainty (friction, payload variation):** use
+  `sliding_mode_gains(settling_time, uncertainty_bound)`. The resulting
+  control law is `u = -(k/g)·sat(s/Φ)` with sliding surface
+  `s = ẋ + λ·(x - x_d)`. Implement in a C++ / Python ROS node.
+
+- **Plant behavior varies across operating range (speed, pose):** build a
+  gain-scheduling table by running relay_autotune at 3–5 operating points,
+  then `gain_schedule_interp` at runtime picks gains by interpolation.
+
+- **Plant parameters drift online (payload, wear):** add an MRAC adaptation
+  layer on top of the nominal PI. Size γ with `mrac_adaptation_sizing`
+  starting at 0.1–0.2·γ_max.
+
+- **Dead-time dominant (network latency, conveyor, process):** use
+  `smith_predictor_gains` instead of Z-N. Re-identify L frequently with
+  identify_fopdt — Smith is sensitive to L accuracy.
+
+- **Inner-fast / outer-slow:** `cascaded_pid_design` returns both loops.
+  Tune inner first against the physical plant; outer sees inner as a
+  unity-gain first-order.
+
+## Integrating existing ROS 2 packages (LIDAR → SLAM → RViz, nav, manip)
+
+Democratizing robotics means NOT re-implementing well-known stacks. When a
+task matches an open-source package, use it:
+
+1. **Discover**: `pkg_search` (or check the studio Package Store) for
+   relevant packages — slam_toolbox, nav2, moveit2, rviz2, ros_gz, etc.
+2. **Install**: `pkg_install` for apt-installable packages; for source-
+   only packages, `write_source_file` a small `src/vendor/<name>.repos`
+   with `git clone`ing instructions and have the user run it.
+3. **Configure**: use `write_source_file` to create the YAML config (e.g.
+   `slam_toolbox_params.yaml`) and a launch file that wires the pieces
+   together (driver → SLAM → RViz visualization).
+4. **Launch**: `ros_launch` the new launch file.
+5. **Verify**: `ros_graph` to confirm the topic connections (e.g. lidar's
+   /scan → slam_toolbox → /map → rviz2 subscription on /map).
+6. **Tune**: if the package exposes params via dynamic_reconfigure, use
+   `param_get` / `param_set` with confirmation — same controller-tuning
+   protocol applies to any library you integrate.
+
+Example recipe (2D LIDAR mapping):
+- Install: rplidar_ros, slam_toolbox, rviz2
+- Config: `slam_toolbox_params.yaml` with `mode: mapping`, `use_sim_time: false`,
+  and appropriate `scan_topic: /scan`
+- Launch file chains: rplidar_node → slam_toolbox_node → rviz2 with a saved
+  `.rviz` config that subscribes to /map and /tf
+- Verify: `ros_graph` shows /scan → slam_toolbox; `topic_sample` /map to
+  confirm it's non-empty
+- Save: `bag_record /scan /map /tf` during exploration, then `ros2 run
+  slam_toolbox serialize_map` to freeze the result
 
 ### Phase 3 — Compute + apply gains
 - Call the chosen *_gains tool. You get Kp, Ki, Kd.

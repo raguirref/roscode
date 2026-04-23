@@ -24,6 +24,7 @@ def test_destructive_tools_set_is_frozen():
         "package_scaffold",
         "topic_publish",
         "action_send_goal",
+        "relay_autotune",
     }
     assert agent.DESTRUCTIVE_TOOLS == expected
 
