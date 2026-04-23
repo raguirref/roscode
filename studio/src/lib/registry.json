@@ -1,0 +1,202 @@
+[
+  {
+    "id": "moveit2",
+    "name": "MoveIt 2",
+    "description": "The standard motion planning framework for ROS 2 manipulators. Inverse kinematics, collision checking, trajectory execution.",
+    "category": "manipulators",
+    "tags": ["planning", "arm", "IK", "6DOF"],
+    "apt": "ros-humble-moveit",
+    "repo": "https://github.com/moveit/moveit2",
+    "dof": "6+"
+  },
+  {
+    "id": "ur_robot_driver",
+    "name": "Universal Robots Driver",
+    "description": "Official ROS 2 driver for UR3, UR5, UR10, UR16, UR20 series. Real-time control via RTDE.",
+    "category": "manipulators",
+    "tags": ["UR", "arm", "6DOF", "driver"],
+    "apt": "ros-humble-ur",
+    "repo": "https://github.com/UniversalRobots/Universal_Robots_ROS2_Driver",
+    "dof": "6"
+  },
+  {
+    "id": "ros2_kortex",
+    "name": "Kinova Gen3 / Kortex",
+    "description": "Driver and MoveIt config for Kinova Gen3 and Gen3 Lite arms. Includes URDF and Gazebo simulation.",
+    "category": "manipulators",
+    "tags": ["Kinova", "arm", "7DOF", "driver"],
+    "apt": null,
+    "repo": "https://github.com/Kinovarobotics/ros2_kortex",
+    "dof": "7"
+  },
+  {
+    "id": "franka_ros2",
+    "name": "Franka Panda",
+    "description": "ROS 2 support for Franka Research 3 and Panda. ros2_control integration with torque-level control.",
+    "category": "manipulators",
+    "tags": ["Franka", "arm", "7DOF", "torque"],
+    "apt": null,
+    "repo": "https://github.com/frankaemika/franka_ros2",
+    "dof": "7"
+  },
+  {
+    "id": "ros2_control",
+    "name": "ros2_control",
+    "description": "Hardware abstraction layer for ROS 2. Connects any actuator or sensor to a unified controller interface.",
+    "category": "manipulators",
+    "tags": ["control", "hardware", "abstraction"],
+    "apt": "ros-humble-ros2-control",
+    "repo": "https://github.com/ros-controls/ros2_control",
+    "dof": null
+  },
+  {
+    "id": "nav2",
+    "name": "Nav2",
+    "description": "The ROS 2 navigation stack. Costmaps, path planning (A*, Dijkstra, DWB), AMCL localization, behavior trees.",
+    "category": "mobile",
+    "tags": ["navigation", "AMCL", "path-planning", "costmap"],
+    "apt": "ros-humble-navigation2",
+    "repo": "https://github.com/ros-navigation/navigation2",
+    "holonomic": true
+  },
+  {
+    "id": "slam_toolbox",
+    "name": "slam_toolbox",
+    "description": "Lifelong SLAM for 2D lidar. Supports online, offline, and localization-only modes with loop closure.",
+    "category": "mobile",
+    "tags": ["SLAM", "lidar", "mapping", "localization"],
+    "apt": "ros-humble-slam-toolbox",
+    "repo": "https://github.com/SteveMacenski/slam_toolbox",
+    "holonomic": false
+  },
+  {
+    "id": "turtlebot3",
+    "name": "TurtleBot 3",
+    "description": "Full ROS 2 support for TurtleBot3 Burger and Waffle. Includes Gazebo simulation, navigation, and SLAM demos.",
+    "category": "mobile",
+    "tags": ["TurtleBot", "differential", "simulation", "education"],
+    "apt": "ros-humble-turtlebot3",
+    "repo": "https://github.com/ROBOTIS-GIT/turtlebot3",
+    "holonomic": false
+  },
+  {
+    "id": "husarion_rosbot",
+    "name": "Husarion ROSbot 2R / XL",
+    "description": "ROS 2 driver for Husarion ROSbot platforms. Differential (2R) and mecanum (XL) configurations.",
+    "category": "mobile",
+    "tags": ["ROSbot", "differential", "mecanum", "holonomic"],
+    "apt": null,
+    "repo": "https://github.com/husarion/rosbot_ros",
+    "holonomic": true
+  },
+  {
+    "id": "realsense_ros",
+    "name": "Intel RealSense",
+    "description": "ROS 2 wrapper for Intel RealSense D400, L500, and T265 series. RGB-D pointclouds, IMU, tracking.",
+    "category": "sensors",
+    "tags": ["depth", "RGB-D", "pointcloud", "IMU"],
+    "apt": "ros-humble-realsense2-camera",
+    "repo": "https://github.com/IntelRealSense/realsense-ros",
+    "dof": null
+  },
+  {
+    "id": "rplidar_ros",
+    "name": "RPLIDAR",
+    "description": "Driver for Slamtec RPLIDAR A-series, S-series, and C-series 2D lidars.",
+    "category": "sensors",
+    "tags": ["lidar", "2D", "laser-scan"],
+    "apt": "ros-humble-rplidar-ros",
+    "repo": "https://github.com/Slamtec/rplidar_ros",
+    "dof": null
+  },
+  {
+    "id": "velodyne",
+    "name": "Velodyne LiDAR",
+    "description": "ROS 2 driver for Velodyne VLP-16, VLP-32C, HDL-64E 3D lidars. Pointcloud and packet modes.",
+    "category": "sensors",
+    "tags": ["lidar", "3D", "pointcloud", "Velodyne"],
+    "apt": "ros-humble-velodyne",
+    "repo": "https://github.com/ros-drivers/velodyne",
+    "dof": null
+  },
+  {
+    "id": "zed_ros2",
+    "name": "ZED Stereo Camera",
+    "description": "ROS 2 wrapper for Stereolabs ZED, ZED 2, ZED Mini, ZED X. Depth, pose, skeleton tracking, object detection.",
+    "category": "sensors",
+    "tags": ["stereo", "depth", "pose", "NVIDIA"],
+    "apt": null,
+    "repo": "https://github.com/stereolabs/zed-ros2-wrapper",
+    "dof": null
+  },
+  {
+    "id": "ros_gz",
+    "name": "Gazebo (Ignition) Bridge",
+    "description": "ros_gz bridge connects ROS 2 topics/services to Gazebo Ignition/Fortress/Garden simulations.",
+    "category": "simulation",
+    "tags": ["Gazebo", "simulation", "bridge", "physics"],
+    "apt": "ros-humble-ros-gz",
+    "repo": "https://github.com/gazebosim/ros_gz",
+    "dof": null
+  },
+  {
+    "id": "webots_ros2",
+    "name": "Webots ROS 2",
+    "description": "Official Webots robot simulator integration for ROS 2. Includes TurtleBot, Universal Robots, and custom robot support.",
+    "category": "simulation",
+    "tags": ["Webots", "simulation", "open-source"],
+    "apt": "ros-humble-webots-ros2",
+    "repo": "https://github.com/cyberbotics/webots_ros2",
+    "dof": null
+  },
+  {
+    "id": "foxglove_bridge",
+    "name": "Foxglove Bridge",
+    "description": "WebSocket bridge to stream ROS 2 topics, services, and parameters to Foxglove Studio for visualization.",
+    "category": "utilities",
+    "tags": ["visualization", "WebSocket", "debugging"],
+    "apt": "ros-humble-foxglove-bridge",
+    "repo": "https://github.com/foxglove/ros-foxglove-bridge",
+    "dof": null
+  },
+  {
+    "id": "rosbag2",
+    "name": "rosbag2",
+    "description": "Record and replay ROS 2 topic data. Supports SQLite and MCAP storage backends. Essential for debugging and dataset collection.",
+    "category": "utilities",
+    "tags": ["recording", "replay", "MCAP", "datasets"],
+    "apt": "ros-humble-rosbag2",
+    "repo": "https://github.com/ros2/rosbag2",
+    "dof": null
+  },
+  {
+    "id": "diagnostic_updater",
+    "name": "diagnostics",
+    "description": "Hardware diagnostic framework. Publishes health status for motors, sensors, and computers to /diagnostics.",
+    "category": "utilities",
+    "tags": ["health", "monitoring", "hardware"],
+    "apt": "ros-humble-diagnostics",
+    "repo": "https://github.com/ros/diagnostics",
+    "dof": null
+  },
+  {
+    "id": "cartographer_ros",
+    "name": "Google Cartographer",
+    "description": "Real-time 2D and 3D SLAM via submap-based graph optimization. Supports lidar and IMU fusion.",
+    "category": "mobile",
+    "tags": ["SLAM", "3D", "lidar", "IMU", "Google"],
+    "apt": null,
+    "repo": "https://github.com/cartographer-project/cartographer_ros",
+    "holonomic": false
+  },
+  {
+    "id": "isaac_ros_common",
+    "name": "NVIDIA Isaac ROS",
+    "description": "GPU-accelerated ROS 2 packages for perception: AprilTag, NITROS, visual SLAM, object detection on Jetson and x86.",
+    "category": "sensors",
+    "tags": ["NVIDIA", "GPU", "Jetson", "perception", "AI"],
+    "apt": null,
+    "repo": "https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common",
+    "dof": null
+  }
+]

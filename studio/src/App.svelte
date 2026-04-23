@@ -2,7 +2,10 @@
   import { onMount } from "svelte";
   import Chat from "./lib/Chat.svelte";
   import RosMap from "./lib/RosMap.svelte";
+  import PackageStore from "./lib/PackageStore.svelte";
   import type { SvelteComponent } from "svelte";
+
+  let leftTab: "packages" | "editor" = "packages";
   import {
     getRuntimeStatus,
     startRuntime,
@@ -104,9 +107,16 @@
   {/if}
 
   <div class="grid">
-    <section class="pane editor">
-      <h3>editor</h3>
-      <p class="hint">Monaco editor lands day 4.</p>
+    <section class="pane left-pane">
+      <div class="tab-bar">
+        <button class="tab" class:active={leftTab === "packages"} on:click={() => (leftTab = "packages")}>packages</button>
+        <button class="tab" class:active={leftTab === "editor"}   on:click={() => (leftTab = "editor")}>editor</button>
+      </div>
+      {#if leftTab === "packages"}
+        <PackageStore on:install={(e) => chatRef?.fill(e.detail.prompt)} />
+      {:else}
+        <p class="hint" style="padding: 14px 18px;">Monaco editor — coming soon.</p>
+      {/if}
     </section>
 
     <section class="pane chat">
@@ -242,6 +252,41 @@
     overflow: auto;
     display: flex;
     flex-direction: column;
+  }
+
+  .pane.left-pane {
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .tab-bar {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-1);
+    flex-shrink: 0;
+  }
+
+  .tab {
+    padding: 8px 14px;
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--fg-2);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    margin-bottom: -1px;
+  }
+  .tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  .pane.left-pane :global(.store) {
+    flex: 1;
+    min-height: 0;
   }
 
   .pane.chat {
