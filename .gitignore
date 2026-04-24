@@ -78,8 +78,17 @@ Desktop.ini
 # ---- Jupyter ----
 .ipynb_checkpoints/
 
-# ---- Node (just in case we add any tooling) ----
+# ---- Node ----
 node_modules/
+*.vsix
+
+# ---- roscode-extension build ----
+roscode-extension/dist/
+roscode-extension/node_modules/
+
+# ---- VSCodium binary (too large for git) ----
+vscodium-build/
+
 
 # ---- Local handoff notes ----
 HANDOFF-2026-04-21.txt

@@ -1,0 +1,140 @@
+{
+  "name": "roscode",
+  "displayName": "roscode studio",
+  "description": "AI-native IDE for ROS 2 — Claude Opus 4.7 + ROS tools + network discovery",
+  "version": "0.1.0",
+  "publisher": "roscode",
+  "license": "MIT",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./dist/extension.js",
+  "icon": "media/icon.png",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "roscode-explorer",
+          "title": "roscode",
+          "icon": "media/ros-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "roscode-explorer": [
+        {
+          "id": "roscode.network",
+          "name": "Network",
+          "icon": "media/ros-icon.svg",
+          "contextualTitle": "ROS Network"
+        },
+        {
+          "id": "roscode.packages",
+          "name": "Packages",
+          "contextualTitle": "ROS Packages"
+        },
+        {
+          "id": "roscode.topics",
+          "name": "Topics",
+          "contextualTitle": "ROS Topics"
+        },
+        {
+          "id": "roscode.nodes",
+          "name": "Nodes",
+          "contextualTitle": "ROS Nodes"
+        }
+      ]
+    },
+    "commands": [
+      { "command": "roscode.openAgent",        "title": "roscode: Open AI Agent" },
+      { "command": "roscode.openNodeGraph",    "title": "roscode: Open Node Graph" },
+      { "command": "roscode.openTopicMonitor", "title": "roscode: Open Topic Monitor" },
+      { "command": "roscode.discoverNetwork",  "title": "roscode: Discover ROS Network", "icon": "$(refresh)" },
+      { "command": "roscode.connectRobot",     "title": "roscode: Connect to Robot" },
+      { "command": "roscode.runLaunchFile",    "title": "roscode: Run Launch File", "icon": "$(play)" },
+      { "command": "roscode.echoTopic",        "title": "roscode: Echo Topic", "icon": "$(pulse)" }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "roscode.discoverNetwork",
+          "when": "view == roscode.network",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "roscode.connectRobot",
+          "when": "viewItem == robot",
+          "group": "inline"
+        },
+        {
+          "command": "roscode.echoTopic",
+          "when": "viewItem == topic",
+          "group": "inline"
+        },
+        {
+          "command": "roscode.runLaunchFile",
+          "when": "viewItem == launchFile",
+          "group": "inline"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "roscode.runLaunchFile",
+          "when": "resourceExtname == .launch || resourceExtname == .py && resourceFilename =~ /launch/",
+          "group": "navigation"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "roscode.openAgent",
+        "key": "ctrl+shift+a",
+        "mac": "cmd+shift+a"
+      }
+    ],
+    "configuration": {
+      "title": "roscode",
+      "properties": {
+        "roscode.model": {
+          "type": "string",
+          "default": "claude-opus-4-7",
+          "description": "Claude model to use for the AI agent"
+        },
+        "roscode.rosVersion": {
+          "type": "string",
+          "enum": ["ros1", "ros2", "auto"],
+          "default": "auto",
+          "description": "ROS version (auto-detects from network)"
+        },
+        "roscode.networkScanTimeout": {
+          "type": "number",
+          "default": 3000,
+          "description": "Network scan timeout in milliseconds"
+        },
+        "roscode.anthropicApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Anthropic API key (or set ANTHROPIC_API_KEY env var)"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "node esbuild.js",
+    "watch": "node esbuild.js --watch",
+    "package": "pnpm run compile && vsce package --no-dependencies",
+    "lint": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^2.24.0",
+    "esbuild": "^0.20.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0"
+  }
+}

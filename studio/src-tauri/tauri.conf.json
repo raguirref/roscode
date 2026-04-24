@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "roscode studio",
+        "title": "",
         "width": 1400,
         "height": 900,
         "minWidth": 960,

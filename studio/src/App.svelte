@@ -87,6 +87,15 @@
       <span class="brand-name">roscode</span><span class="brand-sub"> studio</span>
     </div>
 
+    <button class="cmd-btn" title="Command Palette (⌘K)">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="4" y="5" width="16" height="14" rx="2"/>
+        <line x1="8" y1="10" x2="16" y2="10"/>
+        <line x1="8" y1="14" x2="12" y2="14"/>
+      </svg>
+      <span>⌘K</span>
+    </button>
+
     <div class="status-pill" data-kind={status.kind}>
       <span class="dot"></span>
       <span class="status-label">
@@ -214,14 +223,29 @@
     font-size: 15px;
     font-weight: 700;
     letter-spacing: -0.4px;
-    color: var(--fg-0);
+    color: var(--accent);
   }
   .brand-sub {
     font-size: 13px;
     font-weight: 400;
-    color: var(--fg-2);
-    letter-spacing: 0;
+    color: #3d4a5c;
+    letter-spacing: 0.5px;
   }
+
+  .cmd-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--fg-2);
+    font-size: 11px;
+    cursor: pointer;
+    transition: border-color 120ms, color 120ms;
+  }
+  .cmd-btn:hover { border-color: var(--accent); color: var(--fg-0); }
 
   .status-pill {
     display: flex;
