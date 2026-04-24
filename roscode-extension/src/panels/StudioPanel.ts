@@ -58,6 +58,7 @@ export class StudioPanel {
   private _messages: Anthropic.MessageParam[] = [];
   private _running = false;
   private _confirmPending = new Map<string, (ok: boolean) => void>();
+  private _pollTimer: ReturnType<typeof setInterval> | undefined;
 
   static createOrShow(context: vscode.ExtensionContext, ros: RosConnection): StudioPanel {
     if (StudioPanel.currentPanel) {
@@ -89,6 +90,13 @@ export class StudioPanel {
 
     ros.onStatusChange(() => {
       this._post({ type: "rosStatus", status: ros.status, host: ros.connectedHost });
+      if (ros.status === "connected") {
+        this._refreshRosData();
+        // Poll every 5s while connected
+        this._pollTimer = setInterval(() => this._refreshRosData(), 5000);
+      } else {
+        if (this._pollTimer) { clearInterval(this._pollTimer); this._pollTimer = undefined; }
+      }
     });
 
     vscode.workspace.onDidChangeWorkspaceFolders(() => this._sendFiles(), null, this._disposables);
@@ -332,7 +340,20 @@ Return ONLY the JSON array, no other text.`,
     vscode.window.showTextDocument(editor.document, { preserveFocus: false });
   }
 
+  private async _refreshRosData() {
+    if (this._ros.status !== "connected") return;
+    try {
+      const topics = await this._ros.listTopics();
+      this._post({ type: "rosTopics", topics });
+    } catch {}
+    try {
+      const { nodes, edges } = await this._ros.getGraphData();
+      this._post({ type: "rosGraph", nodes, edges });
+    } catch {}
+  }
+
   private _dispose() {
+    if (this._pollTimer) { clearInterval(this._pollTimer); this._pollTimer = undefined; }
     StudioPanel.currentPanel = undefined;
     this._panel.dispose();
     for (const r of this._confirmPending.values()) r(false);
@@ -818,6 +839,8 @@ window.addEventListener('message', e => {
     case 'agentError':  appendError(m.text); break;
     case 'agentNeedKey':appendWarn('Set <code>ANTHROPIC_API_KEY</code> in settings to use the agent.'); break;
     case 'aiSearchResult': handleAiSearch(m); break;
+    case 'rosTopics':     renderRealTopics(m.topics); break;
+    case 'rosGraph':      renderRealGraph(m.nodes, m.edges); break;
     case 'mapLoading':    handleMapLoading(m.filename); break;
     case 'mapSections':   handleMapSections(m.filename, m.sections); break;
     case 'mapNoKey':      handleMapNoKey(); break;
@@ -844,7 +867,37 @@ function startRuntime() {
   vscode.postMessage({ type: 'startRuntime' });
 }
 
-// ── Graph (placeholder SVG) ─────────────────────────────
+// ── Graph ───────────────────────────────────────────────
+function renderRealGraph(nodes, edges) {
+  const overlay = document.getElementById('graph-overlay');
+  if (overlay) overlay.classList.add('hidden');
+  if (!nodes || !nodes.length) return;
+  const svg = document.getElementById('cy-svg');
+  if (!svg) return;
+  const W = svg.clientWidth || 600, H = svg.clientHeight || 400;
+  const N = nodes.length;
+  // Arrange nodes in a circle
+  const positioned = nodes.map((n, i) => {
+    const angle = (2 * Math.PI * i) / N - Math.PI / 2;
+    const r = Math.min(W, H) * 0.35;
+    return { ...n, x: W/2 + r * Math.cos(angle), y: H/2 + r * Math.sin(angle) };
+  });
+  const posMap = Object.fromEntries(positioned.map(n => [n.id, n]));
+  let s = '';
+  (edges || []).forEach(e => {
+    const f = posMap[e.source], t = posMap[e.target];
+    if (f && t) s += \`<line x1="\${f.x}" y1="\${f.y}" x2="\${t.x}" y2="\${t.y}" stroke="#21262d" stroke-width="1.5" marker-end="url(#arr)"/>\`;
+  });
+  const colors = ['#4cc9f0','#a371f7','#f78166','#56d364','#e3b341','#ffa657'];
+  positioned.forEach((n, i) => {
+    const col = colors[i % colors.length];
+    const label = n.id.length > 20 ? n.id.slice(0,18)+'…' : n.id;
+    s += \`<circle cx="\${n.x}" cy="\${n.y}" r="18" fill="#161b22" stroke="\${col}" stroke-width="1.5"/>
+    <text x="\${n.x}" y="\${n.y+30}" text-anchor="middle" fill="#8b949e" font-size="9.5" font-family="monospace">\${label}</text>\`;
+  });
+  svg.innerHTML = \`<defs><marker id="arr" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#21262d"/></marker></defs>\` + s;
+}
+
 function drawPlaceholderGraph() {
   const svg = document.getElementById('cy-svg');
   if (!svg) return;
@@ -872,20 +925,26 @@ function drawPlaceholderGraph() {
 }
 
 function loadTopics() {
+  // placeholder until real ROS data arrives
+}
+
+function renderRealTopics(topics) {
   const pane = document.getElementById('topics-pane');
-  if (!pane) return;
-  sampleTopics = [
-    { name:'/cmd_vel',         type:'geometry_msgs/Twist' },
-    { name:'/odom',            type:'nav_msgs/Odometry' },
-    { name:'/scan',            type:'sensor_msgs/LaserScan' },
-    { name:'/tf',              type:'tf2_msgs/TFMessage' },
-    { name:'/robot_status',    type:'std_msgs/String' },
-  ];
-  pane.innerHTML = sampleTopics.map(t => \`
-    <div class="topic-item">
-      <span class="t-name">\${t.name}</span>
-      <span class="t-type">\${t.type}</span>
+  if (!pane || !topics) return;
+  if (!topics.length) {
+    pane.innerHTML = '<div class="t-offline">No topics found. Is a ROS node running?</div>';
+    return;
+  }
+  pane.innerHTML = topics.map(t => \`
+    <div class="topic-item" onclick="echoTopic(\${JSON.stringify(t.name)})">
+      <span class="t-name">\${esc(t.name)}</span>
+      <span class="t-type">\${esc(t.type||'')}</span>
     </div>\`).join('');
+}
+
+function echoTopic(name) {
+  prefill('Echo topic ' + name + ' once');
+  rTab('agent');
 }
 
 // ── Files ───────────────────────────────────────────────
