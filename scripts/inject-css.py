@@ -32,9 +32,27 @@ NUCLEAR_CSS = """
 
 /* Notificaciones pop-up de VS Code */
 .notifications-toasts { display: none !important; }
+.notification-list-item { display: none !important; }
 
-/* Welcome tab, walkthrough */
+/* Welcome tab, walkthrough, empty states */
 .gettingStartedContainer { display: none !important; }
+.welcomePage { display: none !important; }
+.welcome-view-content { display: none !important; }
+
+/* Empty editor state — "Clone Git Repository" / "Open Folder" prompts */
+.editor-empty-message { display: none !important; }
+.empty-editor-hint { display: none !important; }
+.editorPlaceholder { display: none !important; }
+.scm-empty-state { display: none !important; }
+.empty-view { display: none !important; }
+
+/* Workspace Trust dialog */
+.monaco-dialog-box { display: none !important; }
+.dialog-message-container { display: none !important; }
+
+/* Git clone / open folder CTA in editor area */
+.editor-group-empty-state { display: none !important; }
+[class*="emptyEditorHint"] { display: none !important; }
 
 /* Background general */
 body, .monaco-workbench {

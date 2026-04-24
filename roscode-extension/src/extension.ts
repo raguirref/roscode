@@ -185,16 +185,19 @@ export async function activate(context: vscode.ExtensionContext) {
   // Auto-scan on activation
   networkProvider.refresh();
 
-  // On startup: if no workspace, show launcher; if roscode workspace, show studio
+  // On startup: close VS Code default UI then show launcher or studio
   setTimeout(async () => {
     try { await vscode.commands.executeCommand("workbench.action.closeAllEditors"); } catch {}
+    try { await vscode.commands.executeCommand("workbench.action.closeSidebar"); } catch {}
+    try { await vscode.commands.executeCommand("workbench.action.closePanel"); } catch {}
+    try { await vscode.commands.executeCommand("workbench.action.closeAuxiliaryBar"); } catch {}
     const hasWorkspace = (vscode.workspace.workspaceFolders?.length ?? 0) > 0;
     if (!hasWorkspace) {
       LauncherPanel.createOrShow(context);
     } else {
       await checkForRoscodeProject();
     }
-  }, 400);
+  }, 600);
 }
 
 async function tryPinAgentToRight(): Promise<void> {
@@ -232,7 +235,9 @@ async function tryPinAgentToRight(): Promise<void> {
 }
 
 async function applyFirstRunDefaults(context: vscode.ExtensionContext) {
-  if (context.globalState.get("roscode.defaultsApplied", false)) return;
+  // Version bump: force re-apply when we add new settings
+  const SETTINGS_VERSION = 2;
+  if (context.globalState.get("roscode.defaultsVersion", 0) >= SETTINGS_VERSION) return;
 
   const updates: Array<[string, unknown, string]> = [
     ["workbench.colorTheme",             "roscode dark",        "workbench"],
@@ -242,6 +247,15 @@ async function applyFirstRunDefaults(context: vscode.ExtensionContext) {
     ["telemetry.telemetryLevel",         "off",                  "telemetry"],
     ["extensions.ignoreRecommendations", true,                   "extensions"],
     ["update.showReleaseNotes",          false,                  "update"],
+    // Disable workspace trust dialog entirely
+    ["security.workspace.trust.enabled", false,                  "security"],
+    // Suppress Git "Clone Repository" and repo detection prompts
+    ["git.openRepositoryInParentFolders","never",                "git"],
+    ["git.autoRepositoryDetection",      false,                  "git"],
+    ["git.suggestSmartCommit",           false,                  "git"],
+    ["git.showPushSuccessNotification",  false,                  "git"],
+    // Suppress SCM empty state view in editor area
+    ["scm.alwaysShowActions",            false,                  "scm"],
     ["editor.fontSize",                  13,                     "editor"],
     ["editor.lineHeight",                1.55,                   "editor"],
     ["editor.fontLigatures",             true,                   "editor"],
@@ -264,7 +278,7 @@ async function applyFirstRunDefaults(context: vscode.ExtensionContext) {
       }
     } catch {}
   }
-  context.globalState.update("roscode.defaultsApplied", true);
+  context.globalState.update("roscode.defaultsVersion", SETTINGS_VERSION);
 }
 
 async function startRuntime(ros: RosConnection): Promise<void> {
