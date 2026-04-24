@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import type { SvelteComponent } from "svelte";
-  import logoUrl from "./assets/logo.png";
   import {
     getRuntimeStatus,
     startRuntime,
@@ -78,9 +77,7 @@
   <!-- ══ HEADER ══ -->
   <header class="ide-header">
     <div class="brand">
-      <img src={logoUrl} alt="roscode" class="brand-logo" />
-      <span class="brand-name">roscode</span>
-      <span class="brand-tag">studio</span>
+      <span class="brand-name">roscode</span><span class="brand-sub"> studio</span>
     </div>
 
     <div class="status-pill" data-kind={status.kind}>
@@ -205,23 +202,18 @@
     opacity: 0.35;
   }
 
-  .brand { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-  .brand-logo { height: 24px; width: 24px; object-fit: contain; border-radius: 5px; }
+  .brand { display: flex; align-items: baseline; gap: 0; flex-shrink: 0; }
   .brand-name {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 700;
-    letter-spacing: -0.3px;
+    letter-spacing: -0.4px;
     color: var(--fg-0);
   }
-  .brand-tag {
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.4px;
-    color: var(--accent);
-    background: var(--accent-dim);
-    border: 1px solid rgba(76,201,240,0.2);
-    border-radius: 4px;
-    padding: 1px 6px;
+  .brand-sub {
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--fg-2);
+    letter-spacing: 0;
   }
 
   .status-pill {

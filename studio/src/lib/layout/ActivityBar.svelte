@@ -1,7 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
   import { activePanel, type ActivityPanel } from "../stores/layout";
-  import logoUrl from "../../assets/logo.png";
 
   const dispatch = createEventDispatcher<{ select: ActivityPanel }>();
 
@@ -41,9 +40,6 @@
 
 <aside class="activity-bar">
   <div class="top">
-    <div class="logo-wrap">
-      <img src={logoUrl} alt="roscode" class="logo" />
-    </div>
     {#each topIcons as icon}
       <button
         class="icon-btn"
@@ -81,18 +77,8 @@
     z-index: 10;
   }
 
-  .top { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%; padding-top: 4px; }
+  .top { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%; padding-top: 8px; }
   .bottom { margin-top: auto; padding-bottom: 8px; }
-
-  .logo-wrap {
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    padding: 8px 0 6px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 4px;
-  }
-  .logo { width: 26px; height: 26px; object-fit: contain; border-radius: 5px; }
 
   .icon-btn {
     position: relative;
