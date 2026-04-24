@@ -29,6 +29,9 @@ _DESTRUCTIVE_TOOLS: frozenset[str] = frozenset(
         "node_kill",
         "param_set",
         "package_scaffold",
+        "topic_publish",
+        "action_send_goal",
+        "relay_autotune",
     }
 )
 

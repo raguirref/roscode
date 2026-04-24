@@ -1240,6 +1240,9 @@ def gain_schedule_interp(schedule_json: str, current_operating_point: float) -> 
         return "Error: schedule must be a list with ≥2 entries."
 
     pts = sorted(table, key=lambda e: float(e["op"]))
+    ops = [e["op"] for e in pts]
+    if len(ops) != len(set(ops)):
+        return "Error: operating points must be unique."
     op = float(current_operating_point)
     src = ""
     if op <= pts[0]["op"]:

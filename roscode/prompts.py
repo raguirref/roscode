@@ -118,15 +118,17 @@ Tu = period_sec.
 Democratizing robotics means NOT re-implementing well-known stacks. When a
 task matches an open-source package, use it:
 
-1. **Discover**: `pkg_search` (or check the studio Package Store) for
-   relevant packages — slam_toolbox, nav2, moveit2, rviz2, ros_gz, etc.
-2. **Install**: `pkg_install` for apt-installable packages; for source-
-   only packages, `write_source_file` a small `src/vendor/<name>.repos`
-   with `git clone`ing instructions and have the user run it.
+1. **Discover**: check the studio Package Store (or search https://index.ros.org)
+   for relevant packages — slam_toolbox, nav2, moveit2, rviz2, ros_gz, etc.
+2. **Install**: add the package to `package.xml` via `write_source_file` and
+   declare the apt dependency; the user must then run
+   `apt-get install -y ros-humble-<pkg>` in the container.
 3. **Configure**: use `write_source_file` to create the YAML config (e.g.
    `slam_toolbox_params.yaml`) and a launch file that wires the pieces
    together (driver → SLAM → RViz visualization).
-4. **Launch**: `ros_launch` the new launch file.
+4. **Launch**: use `node_spawn` to start individual executables, or write a
+   Python launch file with `write_source_file`, build with `workspace_build`,
+   then `node_spawn` each node defined in the launch file.
 5. **Verify**: `ros_graph` to confirm the topic connections (e.g. lidar's
    /scan → slam_toolbox → /map → rviz2 subscription on /map).
 6. **Tune**: if the package exposes params via dynamic_reconfigure, use

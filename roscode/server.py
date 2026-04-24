@@ -47,7 +47,7 @@ import struct
 import termios
 import threading
 import uuid
-from contextlib import AbstractContextManager, nullcontext
+from contextlib import AbstractContextManager, nullcontext, suppress
 from typing import Any
 
 import websockets
@@ -144,8 +144,10 @@ class WebsocketSink:
             payload["diff_preview"] = _build_diff_preview(args)
         self._send(payload)
 
-        # Block the agent thread until the webview replies.
-        event.wait()
+        # Block the agent thread until the webview replies (60 s timeout).
+        if not event.wait(timeout=60.0):
+            self._pending.pop(req_id, None)
+            return False
         return self._responses.pop(req_id, False)
 
     # --- inbound wiring ----------------------------------------------------
@@ -323,6 +325,8 @@ async def _run_terminal_session(
         pass
     finally:
         pump_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await pump_task
         try:
             os.close(master_fd)
         except OSError:
