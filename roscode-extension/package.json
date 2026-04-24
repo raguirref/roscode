@@ -94,6 +94,11 @@
         "icon": "$(layout)"
       },
       {
+        "command": "roscode.openLauncher",
+        "title": "roscode: Open Launcher",
+        "icon": "$(home)"
+      },
+      {
         "command": "roscode.openAgent",
         "title": "roscode: Open Agent",
         "icon": "$(comment-discussion)"

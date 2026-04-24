@@ -15,6 +15,7 @@ import { RosConnection, RobotInfo } from "./ros/connection";
 import { applyWorkbenchBranding } from "./branding/workbenchBrand";
 import { inlineAsk } from "./agent/inlineAsk";
 import { StudioPanel } from "./panels/StudioPanel";
+import { LauncherPanel } from "./panels/LauncherPanel";
 
 const execAsync = promisify(exec);
 
@@ -160,6 +161,9 @@ export async function activate(context: vscode.ExtensionContext) {
     }),
     vscode.commands.registerCommand("roscode.openStudio", () =>
       StudioPanel.createOrShow(context, rosConnection)
+    ),
+    vscode.commands.registerCommand("roscode.openLauncher", () =>
+      LauncherPanel.createOrShow(context)
     )
   );
 
@@ -181,22 +185,16 @@ export async function activate(context: vscode.ExtensionContext) {
   // Auto-scan on activation
   networkProvider.refresh();
 
-  // On first launch, open the agent + walkthrough, and try to pin agent to right
-  if (context.globalState.get("roscode.firstLaunch", true)) {
-    context.globalState.update("roscode.firstLaunch", false);
-    setTimeout(async () => {
-      await vscode.commands.executeCommand("workbench.view.extension.roscode-agent");
-      await tryPinAgentToRight();
-      await vscode.commands.executeCommand(
-        "workbench.action.openWalkthrough",
-        { category: "roscode.roscode#roscode.gettingStarted" },
-        false
-      );
-    }, 800);
-  } else {
-    // On every launch, ensure the aux bar is open so the agent is visible
-    setTimeout(() => tryPinAgentToRight().catch(() => {}), 600);
-  }
+  // On startup: if no workspace, show launcher; if roscode workspace, show studio
+  setTimeout(async () => {
+    try { await vscode.commands.executeCommand("workbench.action.closeAllEditors"); } catch {}
+    const hasWorkspace = (vscode.workspace.workspaceFolders?.length ?? 0) > 0;
+    if (!hasWorkspace) {
+      LauncherPanel.createOrShow(context);
+    } else {
+      await checkForRoscodeProject();
+    }
+  }, 400);
 }
 
 async function tryPinAgentToRight(): Promise<void> {
