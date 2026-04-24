@@ -5,6 +5,7 @@ import { scaffoldProject } from "../scaffoldProject";
 export class HomeView implements vscode.WebviewViewProvider {
   public static readonly viewType = "roscode.home";
   private _view?: vscode.WebviewView;
+  private _onVisCb?: () => void;
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -12,6 +13,8 @@ export class HomeView implements vscode.WebviewViewProvider {
   ) {
     ros.onStatusChange(() => this._pushStatus());
   }
+
+  onVisibilityChange(cb: () => void) { this._onVisCb = cb; }
 
   resolveWebviewView(view: vscode.WebviewView): void {
     this._view = view;
@@ -24,6 +27,10 @@ export class HomeView implements vscode.WebviewViewProvider {
         await scaffoldProject(m.name, m.robotType);
       }
     });
+    view.onDidChangeVisibility(() => {
+      if (view.visible) this._onVisCb?.();
+    });
+    if (view.visible) this._onVisCb?.();
     this._pushStatus();
   }
 

@@ -10,14 +10,19 @@ function nonce() {
 export class TerminalView implements vscode.WebviewViewProvider {
   public static readonly viewType = "roscode.terminal";
   private _view?: vscode.WebviewView;
+  private _onVisCb?: () => void;
 
   constructor(private readonly _context: vscode.ExtensionContext) {}
+
+  onVisibilityChange(cb: () => void) { this._onVisCb = cb; }
 
   resolveWebviewView(webview: vscode.WebviewView) {
     this._view = webview;
     webview.webview.options = { enableScripts: true, localResourceRoots: [this._context.extensionUri] };
     webview.webview.html = this._html(webview.webview);
     webview.webview.onDidReceiveMessage((m) => this._handle(m));
+    webview.onDidChangeVisibility(() => { if (webview.visible) this._onVisCb?.(); });
+    if (webview.visible) this._onVisCb?.();
   }
 
   private _handle(m: any) {

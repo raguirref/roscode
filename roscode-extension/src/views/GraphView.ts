@@ -38,8 +38,11 @@ export class GraphView implements vscode.WebviewViewProvider {
   public static readonly viewType = "roscode.graph";
   private _view?: vscode.WebviewView;
   private _refresh?: NodeJS.Timeout;
+  private _onVisCb?: () => void;
 
   constructor(private readonly _context: vscode.ExtensionContext, private readonly _ros: RosConnection) {}
+
+  onVisibilityChange(cb: () => void) { this._onVisCb = cb; }
 
   resolveWebviewView(webview: vscode.WebviewView) {
     this._view = webview;
@@ -47,6 +50,8 @@ export class GraphView implements vscode.WebviewViewProvider {
     webview.webview.html = this._html(webview.webview);
     webview.webview.onDidReceiveMessage((m) => this._handle(m));
     webview.onDidDispose(() => { if (this._refresh) clearInterval(this._refresh); });
+    webview.onDidChangeVisibility(() => { if (webview.visible) this._onVisCb?.(); });
+    if (webview.visible) this._onVisCb?.();
 
     // Push graph on activation + refresh every 5s
     this._push();

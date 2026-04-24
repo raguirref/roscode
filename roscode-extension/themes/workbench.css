@@ -155,10 +155,40 @@
   border-right: 1px solid var(--roscode-border) !important;
 }
 
-/* AGGRESSIVE: hide every native activity bar composite by aria-label.
-   Match VS Code's built-ins. roscode's own containers have "HOM"/"NET"/etc.
-   in their aria-label (because we set the title with those prefixes). */
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Explorer" i]:not([aria-label*="HOM" i]):not([aria-label*="FIL" i]):not([aria-label*="NET" i]):not([aria-label*="GRF" i]):not([aria-label*="NOD" i]):not([aria-label*="TOP" i]):not([aria-label*="PLT" i]):not([aria-label*="LIB" i]):not([aria-label*="TRM" i]):not([aria-label*="AGT" i]),
+/* AGGRESSIVE nuke: every native VS Code activity bar item.
+   Match by codicon class (reliable) + aria-label (fallback) + activity-
+   workbench-view class (structural). Only roscode's own tabs survive.
+
+   Native codicons used by VSCodium activity bar:
+     codicon-files              → Explorer
+     codicon-search             → Search
+     codicon-source-control     → Source Control
+     codicon-debug-alt          → Run and Debug
+     codicon-extensions         → Extensions
+     codicon-beaker             → Testing
+     codicon-remote-explorer    → Remote Explorer
+     codicon-accounts-view-bar-icon → Accounts
+     codicon-settings-gear      → Manage (bottom)
+     codicon-layout-activitybar-left → layout toggle
+*/
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item:has(.codicon-files),
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item:has(.codicon-search),
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item:has(.codicon-source-control),
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item:has(.codicon-debug-alt),
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item:has(.codicon-run-view-icon),
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item:has(.codicon-extensions),
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item:has(.codicon-beaker),
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item:has(.codicon-remote-explorer),
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item:has(.codicon-accounts-view-bar-icon),
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item:has(.codicon-settings-gear),
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item:has([class*="activity-workbench-view-explorer"]),
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item:has([class*="activity-workbench-view-search"]),
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item:has([class*="activity-workbench-view-scm"]),
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item:has([class*="activity-workbench-view-debug"]),
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item:has([class*="activity-workbench-view-extensions"]),
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item:has([class*="activity-workbench-view-testing"]),
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item:has([class*="activity-workbench-view-remote"]),
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Explorer" i]:not([aria-label*="roscode" i]):not([aria-label*="HOM" i]):not([aria-label*="NET" i]):not([aria-label*="GRF" i]):not([aria-label*="NOD" i]):not([aria-label*="TOP" i]):not([aria-label*="PLT" i]):not([aria-label*="LIB" i]):not([aria-label*="TRM" i]),
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Search" i]:not([aria-label*="roscode" i]),
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Source Control" i],
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Run and Debug" i],
@@ -167,9 +197,24 @@
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Testing" i],
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Accounts" i],
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Remote Explorer" i],
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Remote Window" i],
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="User Menu" i],
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Profile" i],
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Manage" i]:not([aria-label*="Settings" i]) {
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Manage" i],
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Settings" i],
+/* Last-ditch: target action items in the global-activity (bottom) bar */
+.monaco-workbench .part.activitybar .global-activity,
+.monaco-workbench .part.activitybar .global-activity .action-item {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  width: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+}
+
+/* Also kill the bottom (remote/accounts/settings) row of the activity bar */
+.monaco-workbench .part.activitybar .actions-container.bottom {
   display: none !important;
 }
 
@@ -617,6 +662,36 @@
 .monaco-workbench *:focus-visible {
   outline: 1px solid var(--roscode-accent) !important;
   outline-offset: 1px !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Splash mode — no workspace open = zero IDE chrome.
+   Extension adds class `roscode-splash` to <body> when no workspace.
+   Everything collapses: activity bar, sidebar, status bar, panel, tabs.
+   ═══════════════════════════════════════════════════════════════ */
+body.roscode-splash .monaco-workbench .part.activitybar,
+body.roscode-splash .monaco-workbench .part.sidebar,
+body.roscode-splash .monaco-workbench .part.auxiliarybar,
+body.roscode-splash .monaco-workbench .part.statusbar,
+body.roscode-splash .monaco-workbench .part.panel,
+body.roscode-splash .monaco-workbench .part.editor .title,
+body.roscode-splash .monaco-workbench .part.editor .tabs-container {
+  display: none !important;
+}
+body.roscode-splash .monaco-workbench .part.editor {
+  background: var(--roscode-bg) !important;
+}
+body.roscode-splash .monaco-workbench .part.titlebar {
+  height: 28px !important;
+  background: var(--roscode-bg) !important;
+  border-bottom: 1px solid var(--roscode-border) !important;
+}
+/* Keep the title bar's menu + window controls but dim them in splash */
+body.roscode-splash .monaco-workbench .part.titlebar .menubar {
+  opacity: 0.45;
+}
+body.roscode-splash .monaco-workbench .part.titlebar .command-center {
+  display: none !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════

@@ -16,7 +16,11 @@ export class PlotView implements vscode.WebviewViewProvider {
   private _field = "";
   private _mock = true;
 
+  private _onVisCb?: () => void;
+
   constructor(private readonly _context: vscode.ExtensionContext, private readonly _ros: RosConnection) {}
+
+  onVisibilityChange(cb: () => void) { this._onVisCb = cb; }
 
   resolveWebviewView(webview: vscode.WebviewView) {
     this._view = webview;
@@ -24,6 +28,8 @@ export class PlotView implements vscode.WebviewViewProvider {
     webview.webview.html = this._html(webview.webview);
     webview.webview.onDidReceiveMessage((m) => this._handle(m));
     webview.onDidDispose(() => this._stop());
+    webview.onDidChangeVisibility(() => { if (webview.visible) this._onVisCb?.(); });
+    if (webview.visible) this._onVisCb?.();
   }
 
   private _handle(m: any) {

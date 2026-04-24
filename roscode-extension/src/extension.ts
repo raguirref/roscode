@@ -19,6 +19,7 @@ import { applyWorkbenchBranding } from "./branding/workbenchBrand";
 import { inlineAsk } from "./agent/inlineAsk";
 import { StudioPanel } from "./panels/StudioPanel";
 import { LauncherPanel } from "./panels/LauncherPanel";
+import { RoscodePagePanel, PageKind } from "./panels/RoscodePagePanel";
 
 const execAsync = promisify(exec);
 
@@ -48,16 +49,65 @@ export async function activate(context: vscode.ExtensionContext) {
   const graphView = new GraphView(context, rosConnection);
   const terminalView = new TerminalView(context);
 
+  // Tree views — using createTreeView so we get visibility hooks.
+  const networkTree = vscode.window.createTreeView("roscode.network", { treeDataProvider: networkProvider });
+  const topicTree   = vscode.window.createTreeView("roscode.topics",  { treeDataProvider: topicProvider });
+  const nodeTree    = vscode.window.createTreeView("roscode.nodes",   { treeDataProvider: nodeProvider });
+  const libraryTree = vscode.window.createTreeView("roscode.library", { treeDataProvider: libraryProvider });
+
   context.subscriptions.push(
-    vscode.window.registerTreeDataProvider("roscode.network", networkProvider),
-    vscode.window.registerTreeDataProvider("roscode.topics",  topicProvider),
-    vscode.window.registerTreeDataProvider("roscode.nodes",   nodeProvider),
-    vscode.window.registerTreeDataProvider("roscode.library", libraryProvider),
+    networkTree, topicTree, nodeTree, libraryTree,
     vscode.window.registerWebviewViewProvider("roscode.home",  homeView),
     vscode.window.registerWebviewViewProvider("roscode.agent", agentView),
     vscode.window.registerWebviewViewProvider("roscode.plot",  plotView),
     vscode.window.registerWebviewViewProvider("roscode.graph", graphView),
     vscode.window.registerWebviewViewProvider("roscode.terminal", terminalView)
+  );
+
+  // ═══════════════════════════════════════════════════════════
+  // Activity bar → full-page router.
+  // When any of the sidebar containers becomes visible, pop the
+  // corresponding full-editor page and close the sidebar so users
+  // see the dedicated layout — not a cramped side panel.
+  // ═══════════════════════════════════════════════════════════
+  const openFullPage = async (kind: PageKind) => {
+    RoscodePagePanel.createOrShow(context, kind, rosConnection);
+    // small delay so reveal doesn't race with our close
+    setTimeout(() => {
+      vscode.commands.executeCommand("workbench.action.closeSidebar").catch(() => {});
+    }, 80);
+  };
+
+  const wireTreeViewToPage = (tv: vscode.TreeView<any>, kind: PageKind) => {
+    tv.onDidChangeVisibility((e) => {
+      if (e.visible) openFullPage(kind);
+    });
+  };
+  wireTreeViewToPage(networkTree, "network");
+  wireTreeViewToPage(nodeTree,    "nodes");
+  wireTreeViewToPage(topicTree,   "topics");
+  wireTreeViewToPage(libraryTree, "library");
+
+  // Webview views also route to full page on visibility.
+  graphView.onVisibilityChange?.(() => openFullPage("graph"));
+  plotView.onVisibilityChange?.(() => openFullPage("plot"));
+  terminalView.onVisibilityChange?.(() => openFullPage("terminal"));
+  homeView.onVisibilityChange?.(() => {
+    LauncherPanel.createOrShow(context);
+    setTimeout(() => {
+      vscode.commands.executeCommand("workbench.action.closeSidebar").catch(() => {});
+    }, 80);
+  });
+
+  // Register explicit open commands so users can hit Ctrl+Shift+P too.
+  context.subscriptions.push(
+    vscode.commands.registerCommand("roscode.openNetworkPage",  () => openFullPage("network")),
+    vscode.commands.registerCommand("roscode.openNodesPage",    () => openFullPage("nodes")),
+    vscode.commands.registerCommand("roscode.openTopicsPage",   () => openFullPage("topics")),
+    vscode.commands.registerCommand("roscode.openLibraryPage",  () => openFullPage("library")),
+    vscode.commands.registerCommand("roscode.openGraphPage",    () => openFullPage("graph")),
+    vscode.commands.registerCommand("roscode.openPlotPage",     () => openFullPage("plot")),
+    vscode.commands.registerCommand("roscode.openTerminalPage", () => openFullPage("terminal")),
   );
 
   // Wire network → home view
@@ -176,15 +226,7 @@ export async function activate(context: vscode.ExtensionContext) {
     )
   );
 
-  // Auto-open studio when a roscode workspace is detected
-  async function checkForRoscodeProject() {
-    const configs = await vscode.workspace.findFiles(".roscode/config.json", null, 1);
-    if (configs.length > 0) {
-      await vscode.commands.executeCommand("roscode.openStudio");
-    }
-  }
-  vscode.workspace.onDidChangeWorkspaceFolders(checkForRoscodeProject, null, context.subscriptions);
-  checkForRoscodeProject().catch(() => {});
+  // Initial studio-config check handled by applyChromeForWorkspaceState below.
 
   // Initial state contexts
   vscode.commands.executeCommand("setContext", "roscode.connected", false);
@@ -204,26 +246,75 @@ export async function activate(context: vscode.ExtensionContext) {
     StudioPanel.currentPanel.notifyActiveEditor(filename, code, doc.lineCount);
   }, null, context.subscriptions);
 
-  // On startup: close VS Code default UI, open the launcher, focus the HOM tab,
-  // and ensure the agent is docked on the right side as a permanent companion.
+  // On startup: splash mode if no workspace (only launcher visible, zero IDE
+  // chrome). Full IDE activates the moment a workspace folder is opened.
   setTimeout(async () => {
     try { await vscode.commands.executeCommand("workbench.action.closeAllEditors"); } catch {}
+    await applyChromeForWorkspaceState(context);
+  }, 500);
 
-    const hasWorkspace = (vscode.workspace.workspaceFolders?.length ?? 0) > 0;
-    if (!hasWorkspace) {
-      LauncherPanel.createOrShow(context);
-    } else {
-      await checkForRoscodeProject();
+  // Watch for workspace changes — exit splash as soon as a folder opens.
+  vscode.workspace.onDidChangeWorkspaceFolders(
+    () => applyChromeForWorkspaceState(context),
+    null,
+    context.subscriptions
+  );
+}
+
+/**
+ * Enter "splash" (launcher-only, zero chrome) when there is no workspace,
+ * otherwise full IDE with agent docked to the right.
+ */
+async function applyChromeForWorkspaceState(context: vscode.ExtensionContext) {
+  const hasWorkspace = (vscode.workspace.workspaceFolders?.length ?? 0) > 0;
+
+  if (!hasWorkspace) {
+    // Splash: hide sidebar, aux, status bar, activity bar via commands.
+    try { await vscode.commands.executeCommand("workbench.action.closeSidebar"); } catch {}
+    try { await vscode.commands.executeCommand("workbench.action.closeAuxiliaryBar"); } catch {}
+    try { await vscode.commands.executeCommand("workbench.action.closePanel"); } catch {}
+
+    // Status bar: toggle if currently visible
+    const cfg = vscode.workspace.getConfiguration();
+    if (cfg.get<boolean>("workbench.statusBar.visible", true) !== false) {
+      try { await cfg.update("workbench.statusBar.visible", false, vscode.ConfigurationTarget.Global); } catch {}
+    }
+    // Activity bar: hide
+    if (cfg.get<string>("workbench.activityBar.location", "default") !== "hidden") {
+      try { await cfg.update("workbench.activityBar.location", "hidden", vscode.ConfigurationTarget.Global); } catch {}
     }
 
-    // Pin the bottom panel to the right (it hosts AGENT) so the agent is
-    // permanently docked as a sidekick — Cursor-style layout.
+    // Show the launcher full-bleed
+    LauncherPanel.createOrShow(context);
+  } else {
+    // IDE mode: restore chrome, close launcher, dock agent right.
+    LauncherPanel.hide();
+
+    const cfg = vscode.workspace.getConfiguration();
+    if (cfg.get<boolean>("workbench.statusBar.visible", true) === false) {
+      try { await cfg.update("workbench.statusBar.visible", true, vscode.ConfigurationTarget.Global); } catch {}
+    }
+    if (cfg.get<string>("workbench.activityBar.location", "default") === "hidden") {
+      try { await cfg.update("workbench.activityBar.location", "default", vscode.ConfigurationTarget.Global); } catch {}
+    }
+
+    await checkForRoscodeProjectGlobal();
+
+    // Pin the bottom panel to the right so the agent is always a sidekick
     try { await vscode.commands.executeCommand("workbench.action.positionPanelRight"); } catch {}
-    // Make sure the panel is visible, then focus the agent view inside it.
     try { await vscode.commands.executeCommand("workbench.action.focusPanel"); } catch {}
     try { await vscode.commands.executeCommand("workbench.view.extension.roscode-agent"); } catch {}
     try { await vscode.commands.executeCommand("roscode.agent.focus"); } catch {}
-  }, 700);
+  }
+}
+
+/** Lift the inline `checkForRoscodeProject` to module scope so splash/IDE
+ * switcher can call it without closure access. */
+async function checkForRoscodeProjectGlobal() {
+  const configs = await vscode.workspace.findFiles(".roscode/config.json", null, 1);
+  if (configs.length > 0) {
+    await vscode.commands.executeCommand("roscode.openStudio");
+  }
 }
 
 
