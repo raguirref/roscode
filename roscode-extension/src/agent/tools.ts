@@ -8,6 +8,25 @@ import type Anthropic from "@anthropic-ai/sdk";
 const execAsync = promisify(exec);
 const execFileAsync = promisify(execFile);
 
+export interface ToolDisplay {
+  label: string;
+  icon: "pulse" | "graph" | "file" | "terminal" | "build" | "radio" | "default";
+}
+
+export function toolDisplayMeta(name: string): ToolDisplay {
+  switch (name) {
+    case "list_topics":    return { label: "List topics",     icon: "pulse" };
+    case "echo_topic":     return { label: "Echo topic",      icon: "radio" };
+    case "list_nodes":     return { label: "List nodes",      icon: "graph" };
+    case "get_node_graph": return { label: "Inspect graph",   icon: "graph" };
+    case "read_file":      return { label: "Read file",       icon: "file" };
+    case "write_file":     return { label: "Write file",      icon: "file" };
+    case "shell":          return { label: "Run shell",       icon: "terminal" };
+    case "colcon_build":   return { label: "colcon build",    icon: "build" };
+    default:               return { label: name,              icon: "default" };
+  }
+}
+
 export function getAgentTools(): Anthropic.Tool[] {
   return [
     {

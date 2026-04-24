@@ -1,25 +1,25 @@
 import * as vscode from "vscode";
 import type { RosConnection } from "../ros/connection";
 
-export class TopicProvider implements vscode.TreeDataProvider<TopicItem> {
-  private _onDidChangeTreeData = new vscode.EventEmitter<void>();
-  readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
+export class TopicProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
+  private _onChange = new vscode.EventEmitter<void>();
+  readonly onDidChangeTreeData = this._onChange.event;
   private _topics: Array<{ name: string; type: string }> = [];
 
   constructor(private readonly ros: RosConnection) {}
 
   refresh(): void {
     this.ros.listTopics().then((topics) => {
-      this._topics = topics;
-      this._onDidChangeTreeData.fire();
+      this._topics = topics.sort((a, b) => a.name.localeCompare(b.name));
+      this._onChange.fire();
     });
   }
 
-  getTreeItem(el: TopicItem): vscode.TreeItem { return el; }
+  getTreeItem(el: vscode.TreeItem): vscode.TreeItem { return el; }
 
-  getChildren(): TopicItem[] {
-    if (!this.ros.robot) return [new HintItem("Connect to a robot first")];
-    if (this._topics.length === 0) return [new HintItem("No topics — is ROS running?")];
+  getChildren(): vscode.TreeItem[] {
+    if (!this.ros.robot) return [];
+    if (this._topics.length === 0) return [hint("No topics — is the node graph idle?")];
     return this._topics.map((t) => new TopicItem(t.name, t.type));
   }
 }
@@ -27,20 +27,18 @@ export class TopicProvider implements vscode.TreeDataProvider<TopicItem> {
 class TopicItem extends vscode.TreeItem {
   readonly contextValue = "topic";
   readonly topicName: string;
-
   constructor(name: string, type: string) {
-    super(name, vscode.TreeItemCollapsibleState.None);
+    super(name.split("/").pop() || name, vscode.TreeItemCollapsibleState.None);
     this.topicName = name;
-    this.description = type.split("/").pop();
-    this.tooltip = type;
-    this.iconPath = new vscode.ThemeIcon("pulse");
+    this.description = type.split("/").pop() || "";
+    this.tooltip = new vscode.MarkdownString(`\`${name}\`\n\n${type}`);
+    this.iconPath = new vscode.ThemeIcon("pulse", new vscode.ThemeColor("charts.purple"));
     this.command = { command: "roscode.echoTopic", title: "Echo", arguments: [this] };
   }
 }
 
-class HintItem extends vscode.TreeItem {
-  constructor(msg: string) {
-    super(msg, vscode.TreeItemCollapsibleState.None);
-    this.iconPath = new vscode.ThemeIcon("info");
-  }
+function hint(msg: string): vscode.TreeItem {
+  const it = new vscode.TreeItem(msg, vscode.TreeItemCollapsibleState.None);
+  it.iconPath = new vscode.ThemeIcon("info");
+  return it;
 }

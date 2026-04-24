@@ -1,0 +1,155 @@
+/* ═══════════════════════════════════════════════════════════════
+   roscode studio — workbench branding (Cursor-style deep customization)
+   Injected into VSCodium's workbench.html via the roscode extension.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─── Title bar: brand wordmark replaces window title ─────────────── */
+.monaco-workbench .part.titlebar .window-title,
+.monaco-workbench .part.titlebar .titlebar-center .window-title {
+  visibility: hidden;
+  position: relative;
+}
+.monaco-workbench .part.titlebar .window-title::after,
+.monaco-workbench .part.titlebar .titlebar-center .window-title::after {
+  content: "roscode";
+  visibility: visible;
+  position: absolute;
+  left: 0; top: 50%;
+  transform: translateY(-50%);
+  width: 100%;
+  text-align: center;
+  color: #4cc9f0;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  font-size: 12px;
+}
+.monaco-workbench .part.titlebar .window-title::before,
+.monaco-workbench .part.titlebar .titlebar-center .window-title::before {
+  content: "studio";
+  visibility: visible;
+  position: absolute;
+  left: calc(50% + 28px); top: 50%;
+  transform: translateY(-50%);
+  color: #3d4a5c;
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 0;
+}
+
+/* ─── Activity bar: softer, wider icons, teal accent ──────────────── */
+.monaco-workbench .part.activitybar {
+  width: 52px !important;
+}
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item {
+  height: 44px !important;
+}
+.monaco-workbench .part.activitybar .monaco-action-bar .action-label {
+  width: 52px !important;
+}
+.monaco-workbench .part.activitybar .action-item.active .active-item-indicator::before {
+  border-left-color: #4cc9f0 !important;
+  border-left-width: 2px !important;
+}
+
+/* ─── Side bar: cleaner typography ────────────────────────────────── */
+.monaco-workbench .part.sidebar .title {
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+}
+.monaco-workbench .part.sidebar .title-label h3 {
+  color: #4cc9f0 !important;
+  letter-spacing: -0.2px !important;
+}
+.monaco-workbench .part.sidebar .pane-header {
+  font-size: 10.5px !important;
+  letter-spacing: 0.6px !important;
+  color: #4cc9f080 !important;
+}
+
+/* ─── Tab bar: accent bar under active tab ────────────────────────── */
+.monaco-workbench .part.editor .tabs-container .tab.active::before {
+  background: #4cc9f0 !important;
+  height: 2px !important;
+}
+
+/* ─── Status bar: tighter height, teal accent items ───────────────── */
+.monaco-workbench .part.statusbar {
+  height: 22px !important;
+  font-size: 11px !important;
+}
+
+/* ─── Buttons: smooth hover ───────────────────────────────────────── */
+.monaco-workbench .monaco-button {
+  transition: background-color 140ms ease, transform 80ms ease !important;
+}
+.monaco-workbench .monaco-button:active {
+  transform: translateY(0.5px);
+}
+
+/* ─── Notifications: softer corners ───────────────────────────────── */
+.monaco-workbench .notification-toast,
+.monaco-workbench .notifications-list-container {
+  border-radius: 6px !important;
+}
+
+/* ─── Welcome page: hide VS Code-y content (we'll show our own home view) ── */
+.monaco-workbench .welcome-page-container .categories-column .tip,
+.monaco-workbench .welcome-page-container .row.recent,
+.monaco-workbench .welcome-page-container .row.help {
+  opacity: 0.6;
+}
+
+/* ─── Hide "Get Started" walkthrough default header banner ────────── */
+.monaco-workbench .gettingStartedContainer .gettingStartedHeader .productName {
+  display: none;
+}
+.monaco-workbench .gettingStartedContainer .gettingStartedHeader::before {
+  content: "roscode studio";
+  font-size: 24px;
+  font-weight: 700;
+  color: #4cc9f0;
+  letter-spacing: -0.8px;
+}
+
+/* ─── Command palette: accent border focus ────────────────────────── */
+.monaco-workbench .quick-input-widget {
+  border-radius: 7px !important;
+  box-shadow: 0 8px 32px #00000070 !important;
+}
+
+/* ─── Inputs: roundness ───────────────────────────────────────────── */
+.monaco-workbench input,
+.monaco-workbench .monaco-inputbox {
+  border-radius: 4px !important;
+}
+
+/* ─── Minimap tweaks ──────────────────────────────────────────────── */
+.monaco-workbench .minimap {
+  opacity: 0.85;
+}
+
+/* ─── Tree view: tighter, more readable ───────────────────────────── */
+.monaco-workbench .monaco-tree-row .content {
+  font-size: 12.5px !important;
+}
+
+/* ─── Scrollbars: thinner ─────────────────────────────────────────── */
+.monaco-workbench .monaco-scrollable-element > .scrollbar {
+  width: 8px !important;
+}
+.monaco-workbench .monaco-scrollable-element > .scrollbar > .slider {
+  border-radius: 4px !important;
+  background: #4cc9f020 !important;
+}
+
+/* ─── Editor gutter glow on cursor line ───────────────────────────── */
+.monaco-workbench .margin-view-overlays .current-line-margin {
+  border-left: 2px solid #4cc9f040 !important;
+}
+
+/* ─── Remove Microsoft-y visual noise ─────────────────────────────── */
+.monaco-workbench .product-icon.codicon-vs-code {
+  color: #4cc9f0 !important;
+}
