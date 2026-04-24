@@ -9,7 +9,7 @@ export class HomeView implements vscode.WebviewViewProvider {
     private readonly context: vscode.ExtensionContext,
     private readonly ros: RosConnection
   ) {
-    ros.onStatusChange(() => this._push());
+    ros.onStatusChange(() => this._pushStatus());
   }
 
   resolveWebviewView(view: vscode.WebviewView): void {
@@ -19,14 +19,14 @@ export class HomeView implements vscode.WebviewViewProvider {
     view.webview.onDidReceiveMessage((m) => {
       if (m.type === "command") vscode.commands.executeCommand(m.command);
     });
-    this._push();
+    this._pushStatus();
   }
 
   updateRobots(count: number, scanning: boolean) {
     this._view?.webview.postMessage({ type: "robots", count, scanning });
   }
 
-  private _push() {
+  private _pushStatus() {
     this._view?.webview.postMessage({
       type: "status",
       connected: this.ros.status === "connected",
@@ -43,76 +43,85 @@ export class HomeView implements vscode.WebviewViewProvider {
 <meta charset="UTF-8"/>
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'nonce-${n}'; script-src 'nonce-${n}';">
 <style nonce="${n}">
-:root{--accent:#4cc9f0;--bg:#0a0e14;--bg2:#0d1520;--fg:#c9d1d9;--fg2:#8b9ab0;--fg3:#3d4a5c;--border:#141e2e;--green:#3dd68c}
+:root{--accent:#4cc9f0;--bg:#0a0e14;--bg2:#0d1520;--fg:#c9d1d9;--fg2:#8b9ab0;--fg3:#3d4a5c;--border:#141e2e;--green:#3dd68c;--red:#f87171}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Inter',system-ui,sans-serif;font-size:12px;background:var(--bg);color:var(--fg);padding:10px 10px 12px;overflow-y:auto}
-.brand{font-weight:700;letter-spacing:-0.3px;font-size:13px;margin-bottom:2px}
-.brand .a{color:var(--accent)}.brand .b{color:var(--fg3);font-weight:500}
-.sub{color:var(--fg3);font-size:10.5px;margin-bottom:12px}
-.card{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:9px 11px;margin-bottom:7px;cursor:pointer;transition:border-color 120ms,background 120ms}
-.card:hover{border-color:var(--accent);background:#0e1a2b}
-.card.nostyle{cursor:default}.card.nostyle:hover{border-color:var(--border);background:var(--bg2)}
-.row{display:flex;align-items:center;gap:8px}
+body{font-family:'Inter',system-ui,sans-serif;font-size:12px;background:var(--bg);color:var(--fg);padding:6px 8px 10px;overflow:hidden auto}
+
+/* Status row — single compact panel */
+.status{background:transparent;border:1px solid var(--border);border-radius:6px;padding:8px 9px;display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.srow{display:flex;align-items:center;gap:8px;min-height:17px}
+.srow:first-child{padding-bottom:6px;border-bottom:1px solid var(--border)}
 .dot{width:6px;height:6px;border-radius:50%;background:var(--fg3);flex-shrink:0}
 .dot.on{background:var(--green);box-shadow:0 0 6px var(--green)}
-.lbl{font-size:11.5px;color:var(--fg)}
-.val{margin-left:auto;color:var(--fg2);font-size:10.5px;font-family:'JetBrains Mono',monospace}
+.dot.scan{background:var(--accent);animation:pulse 1.5s ease infinite}
+@keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
+.lbl{font-size:11.5px;color:var(--fg2);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.val{color:var(--fg3);font-size:10.5px;font-family:'JetBrains Mono',ui-monospace,monospace;flex-shrink:0}
 .val.hl{color:var(--accent)}
-.title{font-size:11px;color:var(--fg3);text-transform:uppercase;letter-spacing:1px;padding:10px 2px 5px}
-.sc{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:4px;cursor:pointer;color:var(--fg2);font-size:11.5px;transition:all 100ms}
-.sc:hover{background:var(--bg2);color:var(--accent)}
-.sc svg{flex-shrink:0}
-.kbd{margin-left:auto;font-size:9.5px;color:var(--fg3);background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:1px 5px;font-family:inherit}
+
+/* Action buttons */
+.btn{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:5px;cursor:pointer;color:var(--fg2);font-size:11.5px;transition:all 100ms;border:1px solid transparent;background:transparent}
+.btn:hover{background:var(--bg2);color:var(--accent);border-color:var(--border)}
+.btn svg{flex-shrink:0;color:var(--accent)}
+.kbd{margin-left:auto;font-size:9.5px;color:var(--fg3);background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:1px 5px;font-family:inherit;letter-spacing:.5px}
+
+/* Subtle section header */
+.hd{font-size:9.5px;color:var(--fg3);text-transform:uppercase;letter-spacing:1.2px;padding:8px 4px 3px;font-weight:600}
 </style>
 </head>
 <body>
-<div class="brand"><span class="a">roscode</span> <span class="b">studio</span></div>
-<div class="sub">AI-native IDE for ROS 2</div>
 
-<div class="card nostyle" id="status-card">
-  <div class="row">
+<div class="status">
+  <div class="srow">
     <span class="dot" id="cdot"></span>
     <span class="lbl" id="clbl">No robot connected</span>
     <span class="val" id="cval"></span>
   </div>
-</div>
-
-<div class="card nostyle" id="robots-card">
-  <div class="row">
+  <div class="srow">
     <span class="dot" id="rdot"></span>
-    <span class="lbl" id="rlbl">Network: idle</span>
-    <span class="val hl" id="rval">0</span>
+    <span class="lbl" id="rlbl">Network idle</span>
+    <span class="val hl" id="rval">—</span>
   </div>
 </div>
 
-<div class="title">Quick actions</div>
+<div class="hd">Actions</div>
 
-<div class="sc" data-cmd="roscode.focusAgent">
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-  <span>Ask the agent</span>
+<div class="btn" data-cmd="roscode.focusAgent">
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+  <span>Ask agent</span>
   <span class="kbd">⌘⇧A</span>
 </div>
 
-<div class="sc" data-cmd="roscode.discoverNetwork">
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 10v6M4.22 4.22l4.24 4.24m7.08 7.08l4.24 4.24M1 12h6m10 0h6M4.22 19.78l4.24-4.24m7.08-7.08l4.24-4.24"/></svg>
-  <span>Scan for ROS hosts</span>
+<div class="btn" data-cmd="roscode.discoverNetwork">
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12a7 7 0 0 1 14 0"/><path d="M8 12a4 4 0 0 1 8 0"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>
+  <span>Scan network</span>
 </div>
 
-<div class="sc" data-cmd="roscode.openNodeGraph">
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M7 6h10M6 8l5 8M18 8l-5 8"/></svg>
-  <span>Open node graph</span>
+<div class="btn" data-cmd="roscode.openNodeGraph">
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M7 6h10M6 8l5 8M18 8l-5 8"/></svg>
+  <span>Node graph</span>
   <span class="kbd">⌘⇧G</span>
 </div>
 
-<div class="sc" data-cmd="roscode.searchNodes">
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+<div class="btn" data-cmd="roscode.searchNodes">
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
   <span>Search nodes</span>
   <span class="kbd">⌘⇧N</span>
 </div>
 
+<div class="btn" data-cmd="roscode.searchLibrary">
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+  <span>Browse msg types</span>
+</div>
+
+<div class="btn" data-cmd="workbench.action.files.openFolder">
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+  <span>Open workspace…</span>
+</div>
+
 <script nonce="${n}">
 const vsc = acquireVsCodeApi();
-document.querySelectorAll('.sc').forEach(el => {
+document.querySelectorAll('.btn').forEach(el => {
   el.addEventListener('click', () => vsc.postMessage({ type:'command', command: el.dataset.cmd }));
 });
 const cdot = document.getElementById('cdot');
@@ -124,12 +133,27 @@ const rval = document.getElementById('rval');
 window.addEventListener('message', e => {
   const m = e.data;
   if(m.type === 'status'){
-    if(m.connected){ cdot.classList.add('on'); clbl.textContent='Connected'; cval.textContent = m.host + ' · ' + (m.rosVersion||'').toUpperCase(); cval.className='val hl'; }
-    else { cdot.classList.remove('on'); clbl.textContent='No robot connected'; cval.textContent=''; }
+    if(m.connected){
+      cdot.classList.add('on'); cdot.classList.remove('scan');
+      clbl.textContent = m.host || 'Connected';
+      cval.textContent = (m.rosVersion||'').toUpperCase();
+      cval.className = 'val hl';
+    } else {
+      cdot.classList.remove('on','scan');
+      clbl.textContent = 'No robot connected';
+      cval.textContent = '';
+    }
   } else if(m.type === 'robots'){
-    if(m.scanning){ rlbl.textContent='Scanning LAN…'; rdot.classList.remove('on'); }
-    else { rlbl.textContent = m.count > 0 ? 'Hosts found' : 'No hosts'; if(m.count>0)rdot.classList.add('on');else rdot.classList.remove('on'); }
-    rval.textContent = m.count;
+    if(m.scanning){
+      rdot.classList.add('scan'); rdot.classList.remove('on');
+      rlbl.textContent = 'Scanning LAN…';
+      rval.textContent = '—';
+    } else {
+      rdot.classList.remove('scan');
+      if(m.count > 0){ rdot.classList.add('on'); rlbl.textContent = 'Hosts on network'; }
+      else { rdot.classList.remove('on'); rlbl.textContent = 'No hosts found'; }
+      rval.textContent = m.count;
+    }
   }
 });
 </script>

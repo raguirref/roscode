@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import { NetworkProvider } from "./providers/NetworkProvider";
 import { TopicProvider } from "./providers/TopicProvider";
 import { NodeProvider } from "./providers/NodeProvider";
+import { LibraryProvider } from "./providers/LibraryProvider";
 import { AgentView } from "./views/AgentView";
 import { HomeView } from "./views/HomeView";
 import { NodeGraphPanel } from "./panels/NodeGraphPanel";
@@ -27,6 +28,7 @@ export async function activate(context: vscode.ExtensionContext) {
   const networkProvider = new NetworkProvider(context, rosConnection);
   const topicProvider   = new TopicProvider(rosConnection);
   const nodeProvider    = new NodeProvider(rosConnection);
+  const libraryProvider = new LibraryProvider();
 
   // Views
   const homeView  = new HomeView(context, rosConnection);
@@ -36,6 +38,7 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.window.registerTreeDataProvider("roscode.network", networkProvider),
     vscode.window.registerTreeDataProvider("roscode.topics",  topicProvider),
     vscode.window.registerTreeDataProvider("roscode.nodes",   nodeProvider),
+    vscode.window.registerTreeDataProvider("roscode.library", libraryProvider),
     vscode.window.registerWebviewViewProvider("roscode.home",  homeView),
     vscode.window.registerWebviewViewProvider("roscode.agent", agentView)
   );
@@ -129,7 +132,23 @@ export async function activate(context: vscode.ExtensionContext) {
     ),
     vscode.commands.registerCommand("roscode.inlineAsk", () =>
       inlineAsk(context, rosConnection)
-    )
+    ),
+    vscode.commands.registerCommand("roscode.searchLibrary", () => libraryProvider.search()),
+    vscode.commands.registerCommand("roscode.clearLibraryFilter", () => libraryProvider.clearFilter()),
+    vscode.commands.registerCommand("roscode.insertMessageType", async (msgType: string) => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) {
+        await vscode.env.clipboard.writeText(msgType);
+        vscode.window.showInformationMessage(`Copied "${msgType}" to clipboard`);
+        return;
+      }
+      await editor.edit((eb) => {
+        for (const sel of editor.selections) {
+          if (sel.isEmpty) eb.insert(sel.active, msgType);
+          else eb.replace(sel, msgType);
+        }
+      });
+    })
   );
 
   // Initial state contexts
@@ -140,17 +159,55 @@ export async function activate(context: vscode.ExtensionContext) {
   // Auto-scan on activation
   networkProvider.refresh();
 
-  // On first launch, open the agent + walkthrough
+  // On first launch, open the agent + walkthrough, and try to pin agent to right
   if (context.globalState.get("roscode.firstLaunch", true)) {
     context.globalState.update("roscode.firstLaunch", false);
-    setTimeout(() => {
-      vscode.commands.executeCommand("workbench.view.extension.roscode-agent");
-      vscode.commands.executeCommand(
+    setTimeout(async () => {
+      await vscode.commands.executeCommand("workbench.view.extension.roscode-agent");
+      await tryPinAgentToRight();
+      await vscode.commands.executeCommand(
         "workbench.action.openWalkthrough",
         { category: "roscode.roscode#roscode.gettingStarted" },
         false
       );
     }, 800);
+  } else {
+    // On every launch, ensure the aux bar is open so the agent is visible
+    setTimeout(() => tryPinAgentToRight().catch(() => {}), 600);
+  }
+}
+
+async function tryPinAgentToRight(): Promise<void> {
+  // Best-effort: try several undocumented commands to move the agent to the
+  // secondary (right) sidebar. If none work, show the aux bar and display a tip.
+  const candidates: Array<() => Thenable<unknown>> = [
+    () => vscode.commands.executeCommand("_workbench.action.moveViewToLocation", {
+      viewId: "roscode.agent", location: "workbench.parts.auxiliarybar",
+    }),
+    () => vscode.commands.executeCommand("workbench.action.moveView", {
+      from: "roscode.agent", to: "workbench.parts.auxiliarybar",
+    }),
+    () => vscode.commands.executeCommand("_workbench.moveViewToContainer", {
+      viewId: "roscode.agent", targetId: "workbench.panel.auxiliarybar",
+    }),
+  ];
+  let moved = false;
+  for (const c of candidates) {
+    try { await c(); moved = true; break; } catch {}
+  }
+  // Always ensure aux bar is visible so the user sees something on the right
+  try {
+    const isVisible = await vscode.commands.executeCommand("_getAuxiliaryBarVisibility");
+    if (!isVisible) await vscode.commands.executeCommand("workbench.action.toggleAuxiliaryBar");
+  } catch {
+    // Fallback: just toggle (may close if already open, but harmless for first run)
+    try { await vscode.commands.executeCommand("workbench.action.toggleAuxiliaryBar"); } catch {}
+  }
+  if (!moved) {
+    vscode.window.showInformationMessage(
+      "Pro tip: right-click the agent icon in the Activity Bar and choose 'Move Agent to Secondary Side Bar' for the Cursor-style layout.",
+      "Got it"
+    );
   }
 }
 

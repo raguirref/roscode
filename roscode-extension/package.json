@@ -33,7 +33,8 @@
         { "id": "roscode.home",    "name": "home",    "type": "webview" },
         { "id": "roscode.network", "name": "network" },
         { "id": "roscode.nodes",   "name": "nodes" },
-        { "id": "roscode.topics",  "name": "topics" }
+        { "id": "roscode.topics",  "name": "topics" },
+        { "id": "roscode.library", "name": "library" }
       ],
       "roscode-agent": [
         { "id": "roscode.agent",   "name": "agent",   "type": "webview" }
@@ -69,7 +70,10 @@
       { "command": "roscode.clearAgent",        "title": "Clear agent conversation",        "icon": "$(clear-all)" },
       { "command": "roscode.focusAgent",        "title": "Focus agent" },
       { "command": "roscode.revealAgent",       "title": "roscode: Show Agent Panel" },
-      { "command": "roscode.inlineAsk",         "title": "roscode: Inline agent (⌘K)",     "icon": "$(sparkle)" }
+      { "command": "roscode.inlineAsk",         "title": "roscode: Inline agent (⌘K)",     "icon": "$(sparkle)" },
+      { "command": "roscode.searchLibrary",     "title": "Search ROS library",              "icon": "$(search)" },
+      { "command": "roscode.clearLibraryFilter","title": "Clear library filter",            "icon": "$(clear-all)" },
+      { "command": "roscode.insertMessageType", "title": "Insert ROS message type" }
     ],
     "menus": {
       "view/title": [
@@ -79,6 +83,7 @@
         { "command": "roscode.openNodeGraph",    "when": "view == roscode.nodes",   "group": "navigation@3" },
         { "command": "roscode.refreshNodes",     "when": "view == roscode.topics",  "group": "navigation@1" },
         { "command": "roscode.openTopicMonitor", "when": "view == roscode.topics",  "group": "navigation@2" },
+        { "command": "roscode.searchLibrary",    "when": "view == roscode.library", "group": "navigation@1" },
         { "command": "roscode.clearAgent",       "when": "view == roscode.agent",   "group": "navigation@1" }
       ],
       "view/item/context": [

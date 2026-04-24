@@ -88,6 +88,10 @@ d["extensionsGallery"] = {
     "resourceUrlTemplate": "https://open-vsx.org/vscode/unpkg/{publisher}/{name}/{version}/{path}"
 }
 d["enableTelemetry"] = False
+# Clear file checksums so our modified workbench.html / bundled extension
+# don't trigger "Your installation appears to be corrupt" warning.
+d["checksums"] = {}
+d["checksumFailMoreInfoUrl"] = ""
 json.dump(d, open(p,"w"), indent=2)
 PY
 done_ok "product.json rebranded"

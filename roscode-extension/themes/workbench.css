@@ -46,6 +46,21 @@
   width: 52px !important;
   border-right: 1px solid var(--roscode-border) !important;
 }
+
+/* Hide default activity bar icons that clutter roscode's ROS focus.
+   We keep: Files, Search, roscode, agent.
+   We hide: Source Control (git), Run/Debug, Extensions, Testing, Accounts.
+   Users who need these can Cmd+Shift+P to access all commands. */
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Source Control" i],
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Run and Debug" i],
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Extensions" i],
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Testing" i],
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Accounts" i],
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Remote Explorer" i],
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="User Menu" i],
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Manage" i]:not([aria-label*="Settings" i]) {
+  display: none !important;
+}
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item {
   height: 44px !important;
   margin: 2px 0 !important;
@@ -316,30 +331,49 @@
   outline-offset: 1px !important;
 }
 
-/* ═══ roscode branding in empty-editor background ═══ */
-.monaco-workbench .empty .monaco-workbench-editor-dropTarget {
-  position: relative;
+/* ═══ Empty editor — replace VSCodium coral/letterpress with roscode brand ═══ */
+/* Hide the default SVG watermark (coral / cat / VS Code logo). */
+.monaco-workbench .editor-group-container.empty .letterpress,
+.monaco-workbench .editor-group-container.empty > .editor-group-watermark,
+.monaco-workbench .editor-group-container.empty > .editor-group-letterpress,
+.monaco-workbench .editor-group-container.empty .editor-group-watermark svg,
+.monaco-workbench .monaco-editor-background.letterpress {
+  display: none !important;
+  visibility: hidden !important;
 }
+
+.monaco-workbench .editor-group-container.empty {
+  position: relative !important;
+  background: var(--roscode-bg) !important;
+}
+
+/* Soft teal glow behind the brand */
 .monaco-workbench .editor-group-container.empty::before {
   content: "";
   position: absolute;
   top: 50%; left: 50%;
   transform: translate(-50%, -50%);
-  width: 120px;
-  height: 120px;
-  background-image: radial-gradient(circle, var(--roscode-accent-dim) 0%, transparent 70%);
-  opacity: 0.4;
+  width: 420px;
+  height: 420px;
+  background: radial-gradient(circle, var(--roscode-accent-dim) 0%, transparent 65%);
+  opacity: 0.45;
   pointer-events: none;
+  z-index: 0;
 }
+
+/* Watermark: "roscode studio" */
 .monaco-workbench .editor-group-container.empty::after {
   content: "roscode studio";
   position: absolute;
   top: 50%; left: 50%;
   transform: translate(-50%, -50%);
   color: var(--roscode-ink-faint);
-  font-size: 22px;
+  font-family: var(--vscode-font-family, -apple-system, system-ui, sans-serif);
+  font-size: 42px;
   font-weight: 700;
-  letter-spacing: -0.5px;
+  letter-spacing: -1.2px;
   pointer-events: none;
-  opacity: 0.5;
+  z-index: 1;
+  opacity: 0.35;
 }
+
