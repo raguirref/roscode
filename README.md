@@ -1,21 +1,78 @@
 # roscode studio
 
-> **Claude Opus 4.7 for ROS 2 robots.** Inspect, fix, and build robot software with natural language — from your IDE or terminal.
+> **A standalone AI-native IDE for ROS 2.** Not a plugin, not a wrapper — a full desktop IDE forked from VSCodium, rebranded and rebuilt around a Claude Opus 4.7 agent that understands your robot.
 
-Built for the **Built with Opus 4.7** hackathon (Anthropic + Cerebral Valley).
+Built for the **Built with Opus 4.7** hackathon (Anthropic + Cerebral Valley). Deadline: 2026-04-27 8PM EST.
+
+```
+┌─ ROSCODE/STUDIO ───────── Blueprint Ops · ROS 2 IDE · powered by Claude ─┐
+│                                                                          │
+│  FIL · HOM · NET · GRF · NOD · TOP · PLT · LIB · TRM · AGT              │
+│                                                                          │
+│   10-tab activity bar · amber HUD · embedded Python agent (15+ tools)   │
+│                                                                          │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+**Download:** grab `dist/roscode-studio-win32-x64.zip` (224 MB), extract anywhere, run `roscode-studio.exe`. No Python install required — the agent is bundled.
 
 ---
 
-## Two ways to use roscode
+## The journey — four branches, four iterations
 
-| | roscode studio extension | roscode CLI |
+The `studio` branch is the final deliverable, but the story is the iteration. Each branch on GitHub is a snapshot of a different answer to "how do you ship an AI IDE for ROS in 4 days?"
+
+| Branch | Commit snapshot | Answer we tried |
 |---|---|---|
-| **Form** | VS Code / VSCodium extension | Python command-line agent |
-| **Agent** | Claude Opus 4.7 via Anthropic SDK (TypeScript) | Claude Opus 4.7 via Anthropic SDK (Python) |
+| [`main`](https://github.com/raguirref/roscode/tree/main) | CLI hackathon original | **"It's a Python bot"** — 15+ tools, PID autotuning, confirmation gate, rich terminal UI. The brain. |
+| [`extension`](https://github.com/raguirref/roscode/tree/extension) | `67c4d26` | **"It's a VS Code extension"** — 13-tool agent sidebar, inline Cmd+K, AI library search. Works, but competes with VS Code's own chrome. |
+| [`tauri`](https://github.com/raguirref/roscode/tree/tauri) | `c847713` | **"It's a Tauri app"** — Svelte + Rust, Lima VM for ROS on Mac, live Cytoscape graph, own chrome. Too much scope for 4 days. |
+| [`studio`](https://github.com/raguirref/roscode/tree/studio) | HEAD | **"It's a fork of VSCodium"** — Cursor-style: patch the packaged binary, bake our extension as builtin, ship the Python agent as sidecar. Maximum credibility, minimum wheel-reinvention. |
+
+Each branch compiles and runs. Together they are the trail.
+
+---
+
+## The fork — `studio` branch
+
+```bash
+# Windows
+cd dist && unzip roscode-studio-win32-x64.zip && cd out && ./roscode-studio.exe
+```
+
+The activity bar maps 1:1 to Blueprint Ops wireframes (design ref: `.design-ref/`):
+
+| Tab | What it does |
+|---|---|
+| **FIL** · Files | VS Code Explorer (native, relabelled) |
+| **HOM** · Home | Connection status + New Project wizard + quick actions |
+| **NET** · Network | LAN scan for ROS 1 / ROS 2 daemons (ports 11311 / 7400-7402) |
+| **GRF** · Graph | Live ROS node graph inline, amber rects + dashed teal topics (rqt_graph replacement). Falls back to demo graph when offline. |
+| **NOD** · Nodes | Running node tree with search |
+| **TOP** · Topics | Active topics tree, click for echo |
+| **PLT** · Plot | Live canvas chart of any numeric field — presets for `/cmd_vel`, `/scan`, `/odom`, `/tf` (rqt_plot replacement). Falls back to sine+noise when offline. |
+| **LIB** · Library | Curated ROS 2 msg/srv/action catalog + ✨ AI GitHub package search |
+| **TRM** · Terminal | Integrated shell launcher with 10 ROS quick commands (node list, topic echo, colcon build, bag record) |
+| **AGT** · Agent | Streaming Claude Opus 4.7 chat with Confirm/Reject cards on every destructive tool |
+
+**Baked in:**
+- Custom VSCodium binary (nameShort / applicationName / 69 branded product.json fields)
+- Blueprint Ops CSS injected into `workbench.html` (amber HUD, mono labels, custom watermark)
+- roscode extension shipped as builtin (`resources/app/extensions/roscode/`)
+- Python agent as PyInstaller sidecar exe (`resources/app/sidecar/roscode-agent.exe`) — 15+ tools available even without host Python
+
+---
+
+## Two complementary forms
+
+| | roscode studio (fork) | roscode CLI |
+|---|---|---|
+| **Form** | Standalone IDE — forked VSCodium + custom extension + Python sidecar | Python command-line agent |
+| **Agent** | Claude Opus 4.7 via Anthropic SDK (TypeScript) in-IDE, plus Python sidecar for 15+ tool set | Claude Opus 4.7 via Anthropic SDK (Python) |
 | **Tools** | 13 (topics, nodes, files, shell, build, params, services) | 25+ (all of the above + PID tuning, signal analysis, safety envelope) |
-| **UI** | Streaming chat with Confirm/Reject cards | Rich terminal with diff previews |
+| **UI** | 10-tab Blueprint Ops activity bar with streaming chat + confirm/reject cards | Rich terminal with diff previews |
 | **ROS** | Connects to live robot over LAN or localhost Docker | Native or Docker/Podman container (transparent) |
-| **Install** | `code --install-extension roscode-0.1.0.vsix` | `pip install -e .` |
+| **Install** | Extract + run .exe | `pip install -e .` |
 
 ---
 
