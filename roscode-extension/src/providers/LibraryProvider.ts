@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import Anthropic from "@anthropic-ai/sdk";
 
 interface MessageDef {
   name: string;
@@ -158,6 +159,80 @@ export class LibraryProvider implements vscode.TreeDataProvider<LibItem> {
   }
 
   clearFilter(): void { this._filter = ""; this._onChange.fire(); }
+
+  async aiSearch(): Promise<void> {
+    const apiKey =
+      vscode.workspace.getConfiguration("roscode").get<string>("anthropicApiKey") ||
+      process.env.ANTHROPIC_API_KEY;
+
+    if (!apiKey) {
+      const choice = await vscode.window.showWarningMessage(
+        "Set your Anthropic API key to use AI package search.",
+        "Open Settings"
+      );
+      if (choice === "Open Settings") {
+        vscode.commands.executeCommand("workbench.action.openSettings", "roscode.anthropicApiKey");
+      }
+      return;
+    }
+
+    const query = await vscode.window.showInputBox({
+      prompt: "Describe what you need — e.g. 'lidar SLAM', 'object detection', 'MoveIt2 arm control'",
+      placeHolder: "Search ROS 2 packages on GitHub with AI…",
+      ignoreFocusOut: true,
+    });
+    if (!query) return;
+
+    await vscode.window.withProgress(
+      { location: vscode.ProgressLocation.Notification, title: "Searching ROS 2 packages…", cancellable: false },
+      async () => {
+        try {
+          const client = new Anthropic({ apiKey });
+          const res = await client.messages.create({
+            model: "claude-haiku-4-5-20251001",
+            max_tokens: 1024,
+            messages: [
+              {
+                role: "user",
+                content: `You are a ROS 2 package discovery assistant. Suggest 4-5 relevant open-source GitHub repositories for ROS 2 that match this query: "${query}".
+
+Return ONLY valid JSON, no prose:
+{"results":[{"name":"<pkg_name>","description":"<one sentence>","url":"https://github.com/<owner>/<repo>","topics":["<tag1>","<tag2>"]}]}
+
+Prefer well-maintained repositories with active development. Only suggest real, existing packages.`,
+              },
+            ],
+          });
+
+          const raw = res.content[0].type === "text" ? res.content[0].text : "";
+          const match = raw.match(/\{[\s\S]*\}/);
+          if (!match) throw new Error("No JSON in response");
+
+          const data: { results: Array<{ name: string; description: string; url: string; topics: string[] }> } =
+            JSON.parse(match[0]);
+
+          const picks = data.results.map((r) => ({
+            label: `$(github) ${r.name}`,
+            description: r.topics.slice(0, 3).join(", "),
+            detail: r.description,
+            url: r.url,
+          }));
+
+          const selected = await vscode.window.showQuickPick(picks, {
+            placeHolder: `AI found ${picks.length} packages for "${query}" — pick one to open on GitHub`,
+            matchOnDescription: true,
+            matchOnDetail: true,
+          });
+
+          if (selected) {
+            vscode.env.openExternal(vscode.Uri.parse(selected.url));
+          }
+        } catch (e: any) {
+          vscode.window.showErrorMessage(`AI search failed: ${e.message ?? e}`);
+        }
+      }
+    );
+  }
 }
 
 type LibItem = PackageItem | MessageItem | FieldItem;

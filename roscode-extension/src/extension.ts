@@ -1,4 +1,8 @@
 import * as vscode from "vscode";
+import * as path from "path";
+import * as fs from "fs";
+import { exec } from "child_process";
+import { promisify } from "util";
 import { NetworkProvider } from "./providers/NetworkProvider";
 import { TopicProvider } from "./providers/TopicProvider";
 import { NodeProvider } from "./providers/NodeProvider";
@@ -7,9 +11,11 @@ import { AgentView } from "./views/AgentView";
 import { HomeView } from "./views/HomeView";
 import { NodeGraphPanel } from "./panels/NodeGraphPanel";
 import { TopicMonitorPanel } from "./panels/TopicMonitorPanel";
-import { RosConnection } from "./ros/connection";
+import { RosConnection, RobotInfo } from "./ros/connection";
 import { applyWorkbenchBranding } from "./branding/workbenchBrand";
 import { inlineAsk } from "./agent/inlineAsk";
+
+const execAsync = promisify(exec);
 
 export let rosConnection: RosConnection;
 
@@ -135,6 +141,8 @@ export async function activate(context: vscode.ExtensionContext) {
     ),
     vscode.commands.registerCommand("roscode.searchLibrary", () => libraryProvider.search()),
     vscode.commands.registerCommand("roscode.clearLibraryFilter", () => libraryProvider.clearFilter()),
+    vscode.commands.registerCommand("roscode.aiSearchLibrary", () => libraryProvider.aiSearch()),
+    vscode.commands.registerCommand("roscode.startRuntime", () => startRuntime(rosConnection)),
     vscode.commands.registerCommand("roscode.insertMessageType", async (msgType: string) => {
       const editor = vscode.window.activeTextEditor;
       if (!editor) {
@@ -245,6 +253,88 @@ async function applyFirstRunDefaults(context: vscode.ExtensionContext) {
     } catch {}
   }
   context.globalState.update("roscode.defaultsApplied", true);
+}
+
+async function startRuntime(ros: RosConnection): Promise<void> {
+  const ws = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  if (!ws) {
+    vscode.window.showWarningMessage("Open a roscode workspace folder first.");
+    return;
+  }
+
+  const composeFile = path.join(ws, "runtime", "docker-compose.yml");
+  if (!fs.existsSync(composeFile)) {
+    const choice = await vscode.window.showWarningMessage(
+      "No runtime/docker-compose.yml found. Create one from the roscode template?",
+      "Create", "Cancel"
+    );
+    if (choice !== "Create") return;
+    fs.mkdirSync(path.join(ws, "runtime"), { recursive: true });
+    fs.writeFileSync(composeFile, defaultDockerCompose());
+    vscode.window.showInformationMessage("Created runtime/docker-compose.yml — starting ROS…");
+  }
+
+  await vscode.window.withProgress(
+    { location: vscode.ProgressLocation.Notification, title: "Starting ROS runtime…", cancellable: false },
+    async (progress) => {
+      try {
+        progress.report({ message: "docker compose up -d…" });
+        await execAsync("docker compose up -d", { cwd: path.join(ws, "runtime"), timeout: 60_000 });
+
+        progress.report({ message: "Waiting for ROS daemon…" });
+        // Poll until ros2 topic list works (up to 30s)
+        let ready = false;
+        for (let i = 0; i < 6; i++) {
+          await delay(5000);
+          try {
+            await execAsync("docker compose exec ros bash -c 'source /opt/ros/humble/setup.bash && ros2 topic list'",
+              { cwd: path.join(ws, "runtime"), timeout: 8_000 });
+            ready = true;
+            break;
+          } catch { /* still starting */ }
+        }
+
+        if (!ready) {
+          vscode.window.showWarningMessage("ROS container started but daemon not responding yet. Try connecting manually.");
+          return;
+        }
+
+        // Connect as a local ROS2 robot
+        const robot: RobotInfo = {
+          ip: "127.0.0.1",
+          hostname: "localhost (Docker)",
+          rosVersion: "ros2",
+          domainId: 0,
+        };
+        await ros.connect(robot);
+        vscode.window.showInformationMessage("ROS 2 runtime started and connected.");
+      } catch (e: any) {
+        vscode.window.showErrorMessage(`Start ROS failed: ${e.message ?? e}`);
+      }
+    }
+  );
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function defaultDockerCompose(): string {
+  return `services:
+  ros:
+    image: ros:humble
+    network_mode: host
+    environment:
+      - ROS_DOMAIN_ID=0
+    command: >
+      bash -c "
+        source /opt/ros/humble/setup.bash &&
+        ros2 daemon start &&
+        echo 'ROS 2 Humble ready' &&
+        tail -f /dev/null
+      "
+    restart: unless-stopped
+`;
 }
 
 export function deactivate() {

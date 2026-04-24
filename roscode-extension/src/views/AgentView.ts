@@ -3,12 +3,16 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { RosConnection } from "../ros/connection";
 import { getAgentTools, dispatchTool, toolDisplayMeta } from "../agent/tools";
 
+// Tools that mutate the workspace, run commands, or change robot state — require explicit user confirmation.
+const DESTRUCTIVE_TOOLS = new Set(["write_file", "shell", "colcon_build", "param_set", "package_scaffold"]);
+
 export class AgentView implements vscode.WebviewViewProvider {
   public static readonly viewType = "roscode.agent";
   private _view?: vscode.WebviewView;
   private _client: Anthropic | undefined;
   private _messages: Anthropic.MessageParam[] = [];
   private _running = false;
+  private _confirmPending = new Map<string, (ok: boolean) => void>();
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -33,6 +37,9 @@ export class AgentView implements vscode.WebviewViewProvider {
 
   clear(): void {
     this._messages = [];
+    // Reject any pending confirmations so the agentic loop doesn't hang
+    for (const resolve of this._confirmPending.values()) resolve(false);
+    this._confirmPending.clear();
     this._post({ type: "reset" });
   }
 
@@ -51,6 +58,12 @@ export class AgentView implements vscode.WebviewViewProvider {
       if (!this._running) await this._run(msg.text);
     } else if (msg.type === "clear") {
       this.clear();
+    } else if (msg.type === "toolConfirm") {
+      this._confirmPending.get(msg.id)?.(true);
+      this._confirmPending.delete(msg.id);
+    } else if (msg.type === "toolReject") {
+      this._confirmPending.get(msg.id)?.(false);
+      this._confirmPending.delete(msg.id);
     } else if (msg.type === "runCommand" && msg.command) {
       vscode.commands.executeCommand(msg.command, ...(msg.args ?? []));
     } else if (msg.type === "openSettings") {
@@ -90,9 +103,31 @@ export class AgentView implements vscode.WebviewViewProvider {
 
         for (const blk of res.content) {
           if (blk.type === "text" && blk.text) this._post({ type: "text", text: blk.text });
+
           if (blk.type === "tool_use") {
             const meta = toolDisplayMeta(blk.name);
-            this._post({ type: "tool", id: blk.id, name: blk.name, input: blk.input, meta });
+            const isDestructive = DESTRUCTIVE_TOOLS.has(blk.name);
+
+            this._post({ type: "tool", id: blk.id, name: blk.name, input: blk.input, meta, needsConfirm: isDestructive });
+
+            if (isDestructive) {
+              // Pause execution — wait for user to click Confirm or Reject in the webview
+              const confirmed = await new Promise<boolean>((resolve) => {
+                this._confirmPending.set(blk.id, resolve);
+              });
+
+              if (!confirmed) {
+                this._post({ type: "toolRejected", id: blk.id });
+                this._messages.push({
+                  role: "user",
+                  content: [{ type: "tool_result", tool_use_id: blk.id, content: "User rejected this action." }],
+                });
+                continue;
+              }
+
+              this._post({ type: "toolConfirmed", id: blk.id });
+            }
+
             const result = await dispatchTool(blk.name, blk.input as any, this.ros, ws);
             this._post({ type: "toolResult", id: blk.id, name: blk.name, result });
             this._messages.push({
@@ -123,7 +158,7 @@ export class AgentView implements vscode.WebviewViewProvider {
   --accent:#4cc9f0; --accent-dim:#4cc9f060;
   --bg:#0a0e14; --bg2:#0d1520; --bg3:#111b2b;
   --fg:#c9d1d9; --fg2:#8b9ab0; --fg3:#3d4a5c;
-  --border:#141e2e; --red:#f87171; --green:#3dd68c;
+  --border:#141e2e; --red:#f87171; --red-dim:#f8717140; --green:#3dd68c; --green-dim:#3dd68c40;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
@@ -151,11 +186,14 @@ body{
 .m.ai{align-self:flex-start;color:var(--fg);white-space:pre-wrap;font-size:12.5px;padding:2px 2px 6px;max-width:94%}
 .m.ai code{background:var(--bg2);padding:1px 5px;border-radius:3px;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11.5px;color:var(--accent)}
 
-/* Tool card — this is the "drastically improved" tool display */
+/* Tool card */
 .tool{
   background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:8px 10px;font-size:11.5px;
   display:flex;flex-direction:column;gap:4px;align-self:flex-start;max-width:95%;
 }
+.tool.destructive{border-color:#2a1f0a}
+.tool.destructive.confirmed{border-color:var(--green-dim)}
+.tool.destructive.rejected{border-color:var(--red-dim);opacity:.65}
 .tool .row1{display:flex;align-items:center;gap:7px}
 .tool .icon{width:16px;height:16px;display:flex;align-items:center;justify-content:center;color:var(--accent);flex-shrink:0}
 .tool .title{font-weight:600;color:var(--fg)}
@@ -163,12 +201,23 @@ body{
 .tool .sub .s-dot{width:4px;height:4px;border-radius:50%;background:var(--fg3)}
 .tool .sub.done .s-dot{background:var(--green)}
 .tool .sub.err .s-dot{background:var(--red)}
+.tool .sub.rejected-st .s-dot{background:var(--red)}
 .tool .body{color:var(--fg2);font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;white-space:pre-wrap;background:var(--bg);padding:6px 8px;border-radius:4px;max-height:120px;overflow-y:auto;line-height:1.5;border:1px solid var(--border)}
 .tool .body.collapsed{display:none}
 .tool .toggle{cursor:pointer;color:var(--fg3);font-size:10px;user-select:none;padding:2px 0}
 .tool .toggle:hover{color:var(--accent)}
 .tool .arg{color:var(--fg3);font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10.5px;margin-left:23px}
 .tool .arg .k{color:var(--fg2)}
+
+/* Confirmation row */
+.confirm-row{display:flex;align-items:center;gap:6px;margin-top:2px;padding:4px 0 2px}
+.confirm-row .warn{font-size:10.5px;color:#f5cb5c;flex:1;display:flex;align-items:center;gap:5px}
+.confirm-row .warn svg{flex-shrink:0}
+.btn-confirm,.btn-reject{font-size:10.5px;padding:3px 10px;border-radius:4px;border:1px solid;cursor:pointer;font-family:inherit;font-weight:600;transition:all 100ms;flex-shrink:0}
+.btn-confirm{background:var(--green-dim);border-color:var(--green);color:var(--green)}
+.btn-confirm:hover{background:var(--green);color:#060809}
+.btn-reject{background:var(--red-dim);border-color:var(--red);color:var(--red)}
+.btn-reject:hover{background:var(--red);color:#060809}
 
 /* Thinking */
 .thinking{display:flex;align-items:center;gap:6px;color:var(--fg3);font-size:11px;padding:3px 0 3px 2px}
@@ -278,56 +327,94 @@ function iconHtml(icon){
   return '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg>';
 }
 
-function addTool(id,name,input,meta){
+const WARN_ICON = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+
+function addTool(id, name, input, meta, needsConfirm){
   show();
-  const d=mk('div','tool');d.id='tool-'+id;
-  const argStr = Object.keys(input||{}).map(k => {
+  const d = mk('div', 'tool' + (needsConfirm ? ' destructive' : ''));
+  d.id = 'tool-' + id;
+  const argStr = Object.keys(input || {}).map(k => {
     const v = String(input[k]);
     const trimmed = v.length > 40 ? v.slice(0, 40) + '…' : v;
-    return '<span class="k">'+esc(k)+':</span> '+esc(trimmed);
+    return '<span class="k">' + esc(k) + ':</span> ' + esc(trimmed);
   }).join('  ');
+
+  const statusText = needsConfirm ? 'awaiting confirmation' : 'running…';
   d.innerHTML =
-    '<div class="row1">'+
-      '<span class="icon">'+iconHtml(meta?.icon||'default')+'</span>'+
-      '<span class="title">'+esc(meta?.label || name)+'</span>'+
-      '<span class="sub"><span class="s-dot"></span><span class="s-text">running…</span></span>'+
-    '</div>'+
-    (argStr ? '<div class="arg">'+argStr+'</div>' : '')+
-    '<div class="toggle" data-for="'+id+'">▸ output</div>'+
-    '<div class="body collapsed" id="body-'+id+'"></div>';
-  feed.appendChild(d);scroll();
-  d.querySelector('.toggle').addEventListener('click',e=>{
-    const b=document.getElementById('body-'+id);b.classList.toggle('collapsed');
+    '<div class="row1">' +
+      '<span class="icon">' + iconHtml(meta?.icon || 'default') + '</span>' +
+      '<span class="title">' + esc(meta?.label || name) + '</span>' +
+      '<span class="sub"><span class="s-dot"></span><span class="s-text">' + statusText + '</span></span>' +
+    '</div>' +
+    (argStr ? '<div class="arg">' + argStr + '</div>' : '') +
+    (needsConfirm
+      ? '<div class="confirm-row" id="cr-' + id + '">' +
+          '<span class="warn">' + WARN_ICON + 'destructive — requires confirmation</span>' +
+          '<button class="btn-confirm" id="ok-' + id + '">Run</button>' +
+          '<button class="btn-reject" id="no-' + id + '">Reject</button>' +
+        '</div>'
+      : '') +
+    '<div class="toggle" data-for="' + id + '">▸ output</div>' +
+    '<div class="body collapsed" id="body-' + id + '"></div>';
+
+  feed.appendChild(d);
+  scroll();
+
+  if (needsConfirm) {
+    document.getElementById('ok-' + id).addEventListener('click', () => {
+      vsc.postMessage({ type: 'toolConfirm', id });
+      document.getElementById('cr-' + id)?.remove();
+      const sub = d.querySelector('.s-text'); if (sub) sub.textContent = 'running…';
+    });
+    document.getElementById('no-' + id).addEventListener('click', () => {
+      vsc.postMessage({ type: 'toolReject', id });
+      document.getElementById('cr-' + id)?.remove();
+    });
+  }
+
+  d.querySelector('.toggle').addEventListener('click', e => {
+    const b = document.getElementById('body-' + id);
+    b.classList.toggle('collapsed');
     e.target.textContent = b.classList.contains('collapsed') ? '▸ output' : '▾ output';
   });
 }
 
 function setToolResult(id, result, name){
-  const b = document.getElementById('body-'+id);
-  if(!b) return;
+  const b = document.getElementById('body-' + id);
+  if (!b) return;
   const r = String(result || '(no output)').slice(0, 2000);
   b.textContent = r;
-  const tool = document.getElementById('tool-'+id);
+  const tool = document.getElementById('tool-' + id);
   const sub = tool?.querySelector('.sub');
   const txt = tool?.querySelector('.s-text');
-  if(sub){
+  if (sub) {
     sub.classList.add('done');
-    if(txt){
-      const lines = r.split('\\n').filter(x=>x.trim()).length;
-      txt.textContent = lines > 0 ? lines+' line'+(lines===1?'':'s') : 'done';
+    if (txt) {
+      const lines = r.split('\\n').filter(x => x.trim()).length;
+      txt.textContent = lines > 0 ? lines + ' line' + (lines === 1 ? '' : 's') : 'done';
     }
   }
+  tool?.classList.add('confirmed');
+}
+
+function setToolRejected(id){
+  const tool = document.getElementById('tool-' + id);
+  if (!tool) return;
+  tool.classList.add('rejected');
+  const sub = tool.querySelector('.sub');
+  const txt = tool.querySelector('.s-text');
+  if (sub) { sub.classList.add('rejected-st'); if (txt) txt.textContent = 'rejected'; }
 }
 
 function addError(t){
   show();
-  const d=mk('div','banner err');d.textContent=t;feed.appendChild(d);scroll();
+  const d = mk('div','banner err'); d.textContent = t; feed.appendChild(d); scroll();
 }
 function addNeedKey(){
   show();
-  const d=mk('div','banner warn');
-  d.innerHTML='Set your Anthropic API key to use the agent. <a id="skey">Open settings →</a>';
-  feed.appendChild(d);scroll();
+  const d = mk('div','banner warn');
+  d.innerHTML = 'Set your Anthropic API key to use the agent. <a id="skey">Open settings →</a>';
+  feed.appendChild(d); scroll();
   document.getElementById('skey').onclick = () => vsc.postMessage({type:'openSettings'});
   setBusy(false);
 }
@@ -343,30 +430,32 @@ document.querySelectorAll('.sg').forEach(el=>{
 
 function doSend(){
   const t = inp.value.trim();
-  if(!t || busy) return;
-  inp.value=''; inp.style.height='auto';
+  if (!t || busy) return;
+  inp.value = ''; inp.style.height = 'auto';
   addUser(t); setBusy(true);
-  vsc.postMessage({type:'send', text:t});
+  vsc.postMessage({type: 'send', text: t});
 }
 
 window.addEventListener('message', e => {
   const m = e.data;
   switch(m.type){
-    case 'thinking': addThinking(); break;
-    case 'text': removeThinking(); aiAppend(m.text); break;
-    case 'tool': removeThinking(); aiDone(); addTool(m.id, m.name, m.input, m.meta); break;
-    case 'toolResult': setToolResult(m.id, m.result, m.name); break;
-    case 'error': removeThinking(); addError(m.text); setBusy(false); break;
-    case 'done': aiDone(); removeThinking(); setBusy(false); break;
+    case 'thinking':      addThinking(); break;
+    case 'text':          removeThinking(); aiAppend(m.text); break;
+    case 'tool':          removeThinking(); aiDone(); addTool(m.id, m.name, m.input, m.meta, m.needsConfirm); break;
+    case 'toolConfirmed': /* card already updated in addTool's button handler */ break;
+    case 'toolResult':    setToolResult(m.id, m.result, m.name); break;
+    case 'toolRejected':  setToolRejected(m.id); break;
+    case 'error':         removeThinking(); addError(m.text); setBusy(false); break;
+    case 'done':          aiDone(); removeThinking(); setBusy(false); break;
     case 'status': {
       const on = m.status === 'connected';
       pill.className = 'pill' + (on ? ' on' : '');
       pillText.textContent = on ? m.host : 'offline';
       break;
     }
-    case 'needKey': removeThinking(); addNeedKey(); break;
-    case 'prefill': inp.value = m.text; inp.focus(); break;
-    case 'reset': feed.innerHTML=''; hide(); break;
+    case 'needKey':  removeThinking(); addNeedKey(); break;
+    case 'prefill':  inp.value = m.text; inp.focus(); break;
+    case 'reset':    feed.innerHTML = ''; hide(); break;
   }
 });
 
@@ -393,7 +482,7 @@ function systemPrompt(ros: RosConnection, ws: string): string {
 ${conn}
 Workspace: ${ws || "none"}
 
-Tools available: list_topics, echo_topic, list_nodes, get_node_graph, read_file, write_file, shell, colcon_build.
+Tools available: list_topics, echo_topic, topic_hz, list_nodes, get_node_graph, param_get, param_set, service_call, read_file, write_file, package_scaffold, shell, colcon_build.
 When asked to fix something, do it: read the file, make the change, briefly explain why.
 Use markdown sparingly — backticks for code/paths, bold for emphasis. No headers or bullet spam.
 Confirm before running destructive shell commands (rm, git reset, kill).`;

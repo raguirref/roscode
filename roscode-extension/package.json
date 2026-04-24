@@ -1,18 +1,28 @@
 {
   "name": "roscode",
   "displayName": "roscode studio",
-  "description": "AI-native IDE for ROS 2 — Claude Opus 4.7 + network discovery + live node graph",
+  "description": "AI-native IDE for ROS 2 \u2014 Claude Opus 4.7 + network discovery + live node graph",
   "version": "0.1.0",
   "publisher": "roscode",
   "license": "MIT",
-  "engines": { "vscode": "^1.85.0" },
-  "categories": ["Other"],
-  "activationEvents": ["onStartupFinished"],
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./dist/extension.js",
   "icon": "media/icon.png",
   "contributes": {
     "themes": [
-      { "label": "roscode dark", "uiTheme": "vs-dark", "path": "./themes/roscode-dark.json" }
+      {
+        "label": "roscode dark",
+        "uiTheme": "vs-dark",
+        "path": "./themes/roscode-dark.json"
+      }
     ],
     "viewsContainers": {
       "activitybar": [
@@ -30,107 +40,282 @@
     },
     "views": {
       "roscode-primary": [
-        { "id": "roscode.home",    "name": "home",    "type": "webview" },
-        { "id": "roscode.network", "name": "network" },
-        { "id": "roscode.nodes",   "name": "nodes" },
-        { "id": "roscode.topics",  "name": "topics" },
-        { "id": "roscode.library", "name": "library" }
+        {
+          "id": "roscode.home",
+          "name": "home",
+          "type": "webview"
+        },
+        {
+          "id": "roscode.network",
+          "name": "network"
+        },
+        {
+          "id": "roscode.nodes",
+          "name": "nodes"
+        },
+        {
+          "id": "roscode.topics",
+          "name": "topics"
+        },
+        {
+          "id": "roscode.library",
+          "name": "library"
+        }
       ],
       "roscode-agent": [
-        { "id": "roscode.agent",   "name": "agent",   "type": "webview" }
+        {
+          "id": "roscode.agent",
+          "name": "agent",
+          "type": "webview"
+        }
       ]
     },
     "viewsWelcome": [
       {
         "view": "roscode.network",
-        "contents": "No robots detected on your LAN.\n[↻ Scan network](command:roscode.discoverNetwork)\n\nroscode scans ports 11311 (ROS 1) and 7400-7402 (ROS 2 DDS) on your subnet.",
+        "contents": "No robots detected on your LAN.\n[\u21bb Scan network](command:roscode.discoverNetwork)\n\nroscode scans ports 11311 (ROS 1) and 7400-7402 (ROS 2 DDS) on your subnet.",
         "when": "!roscode.scanning && roscode.robotCount == 0"
       },
       {
         "view": "roscode.nodes",
-        "contents": "Connect to a robot first.\n[↻ Refresh](command:roscode.refreshNodes)",
+        "contents": "Connect to a robot first.\n[\u21bb Refresh](command:roscode.refreshNodes)",
         "when": "!roscode.connected"
       },
       {
         "view": "roscode.topics",
-        "contents": "Connect to a robot first.\n[↻ Refresh](command:roscode.refreshNodes)",
+        "contents": "Connect to a robot first.\n[\u21bb Refresh](command:roscode.refreshNodes)",
         "when": "!roscode.connected"
       }
     ],
     "commands": [
-      { "command": "roscode.openAgent",         "title": "roscode: Open Agent",            "icon": "$(comment-discussion)" },
-      { "command": "roscode.openNodeGraph",     "title": "roscode: Open Node Graph",       "icon": "$(type-hierarchy)" },
-      { "command": "roscode.openTopicMonitor",  "title": "roscode: Open Topic Monitor",    "icon": "$(pulse)" },
-      { "command": "roscode.discoverNetwork",   "title": "Scan network",                    "icon": "$(search-refresh)" },
-      { "command": "roscode.connectRobot",      "title": "Connect",                         "icon": "$(plug)" },
-      { "command": "roscode.disconnectRobot",   "title": "Disconnect",                      "icon": "$(debug-disconnect)" },
-      { "command": "roscode.refreshNodes",      "title": "Refresh",                         "icon": "$(refresh)" },
-      { "command": "roscode.searchNodes",       "title": "Search nodes",                    "icon": "$(search)" },
-      { "command": "roscode.echoTopic",         "title": "Monitor",                         "icon": "$(pulse)" },
-      { "command": "roscode.clearAgent",        "title": "Clear agent conversation",        "icon": "$(clear-all)" },
-      { "command": "roscode.focusAgent",        "title": "Focus agent" },
-      { "command": "roscode.revealAgent",       "title": "roscode: Show Agent Panel" },
-      { "command": "roscode.inlineAsk",         "title": "roscode: Inline agent (⌘K)",     "icon": "$(sparkle)" },
-      { "command": "roscode.searchLibrary",     "title": "Search ROS library",              "icon": "$(search)" },
-      { "command": "roscode.clearLibraryFilter","title": "Clear library filter",            "icon": "$(clear-all)" },
-      { "command": "roscode.insertMessageType", "title": "Insert ROS message type" }
+      {
+        "command": "roscode.openAgent",
+        "title": "roscode: Open Agent",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "roscode.openNodeGraph",
+        "title": "roscode: Open Node Graph",
+        "icon": "$(type-hierarchy)"
+      },
+      {
+        "command": "roscode.openTopicMonitor",
+        "title": "roscode: Open Topic Monitor",
+        "icon": "$(pulse)"
+      },
+      {
+        "command": "roscode.discoverNetwork",
+        "title": "Scan network",
+        "icon": "$(search-refresh)"
+      },
+      {
+        "command": "roscode.connectRobot",
+        "title": "Connect",
+        "icon": "$(plug)"
+      },
+      {
+        "command": "roscode.disconnectRobot",
+        "title": "Disconnect",
+        "icon": "$(debug-disconnect)"
+      },
+      {
+        "command": "roscode.refreshNodes",
+        "title": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "roscode.searchNodes",
+        "title": "Search nodes",
+        "icon": "$(search)"
+      },
+      {
+        "command": "roscode.echoTopic",
+        "title": "Monitor",
+        "icon": "$(pulse)"
+      },
+      {
+        "command": "roscode.clearAgent",
+        "title": "Clear agent conversation",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "roscode.focusAgent",
+        "title": "Focus agent"
+      },
+      {
+        "command": "roscode.revealAgent",
+        "title": "roscode: Show Agent Panel"
+      },
+      {
+        "command": "roscode.inlineAsk",
+        "title": "roscode: Inline agent (\u2318K)",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "roscode.searchLibrary",
+        "title": "Search ROS library",
+        "icon": "$(search)"
+      },
+      {
+        "command": "roscode.clearLibraryFilter",
+        "title": "Clear library filter",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "roscode.insertMessageType",
+        "title": "Insert ROS message type"
+      },
+      {
+        "command": "roscode.aiSearchLibrary",
+        "title": "\u2728 AI Search",
+        "category": "roscode",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "roscode.startRuntime",
+        "title": "Start ROS Runtime",
+        "category": "roscode",
+        "icon": "$(play)"
+      }
     ],
     "menus": {
       "view/title": [
-        { "command": "roscode.discoverNetwork",  "when": "view == roscode.network", "group": "navigation@1" },
-        { "command": "roscode.refreshNodes",     "when": "view == roscode.nodes",   "group": "navigation@1" },
-        { "command": "roscode.searchNodes",      "when": "view == roscode.nodes",   "group": "navigation@2" },
-        { "command": "roscode.openNodeGraph",    "when": "view == roscode.nodes",   "group": "navigation@3" },
-        { "command": "roscode.refreshNodes",     "when": "view == roscode.topics",  "group": "navigation@1" },
-        { "command": "roscode.openTopicMonitor", "when": "view == roscode.topics",  "group": "navigation@2" },
-        { "command": "roscode.searchLibrary",    "when": "view == roscode.library", "group": "navigation@1" },
-        { "command": "roscode.clearAgent",       "when": "view == roscode.agent",   "group": "navigation@1" }
+        {
+          "command": "roscode.discoverNetwork",
+          "when": "view == roscode.network",
+          "group": "navigation@1"
+        },
+        {
+          "command": "roscode.refreshNodes",
+          "when": "view == roscode.nodes",
+          "group": "navigation@1"
+        },
+        {
+          "command": "roscode.searchNodes",
+          "when": "view == roscode.nodes",
+          "group": "navigation@2"
+        },
+        {
+          "command": "roscode.openNodeGraph",
+          "when": "view == roscode.nodes",
+          "group": "navigation@3"
+        },
+        {
+          "command": "roscode.refreshNodes",
+          "when": "view == roscode.topics",
+          "group": "navigation@1"
+        },
+        {
+          "command": "roscode.openTopicMonitor",
+          "when": "view == roscode.topics",
+          "group": "navigation@2"
+        },
+        {
+          "command": "roscode.searchLibrary",
+          "when": "view == roscode.library",
+          "group": "navigation@1"
+        },
+        {
+          "command": "roscode.clearAgent",
+          "when": "view == roscode.agent",
+          "group": "navigation@1"
+        },
+        {
+          "command": "roscode.aiSearchLibrary",
+          "when": "view == roscode.library",
+          "group": "navigation@2"
+        }
       ],
       "view/item/context": [
-        { "command": "roscode.connectRobot",    "when": "viewItem == robot-disconnected", "group": "inline" },
-        { "command": "roscode.disconnectRobot", "when": "viewItem == robot-connected",    "group": "inline" },
-        { "command": "roscode.echoTopic",       "when": "viewItem == topic",              "group": "inline" }
+        {
+          "command": "roscode.connectRobot",
+          "when": "viewItem == robot-disconnected",
+          "group": "inline"
+        },
+        {
+          "command": "roscode.disconnectRobot",
+          "when": "viewItem == robot-connected",
+          "group": "inline"
+        },
+        {
+          "command": "roscode.echoTopic",
+          "when": "viewItem == topic",
+          "group": "inline"
+        }
       ]
     },
     "keybindings": [
-      { "command": "roscode.focusAgent",    "key": "ctrl+shift+a", "mac": "cmd+shift+a" },
-      { "command": "roscode.openNodeGraph", "key": "ctrl+shift+g", "mac": "cmd+shift+g" },
-      { "command": "roscode.searchNodes",   "key": "ctrl+shift+n", "mac": "cmd+shift+n" },
-      { "command": "roscode.inlineAsk",     "key": "ctrl+k",        "mac": "cmd+k",       "when": "editorTextFocus" }
+      {
+        "command": "roscode.focusAgent",
+        "key": "ctrl+shift+a",
+        "mac": "cmd+shift+a"
+      },
+      {
+        "command": "roscode.openNodeGraph",
+        "key": "ctrl+shift+g",
+        "mac": "cmd+shift+g"
+      },
+      {
+        "command": "roscode.searchNodes",
+        "key": "ctrl+shift+n",
+        "mac": "cmd+shift+n"
+      },
+      {
+        "command": "roscode.inlineAsk",
+        "key": "ctrl+k",
+        "mac": "cmd+k",
+        "when": "editorTextFocus"
+      }
     ],
     "walkthroughs": [
       {
         "id": "roscode.gettingStarted",
         "title": "Welcome to roscode studio",
-        "description": "AI-native IDE for ROS 2 · powered by Claude Opus 4.7",
+        "description": "AI-native IDE for ROS 2 \u00b7 powered by Claude Opus 4.7",
         "steps": [
           {
             "id": "roscode.step.apiKey",
             "title": "Set your Anthropic API key",
             "description": "roscode uses Claude Opus 4.7 as its brain. Add your API key to start.\n[Open settings](command:workbench.action.openSettings?%22roscode.anthropicApiKey%22)",
-            "media": { "markdown": "media/walkthrough/api-key.md" },
-            "completionEvents": ["onSettingChanged:roscode.anthropicApiKey"]
+            "media": {
+              "markdown": "media/walkthrough/api-key.md"
+            },
+            "completionEvents": [
+              "onSettingChanged:roscode.anthropicApiKey"
+            ]
           },
           {
             "id": "roscode.step.discover",
             "title": "Discover robots on your network",
-            "description": "roscode auto-scans your LAN for running ROS 1 / ROS 2 nodes. One click to connect — no env vars to set manually.\n[Scan network](command:roscode.discoverNetwork)",
-            "media": { "markdown": "media/walkthrough/discover.md" },
-            "completionEvents": ["onCommand:roscode.discoverNetwork"]
+            "description": "roscode auto-scans your LAN for running ROS 1 / ROS 2 nodes. One click to connect \u2014 no env vars to set manually.\n[Scan network](command:roscode.discoverNetwork)",
+            "media": {
+              "markdown": "media/walkthrough/discover.md"
+            },
+            "completionEvents": [
+              "onCommand:roscode.discoverNetwork"
+            ]
           },
           {
             "id": "roscode.step.agent",
             "title": "Meet your agent",
-            "description": "Press **⌘⇧A** to focus the agent. Ask it to read topics, fix nodes, or build packages — it can see your workspace and your running ROS graph.\n[Open agent](command:roscode.focusAgent)",
-            "media": { "markdown": "media/walkthrough/agent.md" },
-            "completionEvents": ["onCommand:roscode.focusAgent"]
+            "description": "Press **\u2318\u21e7A** to focus the agent. Ask it to read topics, fix nodes, or build packages \u2014 it can see your workspace and your running ROS graph.\n[Open agent](command:roscode.focusAgent)",
+            "media": {
+              "markdown": "media/walkthrough/agent.md"
+            },
+            "completionEvents": [
+              "onCommand:roscode.focusAgent"
+            ]
           },
           {
             "id": "roscode.step.graph",
             "title": "Live node graph",
-            "description": "Press **⌘⇧G** for an interactive graph of every running node and topic. Updates in real time.\n[Open graph](command:roscode.openNodeGraph)",
-            "media": { "markdown": "media/walkthrough/graph.md" },
-            "completionEvents": ["onCommand:roscode.openNodeGraph"]
+            "description": "Press **\u2318\u21e7G** for an interactive graph of every running node and topic. Updates in real time.\n[Open graph](command:roscode.openNodeGraph)",
+            "media": {
+              "markdown": "media/walkthrough/graph.md"
+            },
+            "completionEvents": [
+              "onCommand:roscode.openNodeGraph"
+            ]
           }
         ]
       }
@@ -138,24 +323,40 @@
     "configuration": {
       "title": "roscode",
       "properties": {
-        "roscode.model":              { "type": "string", "default": "claude-opus-4-7", "description": "Claude model" },
-        "roscode.anthropicApiKey":    { "type": "string", "default": "",                 "description": "Anthropic API key (or ANTHROPIC_API_KEY env var)" },
-        "roscode.networkScanTimeout": { "type": "number", "default": 4000,               "description": "LAN scan timeout (ms)" },
-        "roscode.applyBranding":      { "type": "boolean","default": true,               "description": "Inject roscode branding into the workbench (requires relaunch)" }
+        "roscode.model": {
+          "type": "string",
+          "default": "claude-opus-4-7",
+          "description": "Claude model"
+        },
+        "roscode.anthropicApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Anthropic API key (or ANTHROPIC_API_KEY env var)"
+        },
+        "roscode.networkScanTimeout": {
+          "type": "number",
+          "default": 4000,
+          "description": "LAN scan timeout (ms)"
+        },
+        "roscode.applyBranding": {
+          "type": "boolean",
+          "default": true,
+          "description": "Inject roscode branding into the workbench (requires relaunch)"
+        }
       }
     }
   },
   "scripts": {
     "compile": "node esbuild.js",
-    "watch":   "node esbuild.js --watch",
+    "watch": "node esbuild.js --watch",
     "package": "node esbuild.js && npx vsce package --no-dependencies --allow-missing-repository --skip-license"
   },
   "devDependencies": {
-    "@types/node":   "^20.0.0",
+    "@types/node": "^20.0.0",
     "@types/vscode": "^1.85.0",
-    "@vscode/vsce":  "^2.24.0",
-    "esbuild":       "^0.20.0",
-    "typescript":    "^5.3.0"
+    "@vscode/vsce": "^2.24.0",
+    "esbuild": "^0.20.0",
+    "typescript": "^5.3.0"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0"
