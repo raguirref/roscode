@@ -68,7 +68,8 @@
       { "command": "roscode.echoTopic",         "title": "Monitor",                         "icon": "$(pulse)" },
       { "command": "roscode.clearAgent",        "title": "Clear agent conversation",        "icon": "$(clear-all)" },
       { "command": "roscode.focusAgent",        "title": "Focus agent" },
-      { "command": "roscode.revealAgent",       "title": "roscode: Show Agent Panel" }
+      { "command": "roscode.revealAgent",       "title": "roscode: Show Agent Panel" },
+      { "command": "roscode.inlineAsk",         "title": "roscode: Inline agent (⌘K)",     "icon": "$(sparkle)" }
     ],
     "menus": {
       "view/title": [
@@ -89,7 +90,45 @@
     "keybindings": [
       { "command": "roscode.focusAgent",    "key": "ctrl+shift+a", "mac": "cmd+shift+a" },
       { "command": "roscode.openNodeGraph", "key": "ctrl+shift+g", "mac": "cmd+shift+g" },
-      { "command": "roscode.searchNodes",   "key": "ctrl+shift+n", "mac": "cmd+shift+n" }
+      { "command": "roscode.searchNodes",   "key": "ctrl+shift+n", "mac": "cmd+shift+n" },
+      { "command": "roscode.inlineAsk",     "key": "ctrl+k",        "mac": "cmd+k",       "when": "editorTextFocus" }
+    ],
+    "walkthroughs": [
+      {
+        "id": "roscode.gettingStarted",
+        "title": "Welcome to roscode studio",
+        "description": "AI-native IDE for ROS 2 · powered by Claude Opus 4.7",
+        "steps": [
+          {
+            "id": "roscode.step.apiKey",
+            "title": "Set your Anthropic API key",
+            "description": "roscode uses Claude Opus 4.7 as its brain. Add your API key to start.\n[Open settings](command:workbench.action.openSettings?%22roscode.anthropicApiKey%22)",
+            "media": { "markdown": "media/walkthrough/api-key.md" },
+            "completionEvents": ["onSettingChanged:roscode.anthropicApiKey"]
+          },
+          {
+            "id": "roscode.step.discover",
+            "title": "Discover robots on your network",
+            "description": "roscode auto-scans your LAN for running ROS 1 / ROS 2 nodes. One click to connect — no env vars to set manually.\n[Scan network](command:roscode.discoverNetwork)",
+            "media": { "markdown": "media/walkthrough/discover.md" },
+            "completionEvents": ["onCommand:roscode.discoverNetwork"]
+          },
+          {
+            "id": "roscode.step.agent",
+            "title": "Meet your agent",
+            "description": "Press **⌘⇧A** to focus the agent. Ask it to read topics, fix nodes, or build packages — it can see your workspace and your running ROS graph.\n[Open agent](command:roscode.focusAgent)",
+            "media": { "markdown": "media/walkthrough/agent.md" },
+            "completionEvents": ["onCommand:roscode.focusAgent"]
+          },
+          {
+            "id": "roscode.step.graph",
+            "title": "Live node graph",
+            "description": "Press **⌘⇧G** for an interactive graph of every running node and topic. Updates in real time.\n[Open graph](command:roscode.openNodeGraph)",
+            "media": { "markdown": "media/walkthrough/graph.md" },
+            "completionEvents": ["onCommand:roscode.openNodeGraph"]
+          }
+        ]
+      }
     ],
     "configuration": {
       "title": "roscode",

@@ -86,8 +86,9 @@ node_modules/
 roscode-extension/dist/
 roscode-extension/node_modules/
 
-# ---- VSCodium binary (too large for git) ----
+# ---- VSCodium / roscode studio build artifacts (too large for git) ----
 vscodium-build/
+roscode-studio-build/
 
 
 # ---- Local handoff notes ----

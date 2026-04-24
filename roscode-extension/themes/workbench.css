@@ -1,155 +1,345 @@
 /* ═══════════════════════════════════════════════════════════════
-   roscode studio — workbench branding (Cursor-style deep customization)
-   Injected into VSCodium's workbench.html via the roscode extension.
+   roscode studio — deep workbench branding
+   Injected into workbench.html via the extension (Cursor-style).
+   Hides every visible "VSCodium" / "Code - OSS" trace.
    ═══════════════════════════════════════════════════════════════ */
 
-/* ─── Title bar: brand wordmark replaces window title ─────────────── */
-.monaco-workbench .part.titlebar .window-title,
-.monaco-workbench .part.titlebar .titlebar-center .window-title {
-  visibility: hidden;
-  position: relative;
-}
-.monaco-workbench .part.titlebar .window-title::after,
-.monaco-workbench .part.titlebar .titlebar-center .window-title::after {
-  content: "roscode";
-  visibility: visible;
-  position: absolute;
-  left: 0; top: 50%;
-  transform: translateY(-50%);
-  width: 100%;
-  text-align: center;
-  color: #4cc9f0;
-  font-weight: 700;
-  letter-spacing: -0.3px;
-  font-size: 12px;
-}
-.monaco-workbench .part.titlebar .window-title::before,
-.monaco-workbench .part.titlebar .titlebar-center .window-title::before {
-  content: "studio";
-  visibility: visible;
-  position: absolute;
-  left: calc(50% + 28px); top: 50%;
-  transform: translateY(-50%);
-  color: #3d4a5c;
-  font-weight: 500;
-  font-size: 12px;
-  letter-spacing: 0;
+/* ═══ Fonts & root ═══ */
+.monaco-workbench {
+  --roscode-accent: #4cc9f0;
+  --roscode-accent-dim: rgba(76, 201, 240, 0.15);
+  --roscode-accent-glow: rgba(76, 201, 240, 0.4);
+  --roscode-ink: #c9d1d9;
+  --roscode-ink-dim: #8b9ab0;
+  --roscode-ink-faint: #3d4a5c;
+  --roscode-bg: #080b0f;
+  --roscode-bg-soft: #0a0e14;
+  --roscode-bg-raised: #0d1520;
+  --roscode-border: #141e2e;
 }
 
-/* ─── Activity bar: softer, wider icons, teal accent ──────────────── */
+/* ═══ Title bar ═══ */
+.monaco-workbench .part.titlebar {
+  background: var(--roscode-bg) !important;
+  border-bottom: 1px solid var(--roscode-border) !important;
+}
+.monaco-workbench .part.titlebar .window-title,
+.monaco-workbench .part.titlebar .titlebar-center .window-title {
+  font-size: 12px !important;
+}
+/* Hide the default title text and show "roscode studio" */
+.monaco-workbench .part.titlebar .window-title .monaco-breadcrumbs,
+.monaco-workbench .part.titlebar .window-title .title-label {
+  position: relative;
+}
+.monaco-workbench .part.titlebar .window-title .monaco-breadcrumbs::before {
+  content: "roscode studio";
+  color: var(--roscode-accent);
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  margin-right: 8px;
+}
+
+/* ═══ Activity bar ═══ */
 .monaco-workbench .part.activitybar {
+  background: var(--roscode-bg) !important;
   width: 52px !important;
+  border-right: 1px solid var(--roscode-border) !important;
 }
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item {
   height: 44px !important;
+  margin: 2px 0 !important;
 }
 .monaco-workbench .part.activitybar .monaco-action-bar .action-label {
   width: 52px !important;
 }
 .monaco-workbench .part.activitybar .action-item.active .active-item-indicator::before {
-  border-left-color: #4cc9f0 !important;
-  border-left-width: 2px !important;
+  border-left: 2px solid var(--roscode-accent) !important;
+  box-shadow: 0 0 12px var(--roscode-accent-glow);
+}
+.monaco-workbench .part.activitybar .codicon {
+  color: var(--roscode-ink-dim) !important;
+}
+.monaco-workbench .part.activitybar .action-item.active .codicon,
+.monaco-workbench .part.activitybar .action-item.checked .codicon {
+  color: var(--roscode-accent) !important;
 }
 
-/* ─── Side bar: cleaner typography ────────────────────────────────── */
-.monaco-workbench .part.sidebar .title {
-  text-transform: none !important;
-  letter-spacing: 0 !important;
-  font-size: 11px !important;
-  font-weight: 600 !important;
+/* ═══ Side bar ═══ */
+.monaco-workbench .part.sidebar {
+  background: var(--roscode-bg-soft) !important;
+  border-right: 1px solid var(--roscode-border) !important;
 }
-.monaco-workbench .part.sidebar .title-label h3 {
-  color: #4cc9f0 !important;
-  letter-spacing: -0.2px !important;
+.monaco-workbench .part.sidebar .title-actions .codicon {
+  color: var(--roscode-ink-dim) !important;
+}
+.monaco-workbench .part.sidebar .title-actions .codicon:hover {
+  color: var(--roscode-accent) !important;
 }
 .monaco-workbench .part.sidebar .pane-header {
   font-size: 10.5px !important;
   letter-spacing: 0.6px !important;
-  color: #4cc9f080 !important;
+  text-transform: uppercase !important;
+  font-weight: 600 !important;
+  padding: 4px 10px !important;
+}
+.monaco-workbench .part.sidebar .pane-header .title {
+  color: var(--roscode-accent) !important;
+  opacity: 0.85 !important;
 }
 
-/* ─── Tab bar: accent bar under active tab ────────────────────────── */
+/* ═══ Auxiliary bar (right side) ═══ */
+.monaco-workbench .part.auxiliarybar {
+  background: var(--roscode-bg-soft) !important;
+  border-left: 1px solid var(--roscode-border) !important;
+}
+
+/* ═══ Editor ═══ */
+.monaco-workbench .part.editor {
+  background: var(--roscode-bg) !important;
+}
+.monaco-workbench .part.editor > .content .editor-group-container > .title {
+  background: var(--roscode-bg) !important;
+  border-bottom: 1px solid var(--roscode-border) !important;
+}
+.monaco-workbench .part.editor .tabs-container .tab {
+  border-right: 1px solid var(--roscode-border) !important;
+}
+.monaco-workbench .part.editor .tabs-container .tab.active {
+  background: var(--roscode-bg-raised) !important;
+  color: var(--roscode-accent) !important;
+}
 .monaco-workbench .part.editor .tabs-container .tab.active::before {
-  background: #4cc9f0 !important;
+  background: var(--roscode-accent) !important;
   height: 2px !important;
+  box-shadow: 0 0 6px var(--roscode-accent-glow);
 }
 
-/* ─── Status bar: tighter height, teal accent items ───────────────── */
+/* ═══ Status bar ═══ */
 .monaco-workbench .part.statusbar {
+  background: var(--roscode-bg) !important;
   height: 22px !important;
   font-size: 11px !important;
+  border-top: 1px solid var(--roscode-border) !important;
+  color: var(--roscode-ink-dim) !important;
+}
+.monaco-workbench .part.statusbar .statusbar-item .codicon {
+  color: var(--roscode-accent) !important;
 }
 
-/* ─── Buttons: smooth hover ───────────────────────────────────────── */
+/* ═══ Panel (bottom) ═══ */
+.monaco-workbench .part.panel {
+  background: var(--roscode-bg) !important;
+  border-top: 1px solid var(--roscode-border) !important;
+}
+.monaco-workbench .part.panel .composite.title .title-label a {
+  color: var(--roscode-ink-faint) !important;
+}
+.monaco-workbench .part.panel .composite.title .title-label a.checked {
+  color: var(--roscode-accent) !important;
+  border-bottom: 2px solid var(--roscode-accent) !important;
+}
+
+/* ═══ Welcome / "Get Started" walkthrough — full rebrand ═══ */
+.monaco-workbench .welcomePageContainer,
+.monaco-workbench .gettingStartedContainer {
+  background: var(--roscode-bg) !important;
+}
+.monaco-workbench .welcomePageContainer .welcomePage {
+  background: var(--roscode-bg) !important;
+}
+.monaco-workbench .welcomePage .product-name,
+.monaco-workbench .welcomePage .title .caption {
+  color: var(--roscode-accent) !important;
+  letter-spacing: -0.8px !important;
+  font-weight: 700 !important;
+}
+/* Replace "Visual Studio Code" / "VSCodium" text with our brand */
+.monaco-workbench .welcomePage .product-name,
+.monaco-workbench .gettingStartedContainer .header .product-name {
+  font-size: 0 !important;
+}
+.monaco-workbench .welcomePage .product-name::before,
+.monaco-workbench .gettingStartedContainer .header .product-name::before {
+  content: "roscode studio";
+  font-size: 36px;
+  color: var(--roscode-accent);
+  letter-spacing: -1px;
+  font-weight: 700;
+}
+.monaco-workbench .welcomePage .subtitle,
+.monaco-workbench .gettingStartedContainer .header .subtitle {
+  color: var(--roscode-ink-dim) !important;
+  font-size: 14px !important;
+}
+.monaco-workbench .welcomePage .subtitle::after {
+  content: " · AI-native IDE for ROS 2";
+  color: var(--roscode-ink-faint);
+}
+
+/* ═══ Command palette ═══ */
+.monaco-workbench .quick-input-widget {
+  border: 1px solid var(--roscode-border) !important;
+  border-radius: 8px !important;
+  background: var(--roscode-bg-soft) !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6) !important;
+}
+.monaco-workbench .quick-input-widget .quick-input-header {
+  border-bottom: 1px solid var(--roscode-border) !important;
+}
+.monaco-workbench .quick-input-widget .quick-input-title {
+  color: var(--roscode-accent) !important;
+}
+
+/* ═══ Notifications ═══ */
+.monaco-workbench .notification-toast,
+.monaco-workbench .notifications-list-container,
+.monaco-workbench .notifications-center {
+  background: var(--roscode-bg-soft) !important;
+  border: 1px solid var(--roscode-border) !important;
+  border-radius: 7px !important;
+}
+.monaco-workbench .notification-toast .codicon {
+  color: var(--roscode-accent) !important;
+}
+
+/* ═══ Dialogs (About, messages, etc.) ═══ */
+.monaco-workbench .dialog-modal-block .dialog-shadow .dialog-box {
+  background: var(--roscode-bg-soft) !important;
+  border: 1px solid var(--roscode-border) !important;
+  border-radius: 8px !important;
+}
+
+/* ═══ Buttons (primary) ═══ */
 .monaco-workbench .monaco-button {
   transition: background-color 140ms ease, transform 80ms ease !important;
+  border-radius: 5px !important;
 }
 .monaco-workbench .monaco-button:active {
   transform: translateY(0.5px);
 }
-
-/* ─── Notifications: softer corners ───────────────────────────────── */
-.monaco-workbench .notification-toast,
-.monaco-workbench .notifications-list-container {
-  border-radius: 6px !important;
+.monaco-workbench .monaco-text-button.primary {
+  background: var(--roscode-accent) !important;
+  color: var(--roscode-bg) !important;
+  font-weight: 600 !important;
 }
 
-/* ─── Welcome page: hide VS Code-y content (we'll show our own home view) ── */
-.monaco-workbench .welcome-page-container .categories-column .tip,
-.monaco-workbench .welcome-page-container .row.recent,
-.monaco-workbench .welcome-page-container .row.help {
-  opacity: 0.6;
-}
-
-/* ─── Hide "Get Started" walkthrough default header banner ────────── */
-.monaco-workbench .gettingStartedContainer .gettingStartedHeader .productName {
-  display: none;
-}
-.monaco-workbench .gettingStartedContainer .gettingStartedHeader::before {
-  content: "roscode studio";
-  font-size: 24px;
-  font-weight: 700;
-  color: #4cc9f0;
-  letter-spacing: -0.8px;
-}
-
-/* ─── Command palette: accent border focus ────────────────────────── */
-.monaco-workbench .quick-input-widget {
-  border-radius: 7px !important;
-  box-shadow: 0 8px 32px #00000070 !important;
-}
-
-/* ─── Inputs: roundness ───────────────────────────────────────────── */
-.monaco-workbench input,
+/* ═══ Inputs ═══ */
 .monaco-workbench .monaco-inputbox {
-  border-radius: 4px !important;
+  border-radius: 5px !important;
+}
+.monaco-workbench .monaco-inputbox:focus-within {
+  border-color: var(--roscode-accent) !important;
+  box-shadow: 0 0 0 1px var(--roscode-accent-dim);
 }
 
-/* ─── Minimap tweaks ──────────────────────────────────────────────── */
-.monaco-workbench .minimap {
-  opacity: 0.85;
-}
-
-/* ─── Tree view: tighter, more readable ───────────────────────────── */
-.monaco-workbench .monaco-tree-row .content {
+/* ═══ Tree view ═══ */
+.monaco-workbench .monaco-tree-row .content,
+.monaco-workbench .monaco-list-row {
   font-size: 12.5px !important;
 }
+.monaco-workbench .monaco-list .monaco-list-row.selected {
+  background-color: var(--roscode-accent-dim) !important;
+}
+.monaco-workbench .monaco-list .monaco-list-row.focused {
+  outline: 1px solid var(--roscode-accent) !important;
+  outline-offset: -1px !important;
+}
 
-/* ─── Scrollbars: thinner ─────────────────────────────────────────── */
+/* ═══ Scrollbars ═══ */
 .monaco-workbench .monaco-scrollable-element > .scrollbar {
   width: 8px !important;
 }
 .monaco-workbench .monaco-scrollable-element > .scrollbar > .slider {
   border-radius: 4px !important;
-  background: #4cc9f020 !important;
+  background: rgba(76, 201, 240, 0.12) !important;
+}
+.monaco-workbench .monaco-scrollable-element > .scrollbar > .slider:hover {
+  background: var(--roscode-accent-dim) !important;
 }
 
-/* ─── Editor gutter glow on cursor line ───────────────────────────── */
+/* ═══ Hide default VSCodium branding refs ═══ */
+/* "Visual Studio Code" / "VSCodium" product names in random places */
+.monaco-workbench .welcomePage .windows-subtitle,
+.monaco-workbench [aria-label*="VSCodium"][aria-label*="Welcome"],
+.monaco-workbench .gettingStartedSlide .gettingStartedSlide-topEmpty,
+.monaco-workbench .release-notes > header > .product-name {
+  display: none !important;
+}
+
+/* Hide "Try Preview Features" banner */
+.monaco-workbench .gettingStartedContainer .categoriesList .diff {
+  display: none !important;
+}
+
+/* ═══ Menu bar (macOS native is automatic, but style custom when used) ═══ */
+.monaco-workbench .part.titlebar .menubar .menubar-menu-button {
+  border-radius: 4px !important;
+}
+.monaco-workbench .part.titlebar .menubar .menubar-menu-button:hover {
+  background: var(--roscode-accent-dim) !important;
+}
+
+/* ═══ Breadcrumbs ═══ */
+.monaco-workbench .breadcrumbs-control {
+  font-size: 11px !important;
+  padding: 4px 12px !important;
+}
+.monaco-workbench .breadcrumbs-control .monaco-breadcrumb-item {
+  color: var(--roscode-ink-faint) !important;
+}
+.monaco-workbench .breadcrumbs-control .monaco-breadcrumb-item:last-child {
+  color: var(--roscode-accent) !important;
+}
+
+/* ═══ Editor gutter — current line accent ═══ */
 .monaco-workbench .margin-view-overlays .current-line-margin {
-  border-left: 2px solid #4cc9f040 !important;
+  border-left: 2px solid var(--roscode-accent) !important;
 }
 
-/* ─── Remove Microsoft-y visual noise ─────────────────────────────── */
-.monaco-workbench .product-icon.codicon-vs-code {
-  color: #4cc9f0 !important;
+/* ═══ Minimap translucency ═══ */
+.monaco-workbench .minimap {
+  opacity: 0.85;
+}
+
+/* ═══ Integrated terminal ═══ */
+.monaco-workbench .terminal-wrapper {
+  background: var(--roscode-bg) !important;
+}
+.monaco-workbench .terminal-tab .label {
+  color: var(--roscode-accent) !important;
+}
+
+/* ═══ Focus ring ═══ */
+.monaco-workbench *:focus-visible {
+  outline: 1px solid var(--roscode-accent) !important;
+  outline-offset: 1px !important;
+}
+
+/* ═══ roscode branding in empty-editor background ═══ */
+.monaco-workbench .empty .monaco-workbench-editor-dropTarget {
+  position: relative;
+}
+.monaco-workbench .editor-group-container.empty::before {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 120px;
+  height: 120px;
+  background-image: radial-gradient(circle, var(--roscode-accent-dim) 0%, transparent 70%);
+  opacity: 0.4;
+  pointer-events: none;
+}
+.monaco-workbench .editor-group-container.empty::after {
+  content: "roscode studio";
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--roscode-ink-faint);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  pointer-events: none;
+  opacity: 0.5;
 }

@@ -8,15 +8,13 @@ import { NodeGraphPanel } from "./panels/NodeGraphPanel";
 import { TopicMonitorPanel } from "./panels/TopicMonitorPanel";
 import { RosConnection } from "./ros/connection";
 import { applyWorkbenchBranding } from "./branding/workbenchBrand";
+import { inlineAsk } from "./agent/inlineAsk";
 
 export let rosConnection: RosConnection;
 
 export async function activate(context: vscode.ExtensionContext) {
-  // Auto-apply roscode theme
-  const wbCfg = vscode.workspace.getConfiguration("workbench");
-  if (wbCfg.get("colorTheme") !== "roscode dark") {
-    await wbCfg.update("colorTheme", "roscode dark", vscode.ConfigurationTarget.Global);
-  }
+  // First-run: set sensible defaults so the app feels like roscode studio, not VSCodium
+  await applyFirstRunDefaults(context);
 
   // Inject roscode workbench branding (CSS into workbench.html)
   applyWorkbenchBranding(context).catch((e) =>
@@ -128,6 +126,9 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("roscode.clearNodeFilter", () => nodeProvider.clearFilter()),
     vscode.commands.registerCommand("roscode.echoTopic", (item) =>
       TopicMonitorPanel.createOrShow(context, rosConnection, item?.topicName)
+    ),
+    vscode.commands.registerCommand("roscode.inlineAsk", () =>
+      inlineAsk(context, rosConnection)
     )
   );
 
@@ -138,6 +139,55 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Auto-scan on activation
   networkProvider.refresh();
+
+  // On first launch, open the agent + walkthrough
+  if (context.globalState.get("roscode.firstLaunch", true)) {
+    context.globalState.update("roscode.firstLaunch", false);
+    setTimeout(() => {
+      vscode.commands.executeCommand("workbench.view.extension.roscode-agent");
+      vscode.commands.executeCommand(
+        "workbench.action.openWalkthrough",
+        { category: "roscode.roscode#roscode.gettingStarted" },
+        false
+      );
+    }, 800);
+  }
+}
+
+async function applyFirstRunDefaults(context: vscode.ExtensionContext) {
+  if (context.globalState.get("roscode.defaultsApplied", false)) return;
+
+  const updates: Array<[string, unknown, string]> = [
+    ["workbench.colorTheme",             "roscode dark",        "workbench"],
+    ["workbench.startupEditor",          "none",                 "workbench"],
+    ["workbench.tips.enabled",           false,                  "workbench"],
+    ["workbench.editor.empty.hint",      "hidden",               "workbench"],
+    ["telemetry.telemetryLevel",         "off",                  "telemetry"],
+    ["extensions.ignoreRecommendations", true,                   "extensions"],
+    ["update.showReleaseNotes",          false,                  "update"],
+    ["editor.fontSize",                  13,                     "editor"],
+    ["editor.lineHeight",                1.55,                   "editor"],
+    ["editor.fontLigatures",             true,                   "editor"],
+    ["editor.smoothScrolling",           true,                   "editor"],
+    ["editor.cursorBlinking",            "smooth",               "editor"],
+    ["editor.cursorSmoothCaretAnimation","on",                   "editor"],
+    ["editor.minimap.enabled",           true,                   "editor"],
+    ["editor.bracketPairColorization.enabled", true,             "editor"],
+    ["window.titleBarStyle",             "custom",               "window"],
+    ["window.commandCenter",             false,                  "window"],
+    ["window.menuBarVisibility",         "classic",              "window"],
+    ["breadcrumbs.enabled",              false,                  "breadcrumbs"],
+  ];
+  for (const [key, value, section] of updates) {
+    try {
+      const cfg = vscode.workspace.getConfiguration(section);
+      const k = key.substring(section.length + 1);
+      if (cfg.get(k) !== value) {
+        await cfg.update(k, value, vscode.ConfigurationTarget.Global);
+      }
+    } catch {}
+  }
+  context.globalState.update("roscode.defaultsApplied", true);
 }
 
 export function deactivate() {
