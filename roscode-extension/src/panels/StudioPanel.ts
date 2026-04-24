@@ -138,6 +138,9 @@ export class StudioPanel {
       case "launchTool":
         await this._launchTool(msg.tool);
         break;
+      case "jumpToLine":
+        await this._jumpToLine(msg.line);
+        break;
     }
   }
 
@@ -269,10 +272,64 @@ export class StudioPanel {
       case "terminal":
         vscode.commands.executeCommand("workbench.action.terminal.new");
         break;
-      case "rviz":
-        vscode.window.showInformationMessage("Launch RViz2: docker exec -it ros bash -c 'source /opt/ros/humble/setup.bash && rviz2'");
+      case "rviz": {
+        const cmd = "docker exec -it ros bash -c 'source /opt/ros/humble/setup.bash && rviz2'";
+        await vscode.env.clipboard.writeText(cmd);
+        vscode.window.showInformationMessage("Copied RViz2 command to clipboard. Paste in your terminal.");
         break;
+      }
     }
+  }
+
+  // Fase E: claudemap — called by extension.ts when active editor changes
+  notifyActiveEditor(filename: string, code: string, lineCount: number) {
+    this._post({ type: "mapLoading", filename });
+    this._generateCodeMap(filename, code, lineCount);
+  }
+
+  private async _generateCodeMap(filename: string, code: string, lineCount: number) {
+    const apiKey =
+      vscode.workspace.getConfiguration("roscode").get<string>("anthropicApiKey") ||
+      process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      this._post({ type: "mapNoKey" });
+      return;
+    }
+    const client = new Anthropic({ apiKey });
+    try {
+      const snippet = code.slice(0, 5000);
+      const res = await client.messages.create({
+        model: "claude-haiku-4-5-20251001", max_tokens: 1024,
+        messages: [{
+          role: "user",
+          content: `Analyze this ROS 2 file and return a JSON array of code sections.
+Each section: { "name": string, "lines": [start, end], "summary": string (1-2 sentences max) }
+Focus on: imports, class definitions, __init__, key methods, ROS callbacks, publishers, subscribers.
+File: ${filename} (${lineCount} lines total)
+
+\`\`\`
+${snippet}
+\`\`\`
+
+Return ONLY the JSON array, no other text.`,
+        }],
+      });
+      const text = res.content[0].type === "text" ? res.content[0].text : "[]";
+      const match = text.match(/\[[\s\S]*\]/);
+      const sections = match ? JSON.parse(match[0]) : [];
+      this._post({ type: "mapSections", filename, sections });
+    } catch (e: any) {
+      this._post({ type: "mapError", error: String(e?.message ?? e) });
+    }
+  }
+
+  private async _jumpToLine(line: number) {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) return;
+    const pos = new vscode.Position(Math.max(0, line - 1), 0);
+    editor.selection = new vscode.Selection(pos, pos);
+    editor.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);
+    vscode.window.showTextDocument(editor.document, { preserveFocus: false });
   }
 
   private _dispose() {
@@ -566,6 +623,22 @@ button{cursor:pointer;font-family:inherit}
 .topic-item .t-type{color:var(--fg3);font-size:10px;flex-shrink:0}
 .t-offline{padding:16px 12px;color:var(--fg3);font-size:11.5px;text-align:center;line-height:1.5}
 
+/* ── CLAUDEMAP TAB (Fase E) ────────────────────────────── */
+#map-pane{display:flex;flex-direction:column;overflow:hidden}
+#map-header{padding:8px 10px 6px;border-bottom:1px solid var(--border2);flex-shrink:0}
+#map-file{font-size:11px;color:var(--accent);font-family:ui-monospace,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#map-file-label{font-size:10px;color:var(--fg3);margin-bottom:2px}
+#map-sections{flex:1;overflow-y:auto;padding:6px 0}
+.map-section{padding:7px 10px;cursor:pointer;border-left:2px solid transparent;transition:border-color 80ms,background 80ms}
+.map-section:hover{background:var(--bg2);border-left-color:var(--accent)}
+.map-sec-head{display:flex;align-items:baseline;gap:6px}
+.map-sec-name{font-size:11.5px;font-weight:600;color:var(--fg)}
+.map-sec-lines{font-size:10px;color:var(--fg3);font-family:ui-monospace,monospace}
+.map-sec-summary{font-size:11px;color:var(--fg2);line-height:1.4;margin-top:3px}
+.map-empty{padding:20px 12px;text-align:center;color:var(--fg3);font-size:11.5px;line-height:1.5}
+.map-loading{display:flex;align-items:center;gap:6px;padding:14px 12px;color:var(--fg3);font-size:11px}
+#map-no-file{padding:20px 12px;text-align:center;color:var(--fg3);font-size:11.5px;line-height:1.6}
+
 /* ── SCROLLBARS ────────────────────────────────────────── */
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-track{background:transparent}
@@ -653,6 +726,7 @@ button{cursor:pointer;font-family:inherit}
       <button class="collapse-btn" onclick="collapsePanel('rpanel')" style="margin-left:0;margin-right:auto;" title="Collapse">›</button>
       <button class="active" id="rt-agent" onclick="rTab('agent')"><span>🤖</span><span class="tab-label">Agent</span></button>
       <button id="rt-topics" onclick="rTab('topics')"><span>📡</span><span class="tab-label">Topics</span></button>
+      <button id="rt-map" onclick="rTab('map')"><span>🗺</span><span class="tab-label">Map</span></button>
     </div>
     <div class="panel-body">
       <!-- AGENT -->
@@ -684,6 +758,18 @@ button{cursor:pointer;font-family:inherit}
       <div class="tab-pane" id="rp-topics">
         <div id="topics-pane">
           <div class="t-offline">Connect to a robot to see active topics.</div>
+        </div>
+      </div>
+      <!-- MAP (Fase E: claudemap) -->
+      <div class="tab-pane" id="rp-map">
+        <div id="map-pane">
+          <div id="map-header">
+            <div id="map-file-label">active file</div>
+            <div id="map-file">—</div>
+          </div>
+          <div id="map-sections">
+            <div id="map-no-file">Open a file in the editor<br>to see its code map.</div>
+          </div>
         </div>
       </div>
     </div>
@@ -732,6 +818,10 @@ window.addEventListener('message', e => {
     case 'agentError':  appendError(m.text); break;
     case 'agentNeedKey':appendWarn('Set <code>ANTHROPIC_API_KEY</code> in settings to use the agent.'); break;
     case 'aiSearchResult': handleAiSearch(m); break;
+    case 'mapLoading':    handleMapLoading(m.filename); break;
+    case 'mapSections':   handleMapSections(m.filename, m.sections); break;
+    case 'mapNoKey':      handleMapNoKey(); break;
+    case 'mapError':      handleMapError(m.error); break;
   }
 });
 
@@ -921,7 +1011,7 @@ function lTab(name) {
 }
 
 function rTab(name) {
-  ['agent','topics'].forEach(t => {
+  ['agent','topics','map'].forEach(t => {
     document.getElementById('rt-'+t)?.classList.toggle('active', t===name);
     document.getElementById('rp-'+t)?.classList.toggle('active', t===name);
   });
@@ -1096,6 +1186,48 @@ function appendWarn(html) {
 function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+// ── Claudemap (Fase E) ───────────────────────────────────
+function handleMapLoading(filename) {
+  const fileEl = document.getElementById('map-file');
+  const sections = document.getElementById('map-sections');
+  if (fileEl) fileEl.textContent = filename;
+  if (sections) sections.innerHTML = '<div class="map-loading"><div class="td"></div><div class="td"></div><div class="td"></div><span style="margin-left:6px">Analyzing ' + esc(filename) + '…</span></div>';
+  document.getElementById('map-no-file')?.remove();
+}
+
+function handleMapSections(filename, sections) {
+  const fileEl = document.getElementById('map-file');
+  const pane = document.getElementById('map-sections');
+  if (fileEl) fileEl.textContent = filename;
+  if (!pane) return;
+  if (!sections || !sections.length) {
+    pane.innerHTML = '<div class="map-empty">No sections found in this file.</div>';
+    return;
+  }
+  pane.innerHTML = sections.map(s => {
+    const lines = Array.isArray(s.lines) ? s.lines[0] + '–' + s.lines[1] : '';
+    return \`<div class="map-section" onclick="jumpToLine(\${Array.isArray(s.lines)?s.lines[0]:1})">
+      <div class="map-sec-head">
+        <span class="map-sec-name">\${esc(s.name)}</span>
+        <span class="map-sec-lines">:\${lines}</span>
+      </div>
+      <div class="map-sec-summary">\${esc(s.summary)}</div>
+    </div>\`;
+  }).join('');
+}
+
+function handleMapNoKey() {
+  const pane = document.getElementById('map-sections');
+  if (pane) pane.innerHTML = '<div class="map-empty">Set <code style="color:var(--accent)">ANTHROPIC_API_KEY</code> to enable code map.</div>';
+}
+
+function handleMapError(err) {
+  const pane = document.getElementById('map-sections');
+  if (pane) pane.innerHTML = '<div class="map-empty" style="color:var(--red)">' + esc(err) + '</div>';
+}
+
+function jumpToLine(line) { vscode.postMessage({ type: 'jumpToLine', line }); }
 
 // ── Init ────────────────────────────────────────────────
 drawPlaceholderGraph();

@@ -185,6 +185,16 @@ export async function activate(context: vscode.ExtensionContext) {
   // Auto-scan on activation
   networkProvider.refresh();
 
+  // Fase E: claudemap — notify StudioPanel when active editor changes
+  vscode.window.onDidChangeActiveTextEditor((editor) => {
+    if (!editor || !StudioPanel.currentPanel) return;
+    const doc = editor.document;
+    if (doc.uri.scheme !== "file") return;
+    const filename = path.basename(doc.fileName);
+    const code = doc.getText();
+    StudioPanel.currentPanel.notifyActiveEditor(filename, code, doc.lineCount);
+  }, null, context.subscriptions);
+
   // On startup: close VS Code default UI then show launcher or studio
   setTimeout(async () => {
     try { await vscode.commands.executeCommand("workbench.action.closeAllEditors"); } catch {}

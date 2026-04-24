@@ -68,12 +68,8 @@ NUCLEAR_CSS = """
 .title-actions { display: none !important; }
 .window-controls-container.right { display: none !important; }
 
-/* Fade-in after 700ms — hides VSCodium flash, pure CSS (no script needed) */
-.monaco-workbench {
-  opacity: 0;
-  animation: roscode-fadein 150ms ease 700ms forwards;
-}
-@keyframes roscode-fadein { to { opacity: 1; } }
+/* VSCodium flash: force black background so any brief native chrome is invisible */
+.monaco-workbench { background: #0d1117 !important; }
 
 /* Background general */
 body, .monaco-workbench {
