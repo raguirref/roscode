@@ -205,10 +205,9 @@ export async function activate(context: vscode.ExtensionContext) {
   }, null, context.subscriptions);
 
   // On startup: close VS Code default UI, open the launcher, focus the HOM tab,
-  // and open the agent container as a side panel so it's visible immediately.
+  // and ensure the agent is docked on the right side as a permanent companion.
   setTimeout(async () => {
     try { await vscode.commands.executeCommand("workbench.action.closeAllEditors"); } catch {}
-    try { await vscode.commands.executeCommand("workbench.action.closePanel"); } catch {}
 
     const hasWorkspace = (vscode.workspace.workspaceFolders?.length ?? 0) > 0;
     if (!hasWorkspace) {
@@ -217,20 +216,20 @@ export async function activate(context: vscode.ExtensionContext) {
       await checkForRoscodeProject();
     }
 
-    // Open the aux (right) bar so there's always a spot for chat/monitors.
-    // Users can drag roscode.agent there; many will leave it in the primary
-    // sidebar which is also always-on-the-side.
-    try { await vscode.commands.executeCommand("workbench.action.toggleAuxiliaryBar"); } catch {}
-
-    // Focus AGT so the agent chat is the first thing the user sees.
+    // Pin the bottom panel to the right (it hosts AGENT) so the agent is
+    // permanently docked as a sidekick — Cursor-style layout.
+    try { await vscode.commands.executeCommand("workbench.action.positionPanelRight"); } catch {}
+    // Make sure the panel is visible, then focus the agent view inside it.
+    try { await vscode.commands.executeCommand("workbench.action.focusPanel"); } catch {}
     try { await vscode.commands.executeCommand("workbench.view.extension.roscode-agent"); } catch {}
+    try { await vscode.commands.executeCommand("roscode.agent.focus"); } catch {}
   }, 700);
 }
 
 
 async function applyFirstRunDefaults(context: vscode.ExtensionContext) {
   // Version bump: force re-apply when we add new settings
-  const SETTINGS_VERSION = 4;
+  const SETTINGS_VERSION = 5;
   if (context.globalState.get("roscode.defaultsVersion", 0) >= SETTINGS_VERSION) return;
 
   const updates: Array<[string, unknown, string]> = [
@@ -239,12 +238,16 @@ async function applyFirstRunDefaults(context: vscode.ExtensionContext) {
     ["workbench.tips.enabled",           false,                  "workbench"],
     ["workbench.editor.empty.hint",      "hidden",               "workbench"],
     ["workbench.welcomePage.walkthroughs.openOnInstall", false,  "workbench"],
-    // Title bar — Cursor-style: custom chrome, commandCenter as top search, no menubar
+    // Title bar — native File/Edit menu stays (user wants it); commandCenter as search
     ["window.titleBarStyle",             "custom",               "window"],
     ["window.commandCenter",             true,                   "window"],
-    ["window.menuBarVisibility",         "hidden",               "window"],
-    ["window.customMenuBarAltFocus",     false,                  "window"],
+    ["window.menuBarVisibility",         "classic",              "window"],
     ["window.title",                     "roscode/studio${separator}${rootName}${dirty}", "window"],
+    // Dock the bottom panel (where AGT lives) to the RIGHT so the agent is
+    // always visible as a side companion, Cursor-style.
+    ["workbench.panel.defaultLocation",  "right",                "workbench"],
+    ["workbench.panel.opensMaximized",   "never",                "workbench"],
+    ["workbench.secondarySideBar.defaultVisibility", "visible",  "workbench"],
     // Telemetry / suggestions off
     ["telemetry.telemetryLevel",         "off",                  "telemetry"],
     ["extensions.ignoreRecommendations", true,                   "extensions"],

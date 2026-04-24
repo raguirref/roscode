@@ -65,10 +65,12 @@
           "id": "roscode-terminal",
           "title": "TRM · terminal",
           "icon": "media/icon-terminal.svg"
-        },
+        }
+      ],
+      "panel": [
         {
           "id": "roscode-agent",
-          "title": "AGT · agent",
+          "title": "AGENT · CLAUDE",
           "icon": "media/icon-agent.svg"
         }
       ]
