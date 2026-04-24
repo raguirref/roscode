@@ -3,14 +3,7 @@ import sys, pathlib
 target = pathlib.Path(sys.argv[1])
 content = target.read_text(encoding="utf-8")
 
-NUCLEAR_SCRIPT = """<script>
-// roscode: fade-in after extension panels load (hides VSCodium flash)
-setTimeout(function(){
-  var wb = document.querySelector('.monaco-workbench');
-  if(wb){ wb.style.transition='opacity 120ms ease'; wb.classList.add('ready'); }
-}, 700);
-</script>
-"""
+NUCLEAR_SCRIPT = ""
 
 NUCLEAR_CSS = """
 <style id="roscode-nuclear">
@@ -75,9 +68,12 @@ NUCLEAR_CSS = """
 .title-actions { display: none !important; }
 .window-controls-container.right { display: none !important; }
 
-/* Hide EVERYTHING until extension is ready (prevents VSCodium flash) */
-.monaco-workbench { opacity: 0; transition: opacity 0ms; }
-.monaco-workbench.ready { opacity: 1; }
+/* Fade-in after 700ms — hides VSCodium flash, pure CSS (no script needed) */
+.monaco-workbench {
+  opacity: 0;
+  animation: roscode-fadein 150ms ease 700ms forwards;
+}
+@keyframes roscode-fadein { to { opacity: 1; } }
 
 /* Background general */
 body, .monaco-workbench {
