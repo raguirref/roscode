@@ -9,6 +9,8 @@
   } from "./lib/tauri";
   import { activePanel, activeBottomTab } from "./lib/stores/layout";
 
+  import Splash from "./lib/Splash.svelte";
+
   // Layout components
   import ActivityBar from "./lib/layout/ActivityBar.svelte";
   import SidePanel from "./lib/layout/SidePanel.svelte";
@@ -27,6 +29,7 @@
   let stagePercent = 0;
   let logLines: string[] = [];
   let workspacePath = "";
+  let splashDone = false;
 
   // Forwarded from BottomPanel so Packages can fill chat
   let chatRef: (SvelteComponent & { fill: (text: string) => void }) | undefined;
@@ -35,11 +38,13 @@
     workspacePath = `${
       (window as any).__ROSCODE_HOME__ ?? "/Users/rickyaguirre"
     }/development/roscode/demos/demo_drift/workspace`;
-    try {
-      status = await getRuntimeStatus();
-    } catch (e) {
-      status = { kind: "error", message: String(e) };
-    }
+    // Hold splash for at least 1.6s so the animation completes nicely
+    const [s] = await Promise.all([
+      getRuntimeStatus().catch(() => ({ kind: "uninitialized" }) as RuntimeStatus),
+      new Promise((r) => setTimeout(r, 1600)),
+    ]);
+    status = s as RuntimeStatus;
+    splashDone = true;
   });
 
   async function boot() {
@@ -72,6 +77,8 @@
 
   $: statusImage = status.kind === "ready" ? status.image : "";
 </script>
+
+<Splash done={splashDone} />
 
 <div class="ide-root">
   <!-- ══ HEADER ══ -->
