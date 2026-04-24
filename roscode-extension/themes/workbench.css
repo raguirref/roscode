@@ -56,18 +56,86 @@
    We hide: Source Control (git), Run/Debug, Extensions, Testing, Accounts.
    Users who need these can Cmd+Shift+P to access all commands. */
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Source Control" i],
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Search" i]:not([aria-label*="roscode" i]),
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Run and Debug" i],
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Extensions" i],
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Testing" i],
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Accounts" i],
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Remote Explorer" i],
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="User Menu" i],
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Profile" i],
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Manage" i]:not([aria-label*="Settings" i]) {
   display: none !important;
 }
+
+/* Relabel VS Code's native Explorer to "FIL" via overlay */
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Explorer" i] {
+  position: relative;
+}
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Explorer" i]::after {
+  content: "FIL";
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
+  font-size: 8px;
+  letter-spacing: 0.8px;
+  color: var(--roscode-ink-faint);
+  pointer-events: none;
+  text-transform: uppercase;
+}
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item.active[aria-label*="Explorer" i]::after,
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item.checked[aria-label*="Explorer" i]::after {
+  color: var(--roscode-accent);
+}
+
+/* Mono 3-letter code under each roscode activity bar icon (HOM/NET/NOD/TOP/LIB/AGT) */
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="roscode" i i],
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="home" i][aria-label*="HOM" i],
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="network" i],
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="nodes" i],
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="topics" i],
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="library" i],
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="agent" i] {
+  position: relative;
+}
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="HOM" i]::after { content: "HOM"; }
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="NET" i]::after { content: "NET"; }
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="NOD" i]::after { content: "NOD"; }
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="TOP" i]::after { content: "TOP"; }
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="LIB" i]::after { content: "LIB"; }
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="AGT" i]::after { content: "AGT"; }
+
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="HOM" i]::after,
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="NET" i]::after,
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="NOD" i]::after,
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="TOP" i]::after,
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="LIB" i]::after,
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="AGT" i]::after {
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
+  font-size: 8px;
+  letter-spacing: 0.8px;
+  color: var(--roscode-ink-faint);
+  pointer-events: none;
+  text-transform: uppercase;
+}
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item.active::after,
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item.checked::after {
+  color: var(--roscode-accent) !important;
+}
+
+/* Bump activity bar items a bit taller so label fits under icon */
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item {
-  height: 44px !important;
-  margin: 2px 0 !important;
+  padding-bottom: 14px !important;
+}
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item {
+  height: 54px !important;
+  margin: 1px 0 !important;
 }
 .monaco-workbench .part.activitybar .monaco-action-bar .action-label {
   width: 52px !important;

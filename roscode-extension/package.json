@@ -27,36 +27,64 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "roscode-primary",
-          "title": "roscode",
-          "icon": "media/ros-icon.svg"
+          "id": "roscode-home",
+          "title": "HOM · home",
+          "icon": "media/icon-home.svg"
+        },
+        {
+          "id": "roscode-network",
+          "title": "NET · network",
+          "icon": "media/icon-network.svg"
+        },
+        {
+          "id": "roscode-nodes",
+          "title": "NOD · nodes",
+          "icon": "media/icon-nodes.svg"
+        },
+        {
+          "id": "roscode-topics",
+          "title": "TOP · topics",
+          "icon": "media/icon-topics.svg"
+        },
+        {
+          "id": "roscode-library",
+          "title": "LIB · library",
+          "icon": "media/icon-library.svg"
         },
         {
           "id": "roscode-agent",
-          "title": "agent",
-          "icon": "media/agent-icon.svg"
+          "title": "AGT · agent",
+          "icon": "media/icon-agent.svg"
         }
       ]
     },
     "views": {
-      "roscode-primary": [
+      "roscode-home": [
         {
           "id": "roscode.home",
           "name": "home",
           "type": "webview"
-        },
+        }
+      ],
+      "roscode-network": [
         {
           "id": "roscode.network",
           "name": "network"
-        },
+        }
+      ],
+      "roscode-nodes": [
         {
           "id": "roscode.nodes",
           "name": "nodes"
-        },
+        }
+      ],
+      "roscode-topics": [
         {
           "id": "roscode.topics",
           "name": "topics"
-        },
+        }
+      ],
+      "roscode-library": [
         {
           "id": "roscode.library",
           "name": "library"
