@@ -45,7 +45,14 @@ export class LauncherPanel {
     this._panel.webview.html = this._html();
     this._panel.webview.onDidReceiveMessage((m) => this._handle(m), null, this._disposables);
     this._panel.onDidDispose(() => this._dispose(), null, this._disposables);
-    this._sendRecents();
+    // Close VS Code's panel (SCM/terminal area) so it doesn't show through
+    setTimeout(() => {
+      vscode.commands.executeCommand("workbench.action.closePanel").catch(() => {});
+      vscode.commands.executeCommand("workbench.action.closeSidebar").catch(() => {});
+    }, 150);
+    setTimeout(() => {
+      vscode.commands.executeCommand("workbench.action.closePanel").catch(() => {});
+    }, 800);
   }
 
   private _post(msg: object) { this._panel.webview.postMessage(msg); }
@@ -62,10 +69,17 @@ export class LauncherPanel {
     this._context.globalState.update(key, list);
   }
 
+  private _sendApiKeyStatus() {
+    const key = vscode.workspace.getConfiguration("roscode").get<string>("anthropicApiKey") ||
+                process.env.ANTHROPIC_API_KEY;
+    this._post({ type: "apiKeyStatus", hasKey: !!key });
+  }
+
   private async _handle(msg: any) {
     switch (msg.type) {
       case "ready":
         this._sendRecents();
+        this._sendApiKeyStatus();
         break;
       case "newProject":
         await this._newProject(msg.name, msg.robotType, msg.parentDir);
@@ -84,6 +98,12 @@ export class LauncherPanel {
         break;
       case "chooseParent":
         await this._chooseParent();
+        break;
+      case "openExternal":
+        if (msg.url) vscode.env.openExternal(vscode.Uri.parse(msg.url));
+        break;
+      case "openSettings":
+        vscode.commands.executeCommand("workbench.action.openSettings", "roscode.anthropicApiKey");
         break;
     }
   }
@@ -109,7 +129,7 @@ export class LauncherPanel {
       parent = uris[0].fsPath;
     }
     try {
-      await scaffoldProject(name, robotType as any);
+      await scaffoldProject(name, robotType as any, parent);
       this._addRecent(parent + "/" + name);
       this._post({ type: "scaffoldDone" });
     } catch (e: any) {
@@ -198,6 +218,26 @@ button{cursor:pointer;font-family:inherit;font-size:inherit}
 .card .icon{width:24px;height:24px;color:var(--fg2)}
 .card .label{font-size:12.5px;font-weight:600;color:var(--fg);text-align:center}
 .card .sub{font-size:11px;color:var(--fg2);text-align:center;line-height:1.4}
+
+/* ── API KEY BANNER ─── */
+#key-banner{
+  width:100%;max-width:500px;
+  border:1px solid rgba(248,81,73,.25);background:rgba(248,81,73,.06);
+  border-radius:10px;padding:16px 18px;display:none;flex-direction:column;gap:10px;
+}
+#key-banner.visible{display:flex}
+.kb-row{display:flex;align-items:flex-start;gap:12px}
+.kb-icon{width:28px;height:28px;border-radius:6px;background:rgba(248,81,73,.15);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;color:#f85149}
+.kb-body{flex:1}
+.kb-title{font-size:12.5px;font-weight:700;color:var(--fg);margin-bottom:3px}
+.kb-text{font-size:11.5px;color:var(--fg2);line-height:1.5}
+.kb-actions{display:flex;gap:7px;margin-top:2px}
+.btn-key{padding:5px 14px;border-radius:6px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit}
+.btn-key-primary{background:var(--accent);border:none;color:#0d1117}
+.btn-key-primary:hover{background:#7de8f7}
+.btn-key-ghost{background:transparent;border:1px solid var(--border2);color:var(--fg2)}
+.btn-key-ghost:hover{border-color:var(--fg2);color:var(--fg)}
 
 /* ── RECENTS ─── */
 #recents-section{width:100%;max-width:500px}
@@ -323,6 +363,22 @@ button{cursor:pointer;font-family:inherit;font-size:inherit}
     </div>
   </div>
 
+  <!-- API key banner (shown when key is missing) -->
+  <div id="key-banner">
+    <div class="kb-row">
+      <div class="kb-icon">&#9888;</div>
+      <div class="kb-body">
+        <div class="kb-title">Anthropic API key not set</div>
+        <div class="kb-text">The AI agent needs an API key to work. Add it to your settings or set the <code style="color:var(--accent);font-family:monospace">ANTHROPIC_API_KEY</code> environment variable.</div>
+      </div>
+    </div>
+    <div class="kb-actions">
+      <button class="btn-key btn-key-primary" onclick="vscode.postMessage({type:'openExternal',url:'https://console.anthropic.com/settings/keys'})">Get API key &#8599;</button>
+      <button class="btn-key btn-key-ghost" onclick="vscode.postMessage({type:'openSettings'})">Open settings</button>
+      <button class="btn-key btn-key-ghost" onclick="document.getElementById('key-banner').classList.remove('visible')" style="margin-left:auto">Dismiss</button>
+    </div>
+  </div>
+
   <!-- Recent projects -->
   <div id="recents-section">
     <div class="section-title">Recent</div>
@@ -412,6 +468,10 @@ let projName = '';
 window.addEventListener('message', e => {
   const m = e.data;
   if (m.type === 'recents') renderRecents(m.items);
+  if (m.type === 'apiKeyStatus') {
+    const banner = document.getElementById('key-banner');
+    if (banner) banner.classList.toggle('visible', !m.hasKey);
+  }
   if (m.type === 'parentChosen') { /* handled inline */ }
   if (m.type === 'scaffoldDone') closeModal();
   if (m.type === 'scaffoldCancelled') {

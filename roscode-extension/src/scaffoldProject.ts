@@ -4,18 +4,22 @@ import * as path from "path";
 
 export type RobotType = "diff-drive" | "empty" | "ackermann" | "manipulator";
 
-export async function scaffoldProject(projectName: string, robotType: RobotType): Promise<void> {
-  const parentUris = await vscode.window.showOpenDialog({
-    canSelectFolders: true,
-    canSelectFiles: false,
-    canSelectMany: false,
-    openLabel: "Create project here",
-    title: "Choose a parent folder for your roscode project",
-  });
-  if (!parentUris || parentUris.length === 0) return;
+export async function scaffoldProject(projectName: string, robotType: RobotType, parentDir?: string): Promise<void> {
+  let parentFsPath = parentDir;
+  if (!parentFsPath) {
+    const parentUris = await vscode.window.showOpenDialog({
+      canSelectFolders: true,
+      canSelectFiles: false,
+      canSelectMany: false,
+      openLabel: "Create project here",
+      title: "Choose a parent folder for your roscode project",
+    });
+    if (!parentUris || parentUris.length === 0) return;
+    parentFsPath = parentUris[0].fsPath;
+  }
 
   const pkg = toPkgName(projectName);
-  const projectDir = path.join(parentUris[0].fsPath, projectName);
+  const projectDir = path.join(parentFsPath, projectName);
 
   if (fs.existsSync(projectDir)) {
     const choice = await vscode.window.showWarningMessage(

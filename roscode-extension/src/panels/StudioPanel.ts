@@ -87,6 +87,11 @@ export class StudioPanel {
     this._panel.webview.html = this._html();
     this._panel.webview.onDidReceiveMessage((m) => this._handle(m), null, this._disposables);
     this._panel.onDidDispose(() => this._dispose(), null, this._disposables);
+    // Keep VS Code's panel/sidebar hidden so only Studio is visible
+    setTimeout(() => {
+      vscode.commands.executeCommand("workbench.action.closeSidebar").catch(() => {});
+      vscode.commands.executeCommand("workbench.action.closePanel").catch(() => {});
+    }, 100);
 
     ros.onStatusChange(() => {
       this._post({ type: "rosStatus", status: ros.status, host: ros.connectedHost });
@@ -151,6 +156,31 @@ export class StudioPanel {
         break;
       case "runCommand":
         if (msg.command) vscode.commands.executeCommand(msg.command);
+        break;
+      case "echoTopicReq":
+        if (msg.topic) {
+          const out = await this._ros.echoTopicOnce(msg.topic);
+          this._post({ type: "echoTopicResult", topic: msg.topic, data: out });
+        }
+        break;
+      case "listParamsReq":
+        { const params = await this._ros.listParams(); this._post({ type: "paramsData", params }); }
+        break;
+      case "getParamReq":
+        if (msg.node && msg.param) {
+          const val = await this._ros.getParam(msg.node, msg.param);
+          this._post({ type: "paramValue", node: msg.node, param: msg.param, value: val });
+        }
+        break;
+      case "setParamReq":
+        if (msg.node && msg.param && msg.value !== undefined) {
+          // setParam is a write operation — route through agent with confirmation
+          const text = `Set parameter ${msg.param} on node ${msg.node} to: ${msg.value}`;
+          if (!this._running) await this._runAgent(text);
+        }
+        break;
+      case "buildReq":
+        if (!this._running) await this._runAgent("Build the ROS 2 workspace with colcon build.");
         break;
     }
   }
@@ -352,6 +382,10 @@ Return ONLY the JSON array, no other text.`,
     try {
       const { nodes, edges } = await this._ros.getGraphData();
       this._post({ type: "rosGraph", nodes, edges });
+    } catch {}
+    try {
+      const params = await this._ros.listParams();
+      this._post({ type: "paramsData", params });
     } catch {}
   }
 
@@ -648,6 +682,53 @@ button{cursor:pointer;font-family:inherit}
 .topic-item .t-type{color:var(--fg3);font-size:10px;flex-shrink:0}
 .t-offline{padding:16px 12px;color:var(--fg3);font-size:11.5px;text-align:center;line-height:1.5}
 
+/* ── PARAMS TAB ────────────────────────────────────────── */
+#params-pane{display:flex;flex-direction:column;overflow:hidden}
+#params-search-row{padding:7px 8px;flex-shrink:0;border-bottom:1px solid var(--border2)}
+#params-search{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:5px;
+  padding:4px 8px;color:var(--fg);font-family:inherit;font-size:11px;outline:none}
+#params-search:focus{border-color:var(--accent)}
+#params-search::placeholder{color:var(--fg3)}
+#params-list{flex:1;overflow-y:auto;padding:4px 0}
+.param-node-hdr{display:flex;align-items:center;gap:5px;padding:5px 10px 3px;
+  font-size:10px;font-weight:600;color:var(--fg3);letter-spacing:.04em;text-transform:uppercase;
+  cursor:pointer;user-select:none}
+.param-node-hdr:hover{color:var(--fg2)}
+.param-node-hdr .pn-arrow{transition:transform 150ms;display:inline-block;margin-right:2px}
+.param-node-hdr.collapsed .pn-arrow{transform:rotate(-90deg)}
+.param-node-hdr .pn-name{font-family:ui-monospace,monospace;color:var(--accent);font-size:10.5px;text-transform:none}
+.param-item{display:flex;align-items:center;gap:5px;padding:3px 10px 3px 20px;
+  font-size:11px;cursor:pointer;color:var(--fg2);min-height:24px}
+.param-item:hover{background:var(--bg2)}
+.param-item .pi-name{font-family:ui-monospace,monospace;color:var(--fg);flex:1;overflow:hidden;text-overflow:ellipsis}
+.param-item .pi-val{font-family:ui-monospace,monospace;font-size:10px;color:var(--fg3);
+  max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.param-item .pi-get{opacity:0;font-size:10px;padding:1px 5px;border-radius:3px;
+  background:var(--bg3);border:1px solid var(--border);color:var(--fg2);flex-shrink:0;cursor:pointer}
+.param-item:hover .pi-get{opacity:1}
+.param-detail{margin:0 8px 4px;background:var(--bg2);border:1px solid var(--border2);
+  border-radius:5px;padding:7px 9px;display:flex;flex-direction:column;gap:5px}
+.param-detail .pd-name{font-family:ui-monospace,monospace;color:var(--accent);font-size:10.5px}
+.param-detail .pd-val{font-family:ui-monospace,monospace;font-size:11px;color:var(--fg);
+  background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:5px 7px;word-break:break-all}
+.param-detail .pd-edit{display:flex;gap:4px;margin-top:2px}
+.param-detail input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:3px;
+  padding:3px 6px;color:var(--fg);font-family:ui-monospace,monospace;font-size:11px;outline:none}
+.param-detail input:focus{border-color:var(--accent)}
+.btn-pset{padding:3px 9px;border-radius:3px;border:none;
+  background:var(--accent);color:#0d1117;font-size:10.5px;font-weight:600;cursor:pointer}
+.btn-pset:hover{background:#7de8f7}
+.btn-pclose{padding:3px 7px;border-radius:3px;border:1px solid var(--border);
+  background:transparent;color:var(--fg3);font-size:11px;cursor:pointer}
+.p-offline{padding:16px 12px;color:var(--fg3);font-size:11.5px;text-align:center;line-height:1.5}
+/* Topic echo inline */
+.topic-echo-box{margin:2px 6px 5px;background:var(--bg2);border:1px solid var(--border2);
+  border-radius:5px;padding:6px 8px;font-family:ui-monospace,monospace;font-size:10.5px;
+  color:var(--fg2);white-space:pre-wrap;word-break:break-all;max-height:120px;overflow-y:auto}
+.topic-item .ti-echo{opacity:0;font-size:10px;padding:1px 5px;border-radius:3px;flex-shrink:0;
+  background:var(--bg3);border:1px solid var(--border);color:var(--fg2);cursor:pointer}
+.topic-item:hover .ti-echo{opacity:1}
+
 /* ── CLAUDEMAP TAB (Fase E) ────────────────────────────── */
 #map-pane{display:flex;flex-direction:column;overflow:hidden}
 #map-header{padding:8px 10px 6px;border-bottom:1px solid var(--border2);flex-shrink:0}
@@ -766,6 +847,7 @@ button{cursor:pointer;font-family:inherit}
       <button class="collapse-btn" onclick="collapsePanel('rpanel')" style="margin-left:0;margin-right:auto;" title="Collapse">›</button>
       <button class="active" id="rt-agent" onclick="rTab('agent')"><span class="tab-label">Agent</span></button>
       <button id="rt-topics" onclick="rTab('topics')"><span class="tab-label">Topics</span></button>
+      <button id="rt-params" onclick="rTab('params')"><span class="tab-label">Params</span></button>
       <button id="rt-map" onclick="rTab('map')"><span class="tab-label">Map</span></button>
     </div>
     <div class="panel-body">
@@ -774,13 +856,22 @@ button{cursor:pointer;font-family:inherit}
         <div id="agent-pane">
           <div id="agent-feed">
             <div class="a-empty" id="a-empty">
-              <div class="hex">⬡</div>
-              <p>Ask Claude to inspect your ROS graph, fix nodes, or create packages.</p>
+              <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style="opacity:.4" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="14" cy="14" r="13" stroke="#4cc9f0" stroke-width="1.2"/>
+                <circle cx="14" cy="14" r="4.5" fill="#4cc9f0" opacity=".7"/>
+                <circle cx="14" cy="4" r="2" fill="#4cc9f0" opacity=".3"/>
+                <circle cx="14" cy="24" r="2" fill="#4cc9f0" opacity=".3"/>
+                <circle cx="4" cy="14" r="2" fill="#4cc9f0" opacity=".3"/>
+                <circle cx="24" cy="14" r="2" fill="#4cc9f0" opacity=".3"/>
+              </svg>
+              <p>Ask Claude about your ROS system — inspect, fix, or build.</p>
               <div class="a-sug">
-                <span class="a-sg" onclick="prefill('What topics are active?')">topics?</span>
-                <span class="a-sg" onclick="prefill('Show the node graph')">graph</span>
-                <span class="a-sg" onclick="prefill('Find any issues in my nodes')">find bugs</span>
-                <span class="a-sg" onclick="prefill('Create a basic publisher node')">new node</span>
+                <span class="a-sg" onclick="prefill('List all active topics and their types')">topics?</span>
+                <span class="a-sg" onclick="prefill('Show the full node graph and explain what each node does')">graph</span>
+                <span class="a-sg" onclick="prefill('Read my source files and find any bugs or improvements')">audit</span>
+                <span class="a-sg" onclick="prefill('Scaffold a new publisher node for this workspace')">new node</span>
+                <span class="a-sg" onclick="prefill('What parameters can I tune to improve robot behavior?')">tune</span>
+                <span class="a-sg" onclick="prefill('Build the workspace and show me any errors')">build</span>
               </div>
             </div>
           </div>
@@ -798,6 +889,17 @@ button{cursor:pointer;font-family:inherit}
       <div class="tab-pane" id="rp-topics">
         <div id="topics-pane">
           <div class="t-offline">Connect to a robot to see active topics.</div>
+        </div>
+      </div>
+      <!-- PARAMS tab -->
+      <div class="tab-pane" id="rp-params">
+        <div id="params-pane">
+          <div id="params-search-row">
+            <input id="params-search" type="text" placeholder="Filter parameters…" oninput="filterParams()"/>
+          </div>
+          <div id="params-list">
+            <div class="p-offline">Connect to a robot to browse ROS parameters.</div>
+          </div>
         </div>
       </div>
       <!-- MAP (Fase E: claudemap) -->
@@ -820,9 +922,15 @@ button{cursor:pointer;font-family:inherit}
 <!-- BOTTOM BAR -->
 <div id="bottom">
   <span>roscode studio</span>
-  <button onclick="vscode.postMessage({type:'launchTool',tool:'terminal'})">⌘\` Terminal</button>
-  <div style="margin-left:auto;display:flex;gap:8px">
+  <button id="btn-build" onclick="requestBuild()" title="colcon build">
+    <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.4" style="vertical-align:middle;margin-right:3px"><polyline points="1,3 5.5,1 10,3 10,8 5.5,10 1,8 1,3"/><line x1="5.5" y1="1" x2="5.5" y2="5.5"/><line x1="5.5" y1="5.5" x2="10" y2="3"/><line x1="5.5" y1="5.5" x2="1" y2="3"/></svg>Build
+  </button>
+  <button onclick="vscode.postMessage({type:'launchTool',tool:'terminal'})">
+    <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.4" style="vertical-align:middle;margin-right:3px"><polyline points="1,2.5 5,5.5 1,8.5"/><line x1="5.5" y1="8.5" x2="10" y2="8.5"/></svg>Terminal
+  </button>
+  <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
     <span id="ws-label" style="color:var(--fg3)"></span>
+    <span id="build-status" style="display:none"></span>
   </div>
 </div>
 
@@ -858,8 +966,11 @@ window.addEventListener('message', e => {
     case 'agentError':  appendError(m.text); break;
     case 'agentNeedKey':appendWarn('Set <code>ANTHROPIC_API_KEY</code> in settings to use the agent.'); break;
     case 'aiSearchResult': handleAiSearch(m); break;
-    case 'rosTopics':     renderRealTopics(m.topics); break;
-    case 'rosGraph':      renderRealGraph(m.nodes, m.edges); break;
+    case 'rosTopics':       renderRealTopics(m.topics); break;
+    case 'rosGraph':        renderRealGraph(m.nodes, m.edges); break;
+    case 'paramsData':      renderParams(m.params); break;
+    case 'paramValue':      showParamValue(m.node, m.param, m.value); break;
+    case 'echoTopicResult': handleEchoResult(m.topic, m.data); break;
     case 'mapLoading':    handleMapLoading(m.filename); break;
     case 'mapSections':   handleMapSections(m.filename, m.sections); break;
     case 'mapNoKey':      handleMapNoKey(); break;
@@ -955,15 +1066,38 @@ function renderRealTopics(topics) {
     return;
   }
   pane.innerHTML = topics.map(t => \`
-    <div class="topic-item" onclick="echoTopic(\${JSON.stringify(t.name)})">
-      <span class="t-name">\${esc(t.name)}</span>
+    <div class="topic-item" id="ti-\${CSS.escape(t.name)}">
+      <span class="t-name" onclick="echoTopicAgent(\${JSON.stringify(t.name)})">\${esc(t.name)}</span>
       <span class="t-type">\${esc(t.type||'')}</span>
+      <button class="ti-echo" onclick="echoTopicInline(\${JSON.stringify(t.name)})">echo</button>
     </div>\`).join('');
 }
 
-function echoTopic(name) {
-  prefill('Echo topic ' + name + ' once');
+function echoTopicAgent(name) {
+  prefill('Echo topic ' + name + ' once and show me the message');
   rTab('agent');
+}
+
+function echoTopicInline(name) {
+  const safeId = 'ti-' + name.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const row = document.querySelector('[id="ti-' + CSS.escape(name) + '"]');
+  if (!row) return;
+  let box = row.nextElementSibling;
+  if (box && box.classList.contains('topic-echo-box')) { box.remove(); return; }
+  box = document.createElement('div');
+  box.className = 'topic-echo-box';
+  box.textContent = 'Fetching…';
+  row.insertAdjacentElement('afterend', box);
+  vscode.postMessage({ type: 'echoTopicReq', topic: name });
+}
+
+function handleEchoResult(topic, data) {
+  const row = document.querySelector('[id="ti-' + CSS.escape(topic) + '"]');
+  if (!row) return;
+  let box = row.nextElementSibling;
+  if (box && box.classList.contains('topic-echo-box')) {
+    box.textContent = data || '(empty)';
+  }
 }
 
 // ── Files ───────────────────────────────────────────────
@@ -972,24 +1106,48 @@ function renderFiles(root, items) {
   if (!pane) return;
   if (!root || !items.length) {
     pane.innerHTML = '<div class="no-ws">No workspace open.<br>Open a folder to see files.</div>';
+    _lastFileRoot = ''; _lastFileItems = [];
     return;
   }
+  _lastFileRoot = root; _lastFileItems = items;
   const wsLabel = document.getElementById('ws-label');
   if (wsLabel) wsLabel.textContent = root;
   pane.innerHTML = '<div class="file-section">' + root + '</div>' + renderFileItems(items, 0);
 }
 
+let _expandedDirs = new Set();
+
 function renderFileItems(items, depth) {
   return items.map(f => {
     const pad = 10 + depth * 12;
-    const icon = f.isDir ? '▸' : '·';
-    let html = \`<div class="file-item" style="padding-left:\${pad}px" onclick="\${f.isDir ? '' : 'openFile(' + JSON.stringify(f.path) + ')'}" >
-      <span class="fi">\${icon}</span><span class="fname">\${f.name}</span>
+    if (f.isDir) {
+      const expanded = _expandedDirs.has(f.path);
+      const arrow = expanded ? '&#9660;' : '&#9658;';
+      let html = \`<div class="file-item" style="padding-left:\${pad}px" onclick="toggleDir(\${JSON.stringify(f.path)})" id="di-\${btoa(f.path).slice(0,16)}">
+        <span class="fi" style="color:var(--accent);font-size:9px">\${arrow}</span>
+        <span class="fname" style="color:var(--fg2)">\${esc(f.name)}</span>
+      </div>\`;
+      if (expanded && f.children.length) {
+        html += \`<div id="dc-\${btoa(f.path).slice(0,16)}">\` + renderFileItems(f.children, depth+1) + \`</div>\`;
+      }
+      return html;
+    }
+    return \`<div class="file-item" style="padding-left:\${pad}px" onclick="openFile(\${JSON.stringify(f.path)})">
+      <span class="fi">·</span><span class="fname">\${esc(f.name)}</span>
     </div>\`;
-    if (f.isDir && f.children.length) html += renderFileItems(f.children, depth+1);
-    return html;
   }).join('');
 }
+
+function toggleDir(path) {
+  if (_expandedDirs.has(path)) { _expandedDirs.delete(path); } else { _expandedDirs.add(path); }
+  // Re-render files with same root
+  const pane = document.getElementById('files-pane');
+  if (pane && _lastFileRoot && _lastFileItems) {
+    pane.innerHTML = '<div class="file-section">' + _lastFileRoot + '</div>' + renderFileItems(_lastFileItems, 0);
+  }
+}
+
+let _lastFileRoot = '', _lastFileItems = [];
 
 function openFile(p) { vscode.postMessage({ type:'openFile', path:p }); }
 
@@ -1089,7 +1247,7 @@ function lTab(name) {
 }
 
 function rTab(name) {
-  ['agent','topics','map'].forEach(t => {
+  ['agent','topics','params','map'].forEach(t => {
     document.getElementById('rt-'+t)?.classList.toggle('active', t===name);
     document.getElementById('rp-'+t)?.classList.toggle('active', t===name);
   });
@@ -1244,7 +1402,24 @@ function agentDone() {
 function resetAgent() {
   const feed = document.getElementById('agent-feed');
   if (!feed) return;
-  feed.innerHTML='<div class="a-empty" id="a-empty"><div class="hex">⬡</div><p>Ask Claude to inspect your ROS graph, fix nodes, or create packages.</p><div class="a-sug"><span class="a-sg" onclick="prefill(\'What topics are active?\')">topics?</span><span class="a-sg" onclick="prefill(\'Show the node graph\')">graph</span><span class="a-sg" onclick="prefill(\'Find any issues in my nodes\')">find bugs</span><span class="a-sg" onclick="prefill(\'Create a basic publisher node\')">new node</span></div></div>';
+  feed.innerHTML = \`<div class="a-empty" id="a-empty">
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style="opacity:.4" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="14" cy="14" r="13" stroke="#4cc9f0" stroke-width="1.2"/>
+      <circle cx="14" cy="14" r="4.5" fill="#4cc9f0" opacity=".7"/>
+      <circle cx="14" cy="4" r="2" fill="#4cc9f0" opacity=".3"/>
+      <circle cx="14" cy="24" r="2" fill="#4cc9f0" opacity=".3"/>
+      <circle cx="4" cy="14" r="2" fill="#4cc9f0" opacity=".3"/>
+      <circle cx="24" cy="14" r="2" fill="#4cc9f0" opacity=".3"/>
+    </svg>
+    <p>Ask Claude about your ROS system — inspect, fix, or build.</p>
+    <div class="a-sug">
+      <span class="a-sg" onclick="prefill('List all active topics and their types')">topics?</span>
+      <span class="a-sg" onclick="prefill('Show the full node graph and explain what each node does')">graph</span>
+      <span class="a-sg" onclick="prefill('Read my source files and find any bugs or improvements')">audit</span>
+      <span class="a-sg" onclick="prefill('Scaffold a new publisher node for this workspace')">new node</span>
+      <span class="a-sg" onclick="prefill('What parameters can I tune to improve robot behavior?')">tune</span>
+      <span class="a-sg" onclick="prefill('Build the workspace and show me any errors')">build</span>
+    </div></div>\`;
   agentRunning=false;
   document.getElementById('a-send').disabled=false;
 }
@@ -1263,6 +1438,101 @@ function appendWarn(html) {
 
 function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Params Tab ──────────────────────────────────────────
+let allParams = [];
+let paramsFilter = '';
+
+function filterParams() {
+  paramsFilter = document.getElementById('params-search')?.value.toLowerCase() || '';
+  renderParams();
+}
+
+function renderParams(params) {
+  if (params !== undefined) allParams = params;
+  const pane = document.getElementById('params-list');
+  if (!pane) return;
+  if (!allParams.length) {
+    pane.innerHTML = '<div class="p-offline">No parameters found. Is a ROS node running?</div>';
+    return;
+  }
+  // Group by node
+  const byNode = {};
+  allParams.forEach(p => {
+    if (paramsFilter && !p.param.toLowerCase().includes(paramsFilter) && !p.node.toLowerCase().includes(paramsFilter)) return;
+    if (!byNode[p.node]) byNode[p.node] = [];
+    byNode[p.node].push(p.param);
+  });
+  if (!Object.keys(byNode).length) {
+    pane.innerHTML = '<div class="p-offline">No matching parameters.</div>';
+    return;
+  }
+  pane.innerHTML = Object.entries(byNode).map(([node, params]) => {
+    const nodeId = 'pn-' + node.replace(/[^a-zA-Z0-9]/g,'_');
+    return \`<div class="param-node-hdr" id="hdr-\${nodeId}" onclick="toggleParamNode('\${nodeId}')">
+      <span class="pn-arrow">&#9660;</span>
+      <span class="pn-name">\${esc(node)}</span>
+      <span style="margin-left:auto;font-size:9.5px;color:var(--fg3)">\${params.length}</span>
+    </div>
+    \${params.map(p => \`<div class="param-item" id="pi-\${nodeId}-\${CSS.escape(p)}">
+      <span class="pi-name">\${esc(p)}</span>
+      <span class="pi-val" id="pv-\${nodeId}-\${CSS.escape(p)}">—</span>
+      <button class="pi-get" onclick="loadParam(\${JSON.stringify(node)},\${JSON.stringify(p)})">get</button>
+    </div>\`).join('')}
+    \`;
+  }).join('');
+}
+
+function toggleParamNode(nodeId) {
+  const hdr = document.getElementById('hdr-'+nodeId);
+  if (!hdr) return;
+  hdr.classList.toggle('collapsed');
+  const items = document.querySelectorAll('[id^="pi-'+nodeId+'"]');
+  items.forEach(el => el.style.display = hdr.classList.contains('collapsed') ? 'none' : '');
+}
+
+function loadParam(node, param) {
+  vscode.postMessage({ type:'getParamReq', node, param });
+}
+
+function showParamValue(node, param, value) {
+  const nodeId = 'pn-' + node.replace(/[^a-zA-Z0-9]/g,'_');
+  const valEl = document.getElementById('pv-'+nodeId+'-'+CSS.escape(param));
+  if (valEl) valEl.textContent = value.length > 25 ? value.slice(0,22)+'…' : value;
+  // Show edit panel below
+  const itemEl = document.querySelector('[id^="pi-'+nodeId+'"][id$="'+CSS.escape(param)+'"]');
+  if (!itemEl) return;
+  let detail = itemEl.nextElementSibling;
+  if (detail && detail.classList.contains('param-detail')) { detail.remove(); return; }
+  detail = document.createElement('div');
+  detail.className = 'param-detail';
+  detail.innerHTML = \`<span class="pd-name">\${esc(param)}</span>
+    <div class="pd-val">\${esc(value)}</div>
+    <div class="pd-edit">
+      <input type="text" placeholder="new value…" value="\${esc(value)}" id="pe-input"/>
+      <button class="btn-pset" onclick="setParam(\${JSON.stringify(node)},\${JSON.stringify(param)})">Set</button>
+      <button class="btn-pclose" onclick="this.closest('.param-detail').remove()">&#10005;</button>
+    </div>\`;
+  itemEl.insertAdjacentElement('afterend', detail);
+}
+
+function setParam(node, param) {
+  const input = document.getElementById('pe-input');
+  const val = input?.value;
+  if (val === undefined || val === '') return;
+  vscode.postMessage({ type:'setParamReq', node, param, value: val });
+  prefill(\`Set ROS parameter \${param} on \${node} to: \${val}\`);
+  rTab('agent');
+}
+
+// ── Build ────────────────────────────────────────────────
+function requestBuild() {
+  const btn = document.getElementById('btn-build');
+  if (btn) btn.style.color = 'var(--yellow)';
+  vscode.postMessage({ type:'buildReq' });
+  rTab('agent');
+  setTimeout(() => { if(btn) btn.style.color=''; }, 2000);
 }
 
 // ── Claudemap (Fase E) ───────────────────────────────────

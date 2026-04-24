@@ -66,6 +66,31 @@ NUCLEAR_CSS = """
 .title-actions { display: none !important; }
 .window-controls-container.right { display: none !important; }
 
+/* Kill the bottom panel area — SCM, git clone, welcome panel */
+/* We hide the panel but VS Code will re-show it when terminal is explicitly opened */
+.part.panel .monaco-workbench .composite.title { display: none !important; }
+.scm-view { display: none !important; }
+.scm-provider { display: none !important; }
+.welcome-view-content[id*="scm"] { display: none !important; }
+.panel-placeholder { display: none !important; }
+/* Kill source control panel container specifically */
+[id="workbench.panel.scm"] { display: none !important; }
+[id="workbench.view.scm"] { display: none !important; }
+
+/* Kill all toasts / notifications that mention VSCodium */
+.notifications-center { display: none !important; }
+.notification-toast { display: none !important; }
+
+/* Title bar — replace any VSCodium text references */
+.window-title { opacity: 0 !important; }
+.monaco-title-bar .menubar { display: none !important; }
+
+/* Kill the "Open Folder" / "Clone Repository" empty hint in editor */
+.editor-group-empty-state { display: none !important; }
+.watermark { display: none !important; }
+[class*="welcomePageContainer"] { display: none !important; }
+.scm-empty-message { display: none !important; }
+
 /* VSCodium flash: force black background so any brief native chrome is invisible */
 .monaco-workbench { background: #0d1117 !important; }
 

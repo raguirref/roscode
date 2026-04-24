@@ -163,6 +163,53 @@ export class RosConnection extends EventEmitter {
     };
   }
 
+  async listParams(nodeName?: string): Promise<Array<{node: string; param: string}>> {
+    if (!this._robot || this._robot.rosVersion !== "ros2") return [];
+    try {
+      const args = nodeName ? ["param", "list", nodeName] : ["param", "list"];
+      const { stdout } = await execFileAsync("ros2", args, { env: this._env, timeout: 8000 });
+      const results: Array<{node: string; param: string}> = [];
+      let cur = nodeName ?? "";
+      for (const line of stdout.split("\n")) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        if (line.startsWith("/") && line.endsWith(":")) { cur = line.slice(0, -1); continue; }
+        if (trimmed && cur) results.push({ node: cur, param: trimmed });
+      }
+      return results;
+    } catch { return []; }
+  }
+
+  async getParam(nodeName: string, paramName: string): Promise<string> {
+    if (!this._robot || this._robot.rosVersion !== "ros2") return "Not connected";
+    try {
+      const { stdout } = await execFileAsync("ros2", ["param", "get", nodeName, paramName],
+        { env: this._env, timeout: 5000 });
+      return stdout.trim();
+    } catch (e: any) { return `Error: ${e.message}`; }
+  }
+
+  async setParam(nodeName: string, paramName: string, value: string): Promise<string> {
+    if (!this._robot || this._robot.rosVersion !== "ros2") return "Not connected";
+    try {
+      const { stdout } = await execFileAsync("ros2", ["param", "set", nodeName, paramName, value],
+        { env: this._env, timeout: 5000 });
+      return stdout.trim() || "Parameter set successfully";
+    } catch (e: any) { return `Error: ${e.message}`; }
+  }
+
+  async echoTopicOnce(topicName: string): Promise<string> {
+    if (!this._robot) return "";
+    try {
+      const cmd = this._robot.rosVersion === "ros1" ? "rostopic" : "ros2";
+      const args = this._robot.rosVersion === "ros1"
+        ? ["echo", "-n", "1", topicName]
+        : ["topic", "echo", "--once", topicName];
+      const { stdout } = await execFileAsync(cmd, args, { env: this._env, timeout: 8000 });
+      return stdout.trim();
+    } catch (e: any) { return `Error: ${e.message}`; }
+  }
+
   async runLaunchFile(filePath: string): Promise<void> {
     const isRos2Launch = filePath.endsWith(".py") || filePath.endsWith(".yaml");
     const cmd = isRos2Launch ? "ros2" : "roslaunch";
