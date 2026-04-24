@@ -14,6 +14,7 @@ import { TopicMonitorPanel } from "./panels/TopicMonitorPanel";
 import { RosConnection, RobotInfo } from "./ros/connection";
 import { applyWorkbenchBranding } from "./branding/workbenchBrand";
 import { inlineAsk } from "./agent/inlineAsk";
+import { StudioPanel } from "./panels/StudioPanel";
 
 const execAsync = promisify(exec);
 
@@ -156,8 +157,21 @@ export async function activate(context: vscode.ExtensionContext) {
           else eb.replace(sel, msgType);
         }
       });
-    })
+    }),
+    vscode.commands.registerCommand("roscode.openStudio", () =>
+      StudioPanel.createOrShow(context, rosConnection)
+    )
   );
+
+  // Auto-open studio when a roscode workspace is detected
+  async function checkForRoscodeProject() {
+    const configs = await vscode.workspace.findFiles(".roscode/config.json", null, 1);
+    if (configs.length > 0) {
+      await vscode.commands.executeCommand("roscode.openStudio");
+    }
+  }
+  vscode.workspace.onDidChangeWorkspaceFolders(checkForRoscodeProject, null, context.subscriptions);
+  checkForRoscodeProject().catch(() => {});
 
   // Initial state contexts
   vscode.commands.executeCommand("setContext", "roscode.connected", false);

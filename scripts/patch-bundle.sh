@@ -79,6 +79,54 @@ echo "📁 Copying to output..."
 rm -rf "$OUT"
 cp -r "$APP" "$OUT"
 
+# ── 8. Strip firma vieja + ad-hoc re-sign (Electron-correct) ─────────────
+# Regla: firmar solo binarios individuales, nunca el wrapper de framework.
+# Orden: dylibs → framework binaries → helpers → main binary → app bundle.
+echo "🔏 Re-signing (ad-hoc)..."
+
+xattr -cr "$OUT" 2>/dev/null || true
+find "$OUT" -name "_CodeSignature" -type d -exec rm -rf {} + 2>/dev/null || true
+
+FW="$OUT/Contents/Frameworks"
+EFA="$FW/Electron Framework.framework/Versions/A"
+
+# Paso 1: dylibs de Electron Framework
+for lib in "$EFA/Libraries/"*.dylib; do
+  [ -f "$lib" ] && codesign --sign - --force "$lib" 2>/dev/null && echo "   signed: $(basename "$lib")" || true
+done
+
+# Paso 2: crash handler
+[ -f "$EFA/Helpers/chrome_crashpad_handler" ] && \
+  codesign --sign - --force "$EFA/Helpers/chrome_crashpad_handler" 2>/dev/null || true
+
+# Paso 3: Electron Framework binary (Mach-O, no el .framework wrapper)
+[ -f "$EFA/Electron Framework" ] && \
+  codesign --sign - --force "$EFA/Electron Framework" 2>/dev/null && \
+  echo "   signed: Electron Framework binary" || true
+
+# Paso 4: Otros frameworks (Mantle, ReactiveObjC, Squirrel) — son .dylib-style, sin subdirs
+for fwk in "$FW/Mantle.framework" "$FW/ReactiveObjC.framework" "$FW/Squirrel.framework"; do
+  [ -d "$fwk" ] && codesign --sign - --force "$fwk" 2>/dev/null && \
+    echo "   signed: $(basename "$fwk")" || true
+done
+
+# Paso 5: Helper .app bundles (estos SÍ son bundles normales)
+for helper in "$FW/"*.app; do
+  [ -d "$helper" ] && \
+    codesign --sign - --force --deep "$helper" 2>/dev/null && \
+    echo "   signed: $(basename "$helper")" || true
+done
+
+# Paso 6: Binario principal
+codesign --sign - --force "$OUT/Contents/MacOS/VSCodium" 2>/dev/null && \
+  echo "   signed: VSCodium binary" || true
+
+# Paso 7: App bundle sin --deep (componentes ya firmados arriba)
+codesign --sign - --force "$OUT" 2>/dev/null && \
+  echo "   signed: app bundle" || true
+
 echo ""
 echo "✅ roscode studio.app listo en roscode-studio-build/"
 echo "   open \"$OUT\""
+echo ""
+echo "   Si macOS bloquea: clic derecho → Abrir → Abrir de todas formas"

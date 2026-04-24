@@ -89,6 +89,11 @@
     ],
     "commands": [
       {
+        "command": "roscode.openStudio",
+        "title": "roscode: Open Studio",
+        "icon": "$(layout)"
+      },
+      {
         "command": "roscode.openAgent",
         "title": "roscode: Open Agent",
         "icon": "$(comment-discussion)"
