@@ -47,6 +47,11 @@
           "icon": "media/icon-topics.svg"
         },
         {
+          "id": "roscode-plot",
+          "title": "PLT · plot",
+          "icon": "media/icon-plot.svg"
+        },
+        {
           "id": "roscode-library",
           "title": "LIB · library",
           "icon": "media/icon-library.svg"
@@ -82,6 +87,13 @@
         {
           "id": "roscode.topics",
           "name": "topics"
+        }
+      ],
+      "roscode-plot": [
+        {
+          "id": "roscode.plot",
+          "name": "plot",
+          "type": "webview"
         }
       ],
       "roscode-library": [

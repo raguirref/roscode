@@ -104,6 +104,7 @@
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="NET" i]::after { content: "NET"; }
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="NOD" i]::after { content: "NOD"; }
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="TOP" i]::after { content: "TOP"; }
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="PLT" i]::after { content: "PLT"; }
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="LIB" i]::after { content: "LIB"; }
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="AGT" i]::after { content: "AGT"; }
 
@@ -111,6 +112,7 @@
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="NET" i]::after,
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="NOD" i]::after,
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="TOP" i]::after,
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="PLT" i]::after,
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="LIB" i]::after,
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="AGT" i]::after {
   position: absolute;
