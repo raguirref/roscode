@@ -87,11 +87,10 @@ export class StudioPanel {
     this._panel.webview.html = this._html();
     this._panel.webview.onDidReceiveMessage((m) => this._handle(m), null, this._disposables);
     this._panel.onDidDispose(() => this._dispose(), null, this._disposables);
-    // Keep VS Code's panel/sidebar hidden so only Studio is visible
-    setTimeout(() => {
-      vscode.commands.executeCommand("workbench.action.closeSidebar").catch(() => {});
+    // Close the bottom panel (terminal/output) so it doesn't bleed through
+    [100, 400, 1000, 2500].forEach(d => setTimeout(() => {
       vscode.commands.executeCommand("workbench.action.closePanel").catch(() => {});
-    }, 100);
+    }, d));
 
     ros.onStatusChange(() => {
       this._post({ type: "rosStatus", status: ros.status, host: ros.connectedHost });
@@ -427,8 +426,10 @@ Return ONLY the JSON array, no other text.`,
   --cat-emb:var(--amber);  --cat-vis:#56d364;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
-html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--fg);
-  font-family:'Inter',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;font-size:12px}
+html{height:100%;overflow:hidden}
+body{height:100%;overflow:hidden;background:var(--bg);color:var(--fg);
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;font-size:12px;
+  display:flex;flex-direction:column}
 button{cursor:pointer;font-family:inherit}
 
 /* ── TOP BAR ───────────────────────────────────────────── */
@@ -484,11 +485,9 @@ button{cursor:pointer;font-family:inherit}
 #content{display:flex;flex:1;min-height:0}
 
 /* ── PANELS ────────────────────────────────────────────── */
-.panel{display:flex;flex-direction:column;background:var(--bg);border-right:1px solid var(--border2);overflow:hidden;flex-shrink:0}
-.panel.right{border-right:none;border-left:1px solid var(--border2)}
-#lpanel{width:240px}
+.panel{display:flex;flex-direction:column;background:var(--bg);overflow:hidden;flex-shrink:0}
+.panel.right{border-left:1px solid var(--border2)}
 #rpanel{width:320px}
-.panel.collapsed#lpanel{width:36px}
 .panel.collapsed#rpanel{width:36px}
 
 .panel-tabs{display:flex;border-bottom:1px solid var(--border2);height:34px;flex-shrink:0;background:var(--bg1)}
@@ -500,7 +499,7 @@ button{cursor:pointer;font-family:inherit}
 }
 .panel-tabs button.active{color:var(--accent);border-bottom-color:var(--accent)}
 .panel-tabs button:hover:not(.active){color:var(--fg2)}
-.panel.collapsed .panel-tabs{flex-direction:column;height:auto;border-bottom:none;border-right:1px solid var(--border2)}
+.panel.collapsed .panel-tabs{flex-direction:column;height:auto;border-bottom:none}
 .panel.collapsed .panel-tabs button{flex:none;height:36px;width:36px;border-bottom:none;border-right:2px solid transparent}
 .panel.collapsed .panel-tabs button.active{border-right-color:var(--accent)}
 .panel.collapsed .panel-tabs button .tab-label{display:none}
@@ -517,7 +516,7 @@ button{cursor:pointer;font-family:inherit}
 }
 .collapse-btn:hover{color:var(--fg);background:var(--bg2)}
 
-/* ── RESIZE HANDLES ────────────────────────────────────── */
+/* ── RESIZE HANDLE ─────────────────────────────────────── */
 .resizer{width:4px;background:transparent;cursor:col-resize;flex-shrink:0;transition:background 150ms}
 .resizer:hover,.resizer.dragging{background:var(--accent)}
 
@@ -564,15 +563,6 @@ button{cursor:pointer;font-family:inherit}
 .v-tag{font-size:9.5px;padding:1px 5px;border-radius:3px;
   background:var(--accent-dim);border:1px solid rgba(76,201,240,.2);color:var(--accent);
   font-family:ui-monospace,monospace;letter-spacing:.02em}
-
-/* ── FILES TAB ─────────────────────────────────────────── */
-#files-pane{padding:6px 0;overflow-y:auto}
-.file-item{display:flex;align-items:center;gap:5px;padding:3px 10px;cursor:pointer;font-size:11.5px;color:var(--fg2);border-radius:0;white-space:nowrap;overflow:hidden}
-.file-item:hover{background:var(--bg2);color:var(--fg)}
-.file-item .fi{font-size:10px;color:var(--fg3);flex-shrink:0;width:10px}
-.file-item .fname{overflow:hidden;text-overflow:ellipsis}
-.file-section{padding:6px 10px 2px;font-size:10px;font-weight:600;color:var(--fg3);letter-spacing:.05em;text-transform:uppercase}
-.no-ws{padding:16px 12px;color:var(--fg3);font-size:11.5px;text-align:center;line-height:1.5}
 
 /* ── LIBRARY TAB ───────────────────────────────────────── */
 #lib-pane{display:flex;flex-direction:column;overflow:hidden}
@@ -788,61 +778,26 @@ button{cursor:pointer;font-family:inherit}
 
   <div id="ros-pill"><span class="dot"></span><span id="ros-text">Offline</span></div>
 
-  <button id="btn-start" onclick="startRuntime()">&#9654; Start Runtime</button>
+  <button id="btn-start">&#9654; Start Runtime</button>
 
   <div id="tools-wrap">
-    <button class="btn-ghost" onclick="toggleTools()">
+    <button class="btn-ghost" id="btn-tools">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" style="vertical-align:middle;margin-right:4px"><rect x="1" y="1" width="5" height="5" rx="1"/><rect x="8" y="1" width="5" height="5" rx="1"/><rect x="1" y="8" width="5" height="5" rx="1"/><rect x="8" y="8" width="5" height="5" rx="1"/></svg>Tools
     </button>
     <div id="tools-menu">
-      <button onclick="launch('foxglove')"><span class="ti">&#9728;</span>Foxglove Studio</button>
-      <button onclick="launch('rviz')"><span class="ti">&#9671;</span>RViz2 (docker)</button>
-      <button onclick="launch('terminal')"><span class="ti">&#9656;</span>New Terminal</button>
+      <button data-tool="foxglove"><span class="ti">&#9728;</span>Foxglove Studio</button>
+      <button data-tool="rviz"><span class="ti">&#9671;</span>RViz2 (docker)</button>
+      <button data-tool="terminal"><span class="ti">&#9656;</span>New Terminal</button>
     </div>
   </div>
 
-  <button class="btn-ghost" onclick="toggleEditor()" title="Toggle Editor">
+  <button class="btn-ghost" id="btn-editor-toggle" title="Toggle Editor">
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" style="vertical-align:middle"><polyline points="4,2 1,7 4,12"/><polyline points="10,2 13,7 10,12"/></svg>
   </button>
 </div>
 
 <!-- MAIN CONTENT -->
 <div id="content">
-
-  <!-- LEFT PANEL -->
-  <div class="panel" id="lpanel">
-    <div class="panel-tabs">
-      <button class="active" id="lt-files" onclick="lTab('files')"><span class="tab-label">Files</span></button>
-      <button id="lt-library" onclick="lTab('library')"><span class="tab-label">Library</span></button>
-      <button class="collapse-btn" onclick="collapsePanel('lpanel')" title="Collapse">‹</button>
-    </div>
-    <div class="panel-body">
-      <!-- FILES -->
-      <div class="tab-pane active" id="lp-files">
-        <div id="files-pane">
-          <div class="no-ws">No workspace open.<br>Open a folder to see files.</div>
-        </div>
-      </div>
-      <!-- LIBRARY -->
-      <div class="tab-pane" id="lp-library">
-        <div id="lib-pane">
-          <!-- AI search panel -->
-          <div id="ai-search-panel">
-            <textarea id="ai-search-input" placeholder="Describe what you need — e.g. 'lidar SLAM for indoor mobile robot'…"></textarea>
-            <button id="ai-search-go" onclick="runAiSearch()">✨ Search with AI</button>
-          </div>
-          <div id="lib-search-row">
-            <input id="lib-search" type="text" placeholder="Search packages…" oninput="filterLib()"/>
-            <button id="btn-ai-search" onclick="toggleAiSearch()" title="AI Search">✨</button>
-          </div>
-          <div id="lib-cats"></div>
-          <div id="lib-list"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="resizer" id="lresizer"></div>
 
   <!-- GRAPH CENTER -->
   <div id="graph-center">
@@ -864,7 +819,7 @@ button{cursor:pointer;font-family:inherit}
       </svg>
       <div class="overlay-title">Robot offline</div>
       <div class="overlay-sub">Start runtime to see the ROS graph</div>
-      <button class="overlay-btn" onclick="startRuntime()">&#9654; Start Runtime</button>
+      <button class="overlay-btn" id="overlay-start">&#9654; Start Runtime</button>
     </div>
   </div>
 
@@ -873,11 +828,12 @@ button{cursor:pointer;font-family:inherit}
   <!-- RIGHT PANEL -->
   <div class="panel right" id="rpanel">
     <div class="panel-tabs">
-      <button class="collapse-btn" onclick="collapsePanel('rpanel')" style="margin-left:0;margin-right:auto;" title="Collapse">›</button>
-      <button class="active" id="rt-agent" onclick="rTab('agent')"><span class="tab-label">Agent</span></button>
-      <button id="rt-topics" onclick="rTab('topics')"><span class="tab-label">Topics</span></button>
-      <button id="rt-params" onclick="rTab('params')"><span class="tab-label">Params</span></button>
-      <button id="rt-map" onclick="rTab('map')"><span class="tab-label">Map</span></button>
+      <button class="collapse-btn" id="btn-collapse-right" style="margin-left:0;margin-right:auto;" title="Collapse">›</button>
+      <button class="active" id="rt-agent"><span class="tab-label">Agent</span></button>
+      <button id="rt-topics"><span class="tab-label">Topics</span></button>
+      <button id="rt-params"><span class="tab-label">Params</span></button>
+      <button id="rt-lib"><span class="tab-label">Library</span></button>
+      <button id="rt-map"><span class="tab-label">Map</span></button>
     </div>
     <div class="panel-body">
       <!-- AGENT -->
@@ -898,20 +854,20 @@ button{cursor:pointer;font-family:inherit}
                 <line x1="27" y1="20" x2="32.2" y2="20" stroke="#4cc9f0" stroke-width="1.2" opacity=".3"/>
               </svg>
               <p>Ask Claude about your ROS system &mdash; inspect topics, fix bugs, or build new nodes.</p>
-              <div class="a-sug">
-                <span class="a-sg" onclick="prefill('List all active topics and their types')">topics?</span>
-                <span class="a-sg" onclick="prefill('Show the full node graph and explain what each node does')">graph</span>
-                <span class="a-sg" onclick="prefill('Read my source files and find any bugs or improvements')">audit</span>
-                <span class="a-sg" onclick="prefill('Scaffold a new publisher node for this workspace')">new node</span>
-                <span class="a-sg" onclick="prefill('What parameters can I tune to improve robot behavior?')">tune params</span>
-                <span class="a-sg" onclick="prefill('Build the workspace and show me any errors')">build</span>
+              <div class="a-sug" id="a-sug-static">
+                <span class="a-sg" data-prefill="List all active topics and their types">topics?</span>
+                <span class="a-sg" data-prefill="Show the full node graph and explain what each node does">graph</span>
+                <span class="a-sg" data-prefill="Read my source files and find any bugs or improvements">audit</span>
+                <span class="a-sg" data-prefill="Scaffold a new publisher node for this workspace">new node</span>
+                <span class="a-sg" data-prefill="What parameters can I tune to improve robot behavior?">tune params</span>
+                <span class="a-sg" data-prefill="Build the workspace and show me any errors">build</span>
               </div>
             </div>
           </div>
           <div id="agent-bar">
             <div class="agent-wrap">
-              <textarea id="a-inp" placeholder="Ask about your ROS system…" rows="1" oninput="autoResize(this)" onkeydown="agentKey(event)"></textarea>
-              <button id="a-send" onclick="agentSend()">
+              <textarea id="a-inp" placeholder="Ask about your ROS system…" rows="1"></textarea>
+              <button id="a-send">
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M11 6L1 1l2.5 5L1 11l10-5z"/></svg>
               </button>
             </div>
@@ -935,6 +891,21 @@ button{cursor:pointer;font-family:inherit}
           </div>
         </div>
       </div>
+      <!-- LIBRARY -->
+      <div class="tab-pane" id="rp-lib">
+        <div id="lib-pane">
+          <div id="ai-search-panel">
+            <textarea id="ai-search-input" placeholder="Describe what you need — e.g. 'lidar SLAM for indoor mobile robot'…"></textarea>
+            <button id="ai-search-go">✨ Search with AI</button>
+          </div>
+          <div id="lib-search-row">
+            <input id="lib-search" type="text" placeholder="Search packages…"/>
+            <button id="btn-ai-search" title="AI Search">✨</button>
+          </div>
+          <div id="lib-cats"></div>
+          <div id="lib-list"></div>
+        </div>
+      </div>
       <!-- MAP (Fase E: claudemap) -->
       <div class="tab-pane" id="rp-map">
         <div id="map-pane">
@@ -955,15 +926,18 @@ button{cursor:pointer;font-family:inherit}
 <!-- BOTTOM BAR -->
 <div id="bottom">
   <span class="v-tag">v0.1.0</span>
-  <button id="btn-build" onclick="requestBuild()" title="colcon build">
+  <button id="btn-build" title="colcon build">
     <svg width="10" height="10" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.4"><polyline points="1,3 5.5,1 10,3 10,8 5.5,10 1,8 1,3"/><line x1="5.5" y1="1" x2="5.5" y2="5.5"/><line x1="5.5" y1="5.5" x2="10" y2="3"/><line x1="5.5" y1="5.5" x2="1" y2="3"/></svg>Build
   </button>
-  <button onclick="vscode.postMessage({type:'launchTool',tool:'terminal'})">
+  <button id="btn-terminal" title="Open integrated terminal">
     <svg width="10" height="10" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.4"><polyline points="1,2.5 5,5.5 1,8.5"/><line x1="5.5" y1="8.5" x2="10" y2="8.5"/></svg>Terminal
   </button>
+  <button id="btn-library-quick" title="Package library">
+    <svg width="10" height="10" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1" y="2" width="9" height="7" rx="1"/><line x1="3.5" y1="4.5" x2="7.5" y2="4.5"/><line x1="3.5" y1="6.5" x2="6" y2="6.5"/></svg>Library
+  </button>
   <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
-    <span id="ws-label" style="color:var(--fg3)"></span>
-    <span id="build-status" style="display:none"></span>
+    <span id="ws-label" style="color:var(--fg3);font-family:ui-monospace,monospace;font-size:10px"></span>
+    <span id="ros-domain" style="display:none;font-family:ui-monospace,monospace;font-size:10px;color:var(--fg3)">ROS_DOMAIN_ID=0</span>
   </div>
 </div>
 
@@ -1023,6 +997,8 @@ function handleRosStatus(m) {
   btn.disabled = rosOnline;
   btn.textContent = rosOnline ? '✓ Connected' : '▶ Start Runtime';
   if (overlay) overlay.classList.toggle('hidden', rosOnline);
+  const domainEl = document.getElementById('ros-domain');
+  if (domainEl) domainEl.style.display = rosOnline ? '' : 'none';
   if (rosOnline) loadTopics();
 }
 
@@ -1100,9 +1076,9 @@ function renderRealTopics(topics) {
   }
   pane.innerHTML = topics.map(t => \`
     <div class="topic-item" id="ti-\${CSS.escape(t.name)}">
-      <span class="t-name" onclick="echoTopicAgent(\${JSON.stringify(t.name)})">\${esc(t.name)}</span>
+      <span class="t-name" data-action="echoAgent" data-topic="\${esc(t.name)}">\${esc(t.name)}</span>
       <span class="t-type">\${esc(t.type||'')}</span>
-      <button class="ti-echo" onclick="echoTopicInline(\${JSON.stringify(t.name)})">echo</button>
+      <button class="ti-echo" data-action="echoInline" data-topic="\${esc(t.name)}">echo</button>
     </div>\`).join('');
 }
 
@@ -1135,52 +1111,10 @@ function handleEchoResult(topic, data) {
 
 // ── Files ───────────────────────────────────────────────
 function renderFiles(root, items) {
-  const pane = document.getElementById('files-pane');
-  if (!pane) return;
-  if (!root || !items.length) {
-    pane.innerHTML = '<div class="no-ws">No workspace open.<br>Open a folder to see files.</div>';
-    _lastFileRoot = ''; _lastFileItems = [];
-    return;
-  }
-  _lastFileRoot = root; _lastFileItems = items;
+  // Update the bottom bar workspace label (even though we don't show the file tree)
   const wsLabel = document.getElementById('ws-label');
-  if (wsLabel) wsLabel.textContent = root;
-  pane.innerHTML = '<div class="file-section">' + root + '</div>' + renderFileItems(items, 0);
+  if (wsLabel) wsLabel.textContent = root ? ('/' + root) : '';
 }
-
-let _expandedDirs = new Set();
-
-function renderFileItems(items, depth) {
-  return items.map(f => {
-    const pad = 10 + depth * 12;
-    if (f.isDir) {
-      const expanded = _expandedDirs.has(f.path);
-      const arrow = expanded ? '&#9660;' : '&#9658;';
-      let html = \`<div class="file-item" style="padding-left:\${pad}px" onclick="toggleDir(\${JSON.stringify(f.path)})" id="di-\${btoa(f.path).slice(0,16)}">
-        <span class="fi" style="color:var(--accent);font-size:9px">\${arrow}</span>
-        <span class="fname" style="color:var(--fg2)">\${esc(f.name)}</span>
-      </div>\`;
-      if (expanded && f.children.length) {
-        html += \`<div id="dc-\${btoa(f.path).slice(0,16)}">\` + renderFileItems(f.children, depth+1) + \`</div>\`;
-      }
-      return html;
-    }
-    return \`<div class="file-item" style="padding-left:\${pad}px" onclick="openFile(\${JSON.stringify(f.path)})">
-      <span class="fi">·</span><span class="fname">\${esc(f.name)}</span>
-    </div>\`;
-  }).join('');
-}
-
-function toggleDir(path) {
-  if (_expandedDirs.has(path)) { _expandedDirs.delete(path); } else { _expandedDirs.add(path); }
-  // Re-render files with same root
-  const pane = document.getElementById('files-pane');
-  if (pane && _lastFileRoot && _lastFileItems) {
-    pane.innerHTML = '<div class="file-section">' + _lastFileRoot + '</div>' + renderFileItems(_lastFileItems, 0);
-  }
-}
-
-let _lastFileRoot = '', _lastFileItems = [];
 
 function openFile(p) { vscode.postMessage({ type:'openFile', path:p }); }
 
@@ -1196,14 +1130,14 @@ function initLib(pkgs) {
   const cats = ['All', ...new Set(pkgs.map(p=>p.category))];
   const chips = document.getElementById('lib-cats');
   if (chips) chips.innerHTML = cats.map(c =>
-    \`<button class="cat-chip\${c==='All'?' active':''}" onclick="setLibCat('\${c}')">\${c}</button>\`
+    \`<button class="cat-chip\${c==='All'?' active':''}" data-cat="\${esc(c)}">\${esc(c)}</button>\`
   ).join('');
   renderLib();
 }
 
 function setLibCat(c) {
   libCat = c;
-  document.querySelectorAll('.cat-chip').forEach(b => b.classList.toggle('active', b.textContent===c));
+  document.querySelectorAll('.cat-chip').forEach(b => b.classList.toggle('active', b.dataset.cat===c));
   renderLib();
 }
 
@@ -1232,8 +1166,8 @@ function renderLib(extra=[]) {
       </div>
       <div class="pkg-desc">\${p.description}</div>
       <div class="pkg-actions">
-        <button class="btn-install" onclick="installPkg(\${JSON.stringify(p.install)})">📋 Copy install</button>
-        <button class="btn-repo" onclick="openRepo(\${JSON.stringify(p.repo)})">↗</button>
+        <button class="btn-install" data-action="install" data-cmd="\${esc(p.install||'')}">📋 Copy install</button>
+        <button class="btn-repo" data-action="repo" data-url="\${esc(p.repo||'')}">↗</button>
       </div>
     </div>\`;
   }).join('');
@@ -1272,15 +1206,8 @@ function appendLibNotice(msg) {
 }
 
 // ── Tab switching ───────────────────────────────────────
-function lTab(name) {
-  ['files','library'].forEach(t => {
-    document.getElementById('lt-'+t)?.classList.toggle('active', t===name);
-    document.getElementById('lp-'+t)?.classList.toggle('active', t===name);
-  });
-}
-
 function rTab(name) {
-  ['agent','topics','params','map'].forEach(t => {
+  ['agent','topics','params','lib','map'].forEach(t => {
     document.getElementById('rt-'+t)?.classList.toggle('active', t===name);
     document.getElementById('rp-'+t)?.classList.toggle('active', t===name);
   });
@@ -1309,19 +1236,14 @@ function setupResizer(handle, target, side) {
     document.addEventListener('mouseup', up);
   });
 }
-setupResizer(document.getElementById('lresizer'), document.getElementById('lpanel'), 'l');
 setupResizer(document.getElementById('rresizer'), document.getElementById('rpanel'), 'r');
 
 // ── Tools menu ──────────────────────────────────────────
 function toggleTools() {
   document.getElementById('tools-menu')?.classList.toggle('open');
 }
-document.addEventListener('click', e => {
-  if (!e.target.closest('#tools-wrap')) document.getElementById('tools-menu')?.classList.remove('open');
-});
 
 function launch(tool) {
-  document.getElementById('tools-menu')?.classList.remove('open');
   vscode.postMessage({ type:'launchTool', tool });
 }
 
@@ -1388,8 +1310,8 @@ function appendTool(m) {
   if (!feed) return;
   const destr = m.needsConfirm;
   const confirm = destr ? \`<div class="confirm-row"><span class="cwarn">⚠ requires confirmation</span>
-    <button class="btn-c" onclick="confirmTool('\${m.id}')">Run</button>
-    <button class="btn-r" onclick="rejectTool('\${m.id}')">Reject</button></div>\` : '';
+    <button class="btn-c" data-action="confirmTool" data-id="\${m.id}">Run</button>
+    <button class="btn-r" data-action="rejectTool" data-id="\${m.id}">Reject</button></div>\` : '';
   feed.insertAdjacentHTML('beforeend', \`<div class="a-tool\${destr?' destructive':''}" id="tool-\${m.id}">
     <div class="t-row">
       <span class="t-icon">\${m.meta?.icon||'⚙'}</span>
@@ -1450,12 +1372,12 @@ function resetAgent() {
     </svg>
     <p>Ask Claude about your ROS system &mdash; inspect topics, fix bugs, or build new nodes.</p>
     <div class="a-sug">
-      <span class="a-sg" onclick="prefill('List all active topics and their types')">topics?</span>
-      <span class="a-sg" onclick="prefill('Show the full node graph and explain what each node does')">graph</span>
-      <span class="a-sg" onclick="prefill('Read my source files and find any bugs or improvements')">audit</span>
-      <span class="a-sg" onclick="prefill('Scaffold a new publisher node for this workspace')">new node</span>
-      <span class="a-sg" onclick="prefill('What parameters can I tune to improve robot behavior?')">tune params</span>
-      <span class="a-sg" onclick="prefill('Build the workspace and show me any errors')">build</span>
+      <span class="a-sg" data-prefill="List all active topics and their types">topics?</span>
+      <span class="a-sg" data-prefill="Show the full node graph and explain what each node does">graph</span>
+      <span class="a-sg" data-prefill="Read my source files and find any bugs or improvements">audit</span>
+      <span class="a-sg" data-prefill="Scaffold a new publisher node for this workspace">new node</span>
+      <span class="a-sg" data-prefill="What parameters can I tune to improve robot behavior?">tune params</span>
+      <span class="a-sg" data-prefill="Build the workspace and show me any errors">build</span>
     </div></div>\`;
   agentRunning=false;
   document.getElementById('a-send').disabled=false;
@@ -1507,7 +1429,7 @@ function renderParams(params) {
   }
   pane.innerHTML = Object.entries(byNode).map(([node, params]) => {
     const nodeId = 'pn-' + node.replace(/[^a-zA-Z0-9]/g,'_');
-    return \`<div class="param-node-hdr" id="hdr-\${nodeId}" onclick="toggleParamNode('\${nodeId}')">
+    return \`<div class="param-node-hdr" id="hdr-\${nodeId}" data-action="toggleNode" data-nodeid="\${esc(nodeId)}">
       <span class="pn-arrow">&#9660;</span>
       <span class="pn-name">\${esc(node)}</span>
       <span style="margin-left:auto;font-size:9.5px;color:var(--fg3)">\${params.length}</span>
@@ -1515,7 +1437,7 @@ function renderParams(params) {
     \${params.map(p => \`<div class="param-item" id="pi-\${nodeId}-\${CSS.escape(p)}">
       <span class="pi-name">\${esc(p)}</span>
       <span class="pi-val" id="pv-\${nodeId}-\${CSS.escape(p)}">—</span>
-      <button class="pi-get" onclick="loadParam(\${JSON.stringify(node)},\${JSON.stringify(p)})">get</button>
+      <button class="pi-get" data-action="loadParam" data-node="\${esc(node)}" data-param="\${esc(p)}">get</button>
     </div>\`).join('')}
     \`;
   }).join('');
@@ -1548,8 +1470,8 @@ function showParamValue(node, param, value) {
     <div class="pd-val">\${esc(value)}</div>
     <div class="pd-edit">
       <input type="text" placeholder="new value…" value="\${esc(value)}" id="pe-input"/>
-      <button class="btn-pset" onclick="setParam(\${JSON.stringify(node)},\${JSON.stringify(param)})">Set</button>
-      <button class="btn-pclose" onclick="this.closest('.param-detail').remove()">&#10005;</button>
+      <button class="btn-pset" data-action="setParam" data-node="\${esc(node)}" data-param="\${esc(param)}">Set</button>
+      <button class="btn-pclose" data-action="closeDetail">&#10005;</button>
     </div>\`;
   itemEl.insertAdjacentElement('afterend', detail);
 }
@@ -1592,7 +1514,8 @@ function handleMapSections(filename, sections) {
   }
   pane.innerHTML = sections.map(s => {
     const lines = Array.isArray(s.lines) ? s.lines[0] + '–' + s.lines[1] : '';
-    return \`<div class="map-section" onclick="jumpToLine(\${Array.isArray(s.lines)?s.lines[0]:1})">
+    const lineNum = Array.isArray(s.lines) ? s.lines[0] : 1;
+    return \`<div class="map-section" data-action="jumpToLine" data-line="\${lineNum}">
       <div class="map-sec-head">
         <span class="map-sec-name">\${esc(s.name)}</span>
         <span class="map-sec-lines">:\${lines}</span>
@@ -1613,6 +1536,70 @@ function handleMapError(err) {
 }
 
 function jumpToLine(line) { vscode.postMessage({ type: 'jumpToLine', line }); }
+
+// ── Static button wiring (addEventListener — no inline onclick) ──────────────
+document.getElementById('btn-start')?.addEventListener('click', startRuntime);
+document.getElementById('overlay-start')?.addEventListener('click', startRuntime);
+document.getElementById('btn-tools')?.addEventListener('click', toggleTools);
+document.getElementById('btn-editor-toggle')?.addEventListener('click', toggleEditor);
+document.getElementById('rt-agent')?.addEventListener('click', () => rTab('agent'));
+document.getElementById('rt-topics')?.addEventListener('click', () => rTab('topics'));
+document.getElementById('rt-params')?.addEventListener('click', () => rTab('params'));
+document.getElementById('rt-lib')?.addEventListener('click', () => rTab('lib'));
+document.getElementById('rt-map')?.addEventListener('click', () => rTab('map'));
+document.getElementById('btn-collapse-right')?.addEventListener('click', () => collapsePanel('rpanel'));
+document.getElementById('lib-search')?.addEventListener('input', filterLib);
+document.getElementById('btn-ai-search')?.addEventListener('click', toggleAiSearch);
+document.getElementById('ai-search-go')?.addEventListener('click', runAiSearch);
+document.getElementById('a-inp')?.addEventListener('input', e => autoResize(e.target));
+document.getElementById('a-inp')?.addEventListener('keydown', agentKey);
+document.getElementById('a-send')?.addEventListener('click', agentSend);
+document.getElementById('btn-build')?.addEventListener('click', requestBuild);
+document.getElementById('btn-terminal')?.addEventListener('click', () => vscode.postMessage({type:'launchTool',tool:'terminal'}));
+document.getElementById('btn-library-quick')?.addEventListener('click', () => rTab('lib'));
+
+// Tools menu: close on outside click
+document.addEventListener('click', e => {
+  if (!e.target.closest('#tools-wrap')) document.getElementById('tools-menu')?.classList.remove('open');
+});
+// Tools menu item delegation
+document.getElementById('tools-menu')?.addEventListener('click', e => {
+  const btn = e.target.closest('[data-tool]');
+  if (btn) { document.getElementById('tools-menu').classList.remove('open'); launch(btn.dataset.tool); }
+});
+
+// ── Global event delegation for data-action elements ─────────────────────────
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-action]');
+  if (!el) return;
+  e.stopPropagation();
+  switch(el.dataset.action) {
+    case 'toggleDir':   toggleDir(el.dataset.path); break;
+    case 'openFile':    openFile(el.dataset.path); break;
+    case 'echoAgent':   echoTopicAgent(el.dataset.topic); break;
+    case 'echoInline':  echoTopicInline(el.dataset.topic); break;
+    case 'toggleNode':  toggleParamNode(el.dataset.nodeid); break;
+    case 'loadParam':   loadParam(el.dataset.node, el.dataset.param); break;
+    case 'setParam':    setParam(el.dataset.node, el.dataset.param); break;
+    case 'closeDetail': el.closest('.param-detail')?.remove(); break;
+    case 'jumpToLine':  jumpToLine(parseInt(el.dataset.line, 10)); break;
+    case 'confirmTool': confirmTool(el.dataset.id); break;
+    case 'rejectTool':  rejectTool(el.dataset.id); break;
+    case 'install':     installPkg(el.dataset.cmd); break;
+    case 'repo':        openRepo(el.dataset.url); break;
+    case 'setCat':      setLibCat(el.dataset.cat); break;
+  }
+});
+// suggestion chips (use data-prefill)
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-prefill]');
+  if (el) prefill(el.dataset.prefill);
+});
+// category chips (use data-cat on lib-cats)
+document.getElementById('lib-cats')?.addEventListener('click', e => {
+  const btn = e.target.closest('[data-cat]');
+  if (btn) setLibCat(btn.dataset.cat);
+});
 
 // ── Init ────────────────────────────────────────────────
 drawPlaceholderGraph();

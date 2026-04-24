@@ -5,22 +5,24 @@ content = target.read_text(encoding="utf-8")
 
 NUCLEAR_CSS = """
 <style id="roscode-nuclear">
-/* ═══ NUCLEAR CHROME REMOVAL — roscode studio ═══ */
+/* ═══ roscode studio — workbench overrides ═══ */
 
 /* ── Workbench background ─────────────────────── */
-body, .monaco-workbench { background: #0d1117 !important; }
-.part.editor           { background: #0d1117 !important; }
+body, .monaco-workbench { background: #080b0f !important; }
+.part.editor           { background: #080b0f !important; }
 
-/* ── Activity bar ─────────────────────────────── */
-.activitybar { display: none !important; }
+/* ── Status bar — theme instead of hide ──────── */
+.part.statusbar {
+  background: #080b0f !important;
+  border-top: 1px solid #141e2e !important;
+  height: 24px !important;
+}
+.part.statusbar .statusbar-item { font-size: 11px !important; }
+/* Hide VS Code branding text in status bar */
+.part.statusbar .statusbar-item[id*="vscode"] { opacity: 0 !important; pointer-events: none !important; }
+/* Error/warning counts stay visible */
 
-/* ── Sidebar ──────────────────────────────────── */
-.sidebar { display: none !important; }
-
-/* ── Status bar ───────────────────────────────── */
-.part.statusbar { display: none !important; }
-
-/* ── Menu bar ─────────────────────────────────── */
+/* ── Menu bar — hide (we use command palette) ─ */
 .menubar { display: none !important; }
 
 /* ── Editor tabs + breadcrumbs ────────────────── */
@@ -29,11 +31,11 @@ body, .monaco-workbench { background: #0d1117 !important; }
 
 /* ── Title bar — keep drag region, kill content ─ */
 .part.titlebar {
-  background: #0d1117 !important;
+  background: #080b0f !important;
   border: none !important;
   height: 28px !important;
 }
-.monaco-title-bar { background: #0d1117 !important; }
+.monaco-title-bar { background: #080b0f !important; }
 /* Hide EVERYTHING inside the title bar except the macOS traffic lights area */
 .part.titlebar .titlebar-left  { display: none !important; }
 .part.titlebar .titlebar-right { display: none !important; }
@@ -43,12 +45,11 @@ body, .monaco-workbench { background: #0d1117 !important; }
 .part.titlebar .monaco-toolbar  { display: none !important; }
 .part.titlebar .layout-controls-container { display: none !important; }
 .part.titlebar .action-bar      { display: none !important; }
-/* Keep left side for macOS traffic lights (uses native -webkit-app-region:drag) */
+/* Keep left side for macOS traffic lights */
 .part.titlebar .window-controls-container.left { opacity: 1 !important; display: flex !important; }
 .part.titlebar .window-controls-container.right { display: none !important; }
 
 /* ── Bottom panel — hide UNLESS a terminal is open ── */
-/* :has(.xterm) = panel has an active terminal = keep it visible */
 .part.panel:not(:has(.xterm)) { display: none !important; }
 
 /* ── SCM / Source control specific kills ──────── */
