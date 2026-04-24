@@ -48,74 +48,96 @@ export class HomeView implements vscode.WebviewViewProvider {
 <meta charset="UTF-8"/>
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'nonce-${n}'; script-src 'nonce-${n}';">
 <style nonce="${n}">
-:root{--accent:#4cc9f0;--accent-dim:#4cc9f060;--bg:#0a0e14;--bg2:#0d1520;--bg3:#111b2b;--fg:#c9d1d9;--fg2:#8b9ab0;--fg3:#3d4a5c;--border:#141e2e;--green:#3dd68c;--red:#f87171}
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap");
+:root{
+  --accent:#f2a83b;
+  --accent-dim:rgba(242,168,59,0.10);
+  --accent-line:rgba(242,168,59,0.28);
+  --bg:#0a0c0b;
+  --bg2:#121615;
+  --bg3:#181d1b;
+  --fg:#e4e6e1;
+  --fg2:#9ea39a;
+  --fg3:#636862;
+  --border:#22282660;
+  --border-hi:#333b38;
+  --green:#8bc34a;
+  --red:#e06666;
+  --warn:#f2c84b;
+  --font-mono:'Geist Mono','JetBrains Mono',ui-monospace,monospace;
+  --font-sans:'Geist','Inter',system-ui,sans-serif;
+}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Inter',system-ui,sans-serif;font-size:12px;background:var(--bg);color:var(--fg);padding:6px 8px 10px;overflow:hidden auto}
+body{font-family:var(--font-sans);font-size:12px;background:var(--bg);color:var(--fg);padding:8px 10px 10px;overflow:hidden auto;
+  background-image:radial-gradient(var(--border-hi) 1px, transparent 1px);
+  background-size:24px 24px}
 
 /* Status row */
-.status{background:transparent;border:1px solid var(--border);border-radius:6px;padding:8px 9px;display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.status{background:transparent;border:1px solid var(--border);border-radius:4px;padding:10px 11px;display:flex;flex-direction:column;gap:7px;margin-bottom:12px;background:var(--bg2)}
 .srow{display:flex;align-items:center;gap:8px;min-height:17px}
-.srow:first-child{padding-bottom:6px;border-bottom:1px solid var(--border)}
+.srow:first-child{padding-bottom:7px;border-bottom:1px solid var(--border)}
 .dot{width:6px;height:6px;border-radius:50%;background:var(--fg3);flex-shrink:0}
 .dot.on{background:var(--green);box-shadow:0 0 6px var(--green)}
 .dot.scan{background:var(--accent);animation:pulse 1.5s ease infinite}
 @keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
-.lbl{font-size:11.5px;color:var(--fg2);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.val{color:var(--fg3);font-size:10.5px;font-family:'JetBrains Mono',ui-monospace,monospace;flex-shrink:0}
+.lbl{font-family:var(--font-mono);font-size:11px;color:var(--fg2);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.3px}
+.val{color:var(--fg3);font-size:10px;font-family:var(--font-mono);flex-shrink:0;text-transform:uppercase;letter-spacing:.5px}
 .val.hl{color:var(--accent)}
 
 /* Action buttons */
-.btn{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:5px;cursor:pointer;color:var(--fg2);font-size:11.5px;transition:all 100ms;border:1px solid transparent;background:transparent}
+.btn{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:4px;cursor:pointer;color:var(--fg2);font-family:var(--font-mono);font-size:10px;letter-spacing:.8px;text-transform:uppercase;transition:all 100ms;border:1px solid transparent;background:transparent}
 .btn:hover{background:var(--bg2);color:var(--accent);border-color:var(--border)}
 .btn svg{flex-shrink:0;color:var(--accent)}
-.kbd{margin-left:auto;font-size:9.5px;color:var(--fg3);background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:1px 5px;font-family:inherit;letter-spacing:.5px}
-.btn.primary{background:var(--accent-dim);border-color:var(--accent);color:var(--accent);margin-bottom:2px}
-.btn.primary:hover{background:var(--accent);color:#060809}
+.kbd{margin-left:auto;font-size:9px;color:var(--fg3);background:transparent;border:1px solid var(--border);border-radius:3px;padding:1px 5px;font-family:var(--font-mono);letter-spacing:.5px}
+.btn.primary{background:var(--accent-dim);border-color:var(--accent-line);color:var(--accent);margin-bottom:4px}
+.btn.primary:hover{background:var(--accent);color:#1a1408}
 .btn.primary svg{color:inherit}
 
 /* Section header */
-.hd{font-size:9.5px;color:var(--fg3);text-transform:uppercase;letter-spacing:1.2px;padding:8px 4px 3px;font-weight:600}
+.hd{font-family:var(--font-mono);font-size:9px;color:var(--fg3);text-transform:uppercase;letter-spacing:1.5px;padding:10px 4px 4px;font-weight:500}
+.hd::before{content:"// ";color:var(--accent)}
 
 /* ── Wizard Modal ───────────────────────────────────────── */
-#modal{display:none;position:fixed;inset:0;background:#0a0e14ee;z-index:100;flex-direction:column;padding:10px 8px;overflow-y:auto}
+#modal{display:none;position:fixed;inset:0;background:rgba(10,12,11,0.95);z-index:100;flex-direction:column;padding:12px 10px;overflow-y:auto}
 #modal.open{display:flex}
-.modal-box{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:10px;flex:1;max-height:100%}
-.modal-title{font-size:13px;font-weight:700;color:var(--fg);letter-spacing:-0.2px}
-.modal-sub{font-size:11px;color:var(--fg3)}
+.modal-box{background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:16px;display:flex;flex-direction:column;gap:12px;flex:1;max-height:100%}
+.modal-title{font-family:var(--font-mono);font-size:13px;font-weight:600;color:var(--fg);letter-spacing:.3px;text-transform:uppercase}
+.modal-sub{font-family:var(--font-mono);font-size:10px;color:var(--fg3);letter-spacing:.3px}
 
 /* Step indicator */
 .steps{display:flex;gap:4px;align-items:center}
-.step{width:18px;height:3px;border-radius:2px;background:var(--border)}
+.step{width:18px;height:2px;border-radius:0;background:var(--border-hi)}
 .step.done{background:var(--green)}
 .step.active{background:var(--accent)}
 
 /* Name input */
-.field{display:flex;flex-direction:column;gap:5px}
-.field label{font-size:10.5px;color:var(--fg2);font-weight:600;letter-spacing:.3px}
-.field input{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:7px 9px;color:var(--fg);font-family:inherit;font-size:12px;outline:none;transition:border-color 120ms}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-family:var(--font-mono);font-size:9px;color:var(--fg3);font-weight:500;letter-spacing:1.5px;text-transform:uppercase}
+.field label::before{content:"// ";color:var(--accent)}
+.field input{background:var(--bg);border:1px solid var(--border-hi);border-radius:4px;padding:8px 10px;color:var(--fg);font-family:var(--font-mono);font-size:12px;outline:none;transition:border-color 120ms}
 .field input:focus{border-color:var(--accent)}
 .field input::placeholder{color:var(--fg3)}
 
 /* Robot type cards */
 .type-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.type-card{border:1px solid var(--border);border-radius:6px;padding:8px 9px;cursor:pointer;transition:all 100ms;display:flex;flex-direction:column;gap:3px;background:var(--bg)}
-.type-card:hover{border-color:var(--accent-dim)}
+.type-card{border:1px solid var(--border);border-radius:4px;padding:10px 11px;cursor:pointer;transition:all 100ms;display:flex;flex-direction:column;gap:4px;background:var(--bg)}
+.type-card:hover{border-color:var(--accent-line)}
 .type-card.selected{border-color:var(--accent);background:var(--accent-dim)}
 .type-card.disabled{opacity:.4;cursor:not-allowed}
 .type-card .tc-icon{font-size:16px;line-height:1}
-.type-card .tc-name{font-size:11px;font-weight:600;color:var(--fg)}
-.type-card .tc-desc{font-size:10px;color:var(--fg3);line-height:1.35}
-.type-card .tc-badge{font-size:9px;color:var(--fg3);background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:1px 4px;align-self:flex-start;margin-top:2px}
+.type-card .tc-name{font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--fg);letter-spacing:.3px;text-transform:uppercase}
+.type-card .tc-desc{font-size:10px;color:var(--fg3);line-height:1.45}
+.type-card .tc-badge{font-family:var(--font-mono);font-size:8.5px;color:var(--fg3);background:transparent;border:1px solid var(--border);border-radius:3px;padding:1px 5px;align-self:flex-start;margin-top:2px;letter-spacing:.5px;text-transform:uppercase}
 
 /* Modal footer */
 .modal-footer{display:flex;gap:6px;margin-top:4px}
-.modal-btn{flex:1;padding:7px;border-radius:5px;border:1px solid;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;transition:all 100ms}
-.modal-btn.cancel{background:transparent;border-color:var(--border);color:var(--fg3)}
-.modal-btn.cancel:hover{border-color:var(--fg3);color:var(--fg)}
-.modal-btn.next{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
-.modal-btn.next:hover:not(:disabled){background:var(--accent);color:#060809}
+.modal-btn{flex:1;padding:8px;border-radius:4px;border:1px solid;cursor:pointer;font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;transition:all 100ms}
+.modal-btn.cancel{background:transparent;border-color:var(--border-hi);color:var(--fg3)}
+.modal-btn.cancel:hover{border-color:var(--fg2);color:var(--fg)}
+.modal-btn.next{background:var(--accent-dim);border-color:var(--accent-line);color:var(--accent)}
+.modal-btn.next:hover:not(:disabled){background:var(--accent);color:#1a1408}
 .modal-btn.next:disabled{opacity:.35;cursor:not-allowed}
-.err{font-size:10.5px;color:var(--red);min-height:14px}
+.err{font-size:10px;color:var(--red);min-height:14px;font-family:var(--font-mono)}
 </style>
 </head>
 <body>
@@ -123,12 +145,12 @@ body{font-family:'Inter',system-ui,sans-serif;font-size:12px;background:var(--bg
 <div class="status">
   <div class="srow">
     <span class="dot" id="cdot"></span>
-    <span class="lbl" id="clbl">No robot connected</span>
+    <span class="lbl" id="clbl">NO ROBOT LINKED</span>
     <span class="val" id="cval"></span>
   </div>
   <div class="srow">
     <span class="dot" id="rdot"></span>
-    <span class="lbl" id="rlbl">Network idle</span>
+    <span class="lbl" id="rlbl">NET · IDLE</span>
     <span class="val hl" id="rval">—</span>
   </div>
 </div>
@@ -137,30 +159,30 @@ body{font-family:'Inter',system-ui,sans-serif;font-size:12px;background:var(--bg
 
 <div class="btn primary" id="newBtn">
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-  <span>New ROS 2 project…</span>
+  <span>New ROS 2 project</span>
 </div>
 
 <div class="btn" data-cmd="workbench.action.files.openFolder">
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-  <span>Open workspace…</span>
+  <span>Open workspace</span>
 </div>
 
 <div class="btn" data-cmd="roscode.startRuntime">
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-  <span>Start ROS runtime</span>
+  <span>Start runtime</span>
 </div>
 
 <div class="hd">Tools</div>
 
 <div class="btn" data-cmd="roscode.focusAgent">
-  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 5.4L19 10l-5.2 1.6L12 17l-1.8-5.4L5 10l5.2-1.6z"/></svg>
   <span>Ask agent</span>
   <span class="kbd">⌘⇧A</span>
 </div>
 
 <div class="btn" data-cmd="roscode.discoverNetwork">
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12a7 7 0 0 1 14 0"/><path d="M8 12a4 4 0 0 1 8 0"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>
-  <span>Scan network</span>
+  <span>Scan LAN</span>
 </div>
 
 <div class="btn" data-cmd="roscode.openNodeGraph">
@@ -170,15 +192,15 @@ body{font-family:'Inter',system-ui,sans-serif;font-size:12px;background:var(--bg
 </div>
 
 <div class="btn" data-cmd="roscode.searchLibrary">
-  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-  <span>Browse msg types</span>
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11a2 2 0 012 2v13H7a2 2 0 00-2 2V4z"/><path d="M5 4v16"/></svg>
+  <span>Library</span>
 </div>
 
 <!-- ── Wizard Modal ── -->
 <div id="modal">
   <div class="modal-box">
     <div style="display:flex;align-items:center;justify-content:space-between">
-      <span class="modal-title">New ROS 2 project</span>
+      <span class="modal-title">NEW · ROS 2 PROJECT</span>
       <div class="steps">
         <div class="step active" id="s1"></div>
         <div class="step" id="s2"></div>
@@ -196,36 +218,36 @@ body{font-family:'Inter',system-ui,sans-serif;font-size:12px;background:var(--bg
 
     <!-- Step 2: Robot type -->
     <div id="step2" style="display:none;flex-direction:column;gap:8px">
-      <span class="modal-sub">Choose a starting template</span>
+      <span class="modal-sub">// PICK A TEMPLATE</span>
       <div class="type-grid">
         <div class="type-card selected" data-type="diff-drive">
-          <span class="tc-icon">🚗</span>
-          <span class="tc-name">Diff-drive</span>
-          <span class="tc-desc">Two-wheel differential drive with /cmd_vel → /odom</span>
+          <span class="tc-icon">◎</span>
+          <span class="tc-name">DIFF-DRIVE</span>
+          <span class="tc-desc">two-wheel differential drive · /cmd_vel → /odom</span>
         </div>
         <div class="type-card" data-type="empty">
-          <span class="tc-icon">📦</span>
-          <span class="tc-name">Empty</span>
-          <span class="tc-desc">Bare package skeleton with hello-world publisher</span>
+          <span class="tc-icon">▣</span>
+          <span class="tc-name">EMPTY</span>
+          <span class="tc-desc">bare package skeleton · hello-world publisher</span>
         </div>
         <div class="type-card disabled" data-type="ackermann">
-          <span class="tc-icon">🏎</span>
-          <span class="tc-name">Ackermann</span>
-          <span class="tc-desc">Car-like steering geometry</span>
+          <span class="tc-icon">⊚</span>
+          <span class="tc-name">ACKERMANN</span>
+          <span class="tc-desc">car-like steering geometry</span>
           <span class="tc-badge">coming soon</span>
         </div>
         <div class="type-card disabled" data-type="manipulator">
-          <span class="tc-icon">🦾</span>
-          <span class="tc-name">Manipulator</span>
-          <span class="tc-desc">Joint state control with MoveIt2</span>
+          <span class="tc-icon">⨉</span>
+          <span class="tc-name">ARM</span>
+          <span class="tc-desc">joint state control · moveit2</span>
           <span class="tc-badge">coming soon</span>
         </div>
       </div>
     </div>
 
     <div class="modal-footer">
-      <button class="modal-btn cancel" id="cancelBtn">Cancel</button>
-      <button class="modal-btn next" id="nextBtn">Next →</button>
+      <button class="modal-btn cancel" id="cancelBtn">CANCEL</button>
+      <button class="modal-btn next" id="nextBtn">NEXT →</button>
     </div>
   </div>
 </div>
@@ -242,11 +264,11 @@ const rdot=document.getElementById('rdot'),rlbl=document.getElementById('rlbl'),
 window.addEventListener('message', e => {
   const m = e.data;
   if(m.type==='status'){
-    if(m.connected){cdot.classList.add('on');clbl.textContent=m.host||'Connected';cval.textContent=(m.rosVersion||'').toUpperCase();cval.className='val hl';}
-    else{cdot.classList.remove('on');clbl.textContent='No robot connected';cval.textContent='';}
+    if(m.connected){cdot.classList.add('on');clbl.textContent=(m.host||'CONNECTED').toUpperCase();cval.textContent=(m.rosVersion||'').toUpperCase();cval.className='val hl';}
+    else{cdot.classList.remove('on');clbl.textContent='NO ROBOT LINKED';cval.textContent='';}
   } else if(m.type==='robots'){
-    if(m.scanning){rdot.classList.add('scan');rlbl.textContent='Scanning LAN…';rval.textContent='—';}
-    else{rdot.classList.remove('scan');if(m.count>0){rdot.classList.add('on');rlbl.textContent='Hosts on network';}else{rdot.classList.remove('on');rlbl.textContent='No hosts found';}rval.textContent=m.count;}
+    if(m.scanning){rdot.classList.add('scan');rlbl.textContent='SCANNING LAN…';rval.textContent='—';}
+    else{rdot.classList.remove('scan');if(m.count>0){rdot.classList.add('on');rlbl.textContent='HOSTS ON NETWORK';}else{rdot.classList.remove('on');rlbl.textContent='NO HOSTS FOUND';}rval.textContent=m.count;}
   }
 });
 
@@ -270,7 +292,7 @@ document.getElementById('newBtn').addEventListener('click',()=>{
   document.querySelectorAll('.type-card').forEach(c=>{c.classList.toggle('selected',c.dataset.type==='diff-drive');});
   step1.style.display='';step2.style.display='none';
   s1.className='step active';s2.className='step';
-  nextBtn.textContent='Next →';nextBtn.disabled=false;
+  nextBtn.textContent='NEXT →';nextBtn.disabled=false;
   modal.classList.add('open');
   setTimeout(()=>nameInp.focus(),80);
 });
@@ -294,7 +316,7 @@ nextBtn.addEventListener('click',()=>{
     curStep=2;
     step1.style.display='none';step2.style.display='flex';
     s1.className='step done';s2.className='step active';
-    nextBtn.textContent='Create project';
+    nextBtn.textContent='CREATE →';
   } else {
     const name=nameInp.value.trim();
     modal.classList.remove('open');

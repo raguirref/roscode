@@ -16,11 +16,11 @@
   ] as const;
 
   const CAT_COLOR: Record<string, string> = {
-    manipulators: "#4cc9f0",
-    mobile:       "#3dd68c",
-    sensors:      "#f0a050",
-    simulation:   "#a78bfa",
-    utilities:    "#888",
+    manipulators: "#f2a83b",
+    mobile:       "#8bc34a",
+    sensors:      "#6dd3c8",
+    simulation:   "#e4cf8f",
+    utilities:    "#9ea39a",
   };
 
   const CAT_ICON: Record<string, string> = {
@@ -151,64 +151,72 @@
   /* ── Search ── */
   .search-wrap {
     position: relative;
-    padding: 10px 12px 0;
+    padding: 12px 12px 0;
     flex-shrink: 0;
   }
   .search-icon {
     position: absolute;
     left: 22px;
     top: 50%;
-    transform: translateY(-4px);
-    font-size: 15px;
+    transform: translateY(-3px);
+    font-size: 13px;
     color: var(--fg-2);
     pointer-events: none;
   }
   .search {
     width: 100%;
-    padding: 7px 10px 7px 30px;
-    font-size: 12px;
-    border-radius: var(--radius-sm);
+    padding: 8px 10px 8px 30px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    border-radius: var(--radius);
   }
   .search::-webkit-search-cancel-button { display: none; }
+  .search::placeholder { color: var(--fg-2); text-transform: lowercase; letter-spacing: 0.3px; }
 
   /* ── Category chips ── */
   .cats {
     display: flex;
-    gap: 5px;
-    padding: 8px 12px 6px;
+    gap: 4px;
+    padding: 10px 12px 6px;
     flex-wrap: wrap;
     flex-shrink: 0;
   }
   .cat-chip {
     display: flex;
     align-items: center;
-    gap: 4px;
-    padding: 3px 9px;
-    font-size: 10.5px;
-    border-radius: 20px;
-    background: var(--bg-2);
-    border: 1px solid var(--border-bright);
+    gap: 5px;
+    padding: 4px 9px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    border-radius: var(--radius);
+    background: transparent;
+    border: 1px solid var(--border);
     color: var(--fg-2);
     cursor: pointer;
     transition: all 120ms;
   }
-  .cat-chip:hover { color: var(--fg-1); border-color: var(--fg-2); background: var(--bg-2); }
+  .cat-chip:hover { color: var(--fg-1); border-color: var(--border-bright); background: transparent; }
   .cat-chip.active {
-    background: color-mix(in srgb, var(--chip-color, var(--accent)) 15%, transparent);
-    border-color: color-mix(in srgb, var(--chip-color, var(--accent)) 40%, transparent);
-    color: var(--chip-color, var(--accent));
+    background: var(--accent-dim);
+    border-color: var(--accent-line);
+    color: var(--accent);
   }
   .cat-icon { font-size: 9px; }
 
   /* ── Results meta ── */
   .results-meta {
-    padding: 0 12px 6px;
+    padding: 4px 14px 8px;
+    font-family: var(--font-mono);
     font-size: 10px;
     color: var(--fg-2);
-    letter-spacing: 0.3px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
     flex-shrink: 0;
     border-bottom: 1px solid var(--border);
   }
+  .results-meta::before { content: "// "; color: var(--accent); }
 
   /* ── Card grid ── */
   .grid {
@@ -225,30 +233,30 @@
   .card {
     display: flex;
     border-radius: var(--radius);
-    border: 1px solid var(--border-bright);
+    border: 1px solid var(--border);
     background: var(--bg-2);
     overflow: hidden;
     transition: border-color 160ms, transform 160ms, box-shadow 160ms;
     cursor: default;
   }
   .card:hover {
-    border-color: var(--cat-color);
+    border-color: var(--accent-line);
     transform: translateY(-1px);
     box-shadow: 0 4px 16px rgba(0,0,0,0.3);
   }
   .card-accent {
-    width: 3px;
+    width: 2px;
     background: var(--cat-color);
     flex-shrink: 0;
-    opacity: 0.7;
+    opacity: 0.6;
   }
   .card:hover .card-accent { opacity: 1; }
   .card-inner {
     flex: 1;
-    padding: 9px 10px;
+    padding: 10px 12px;
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 6px;
     min-width: 0;
   }
 
@@ -260,9 +268,10 @@
   }
 
   .cat-badge {
+    font-family: var(--font-mono);
     font-size: 9px;
-    font-weight: 600;
-    letter-spacing: 0.6px;
+    font-weight: 500;
+    letter-spacing: 1px;
     text-transform: uppercase;
   }
 
@@ -271,28 +280,32 @@
     gap: 3px;
   }
   .pill {
+    font-family: var(--font-mono);
     font-size: 9px;
-    padding: 1px 5px;
-    border-radius: 4px;
-    background: var(--bg-3);
-    border: 1px solid var(--border-bright);
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    border: 1px solid var(--border);
     color: var(--fg-2);
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
   }
 
   .pkg-name {
+    font-family: var(--font-mono);
     font-size: 12.5px;
     font-weight: 600;
     color: var(--fg-0);
-    letter-spacing: -0.1px;
+    letter-spacing: 0.2px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
   .pkg-desc {
-    font-size: 10.5px;
+    font-size: 11px;
     color: var(--fg-1);
-    line-height: 1.45;
+    line-height: 1.5;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     line-clamp: 2;
@@ -306,13 +319,14 @@
     gap: 3px;
   }
   .tag {
+    font-family: var(--font-mono);
     font-size: 9px;
-    padding: 1px 5px;
-    background: var(--bg-0);
-    border-radius: 4px;
+    padding: 2px 6px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
     color: var(--fg-2);
-    font-family: "SF Mono", Menlo, monospace;
-    letter-spacing: 0.2px;
+    letter-spacing: 0.3px;
   }
 
   .card-footer {
@@ -323,36 +337,39 @@
   }
   .apt-cmd {
     flex: 1;
-    font-size: 9px;
-    font-family: "SF Mono", Menlo, monospace;
+    font-family: var(--font-mono);
+    font-size: 9.5px;
     color: var(--fg-2);
-    background: var(--bg-0);
+    background: #0a0d0c;
     border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    padding: 3px 7px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     min-width: 0;
+    letter-spacing: 0.2px;
   }
-  .apt-cmd.source { color: var(--accent-warm); border-color: rgba(245,158,11,0.25); }
+  .apt-cmd.source { color: var(--accent); border-color: var(--accent-line); }
 
   .install-btn {
     flex-shrink: 0;
+    font-family: var(--font-mono);
     font-size: 10px;
     font-weight: 600;
-    padding: 4px 10px;
-    border-radius: 5px;
-    background: color-mix(in srgb, var(--btn-color) 18%, transparent);
-    color: var(--btn-color);
-    border: 1px solid color-mix(in srgb, var(--btn-color) 35%, transparent);
-    letter-spacing: 0.2px;
+    padding: 4px 12px;
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent-line);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
     transition: all 120ms;
   }
   .install-btn:hover {
-    background: var(--btn-color);
-    color: var(--bg-0);
-    border-color: var(--btn-color);
+    background: var(--accent);
+    color: #1a1408;
+    border-color: var(--accent);
     transform: none;
   }
 

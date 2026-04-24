@@ -1,7 +1,4 @@
 <script lang="ts">
-  import { onMount } from "svelte";
-  import logoUrl from "../assets/logo.png";
-
   export let done = false;
   let visible = true;
   let fadeOut = false;
@@ -14,15 +11,38 @@
 
 {#if visible}
   <div class="splash" class:fade={fadeOut}>
-    <div class="logo-wrap">
-      <img src={logoUrl} alt="roscode" class="logo" />
-      <div class="ring"></div>
+    <div class="grid-bg"></div>
+
+    <div class="top-strip">
+      <span class="tag">SYS READY</span>
+      <span class="tag">ROS 2 · JAZZY</span>
+      <span class="tag">v0.1.0</span>
     </div>
-    <p class="name">roscode <span>studio</span></p>
-    <div class="bar-track">
-      <div class="bar-fill" class:done={fadeOut}></div>
+
+    <div class="center">
+      <div class="logo-wrap">
+        <svg width="64" height="64" viewBox="0 0 32 32" fill="none">
+          <rect x="4" y="4" width="24" height="24" rx="4" stroke="#f2a83b" stroke-width="1.5"/>
+          <circle cx="16" cy="16" r="3.5" fill="#f2a83b"/>
+          <path d="M16 8v-3M16 27v-3M8 16h-3M27 16h-3" stroke="#f2a83b" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+
+      <p class="brand">roscode<span class="sep">/</span>studio</p>
+      <p class="caption">// BLUEPRINT OPS · BOOTING</p>
+
+      <div class="bar-track">
+        <div class="bar-fill" class:done={fadeOut}></div>
+      </div>
+
+      <p class="version">// POWERED BY CLAUDE OPUS 4.7</p>
     </div>
-    <p class="version">powered by Claude Opus 4.7</p>
+
+    <div class="bottom-strip">
+      <span class="meta">DOMAIN 0</span>
+      <span class="meta">NET · SCAN PENDING</span>
+      <span class="meta">AGENT · READY</span>
+    </div>
   </div>
 {/if}
 
@@ -31,76 +51,123 @@
     position: fixed;
     inset: 0;
     z-index: 9999;
-    background: #080b0f;
+    background: #0a0c0b;
+    color: #e4e6e1;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: space-between;
+    padding: 22px 32px;
+    transition: opacity 500ms ease;
+    font-family: "Geist", "Inter", system-ui, sans-serif;
+  }
+  .splash.fade { opacity: 0; pointer-events: none; }
+
+  .grid-bg {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: radial-gradient(#333b38 1px, transparent 1px);
+    background-size: 24px 24px;
+    opacity: 0.5;
+  }
+
+  .top-strip,
+  .bottom-strip {
+    display: flex;
+    gap: 8px;
+    position: relative;
+    z-index: 1;
+  }
+  .bottom-strip { justify-content: flex-end; }
+
+  .tag {
+    font-family: "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #9ea39a;
+    padding: 4px 9px;
+    border: 1px solid #22282660;
+    border-radius: 4px;
+  }
+  .tag:first-child {
+    color: #f2a83b;
+    border-color: rgba(242, 168, 59, 0.28);
+    background: rgba(242, 168, 59, 0.10);
+  }
+
+  .meta {
+    font-family: "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: #636862;
+    text-transform: uppercase;
+  }
+  .meta + .meta::before {
+    content: " · ";
+    margin: 0 6px;
+    color: #3a3e3a;
+  }
+
+  .center {
+    position: relative;
+    z-index: 1;
+    flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 20px;
-    transition: opacity 500ms ease;
+    gap: 16px;
   }
-  .splash.fade { opacity: 0; pointer-events: none; }
 
   .logo-wrap {
-    position: relative;
-    width: 120px;
-    height: 120px;
+    width: 64px;
+    height: 64px;
     display: flex;
     align-items: center;
     justify-content: center;
-  }
-
-  .logo {
-    width: 100px;
-    height: 100px;
-    object-fit: contain;
-    animation: pop 400ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    animation: pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
   }
   @keyframes pop {
     from { transform: scale(0.6); opacity: 0; }
     to   { transform: scale(1);   opacity: 1; }
   }
 
-  .ring {
-    position: absolute;
-    inset: 0;
-    border-radius: 50%;
-    border: 1.5px solid rgba(76, 201, 240, 0.25);
-    animation: spin-ring 3s linear infinite;
-  }
-  .ring::before {
-    content: "";
-    position: absolute;
-    inset: -2px;
-    border-radius: 50%;
-    border: 2px solid transparent;
-    border-top-color: #4cc9f0;
-    animation: spin-ring 1.4s linear infinite;
-  }
-  @keyframes spin-ring { to { transform: rotate(360deg); } }
-
-  .name {
+  .brand {
+    font-family: "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
     font-size: 22px;
-    font-weight: 700;
-    letter-spacing: -0.5px;
-    color: #e8ecf0;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    color: #e4e6e1;
     animation: fadein 400ms 200ms ease both;
   }
-  .name span { color: #4e5868; font-weight: 400; }
+  .sep { color: #f2a83b; }
+
+  .caption {
+    font-family: "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
+    font-size: 10px;
+    color: #f2a83b;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    animation: fadein 400ms 260ms ease both;
+  }
 
   .bar-track {
-    width: 160px;
+    width: 200px;
     height: 2px;
-    background: #1e2430;
-    border-radius: 2px;
+    background: #181d1b;
+    border: 1px solid #22282660;
+    border-radius: 0;
     overflow: hidden;
-    animation: fadein 400ms 300ms ease both;
+    animation: fadein 400ms 320ms ease both;
   }
   .bar-fill {
     height: 100%;
     width: 30%;
-    background: linear-gradient(90deg, #4cc9f0, #a78bfa);
-    border-radius: 2px;
+    background: #f2a83b;
+    box-shadow: 0 0 12px rgba(242, 168, 59, 0.4);
     animation: scan 1.2s ease-in-out infinite;
     transition: width 400ms ease;
   }
@@ -112,9 +179,11 @@
   }
 
   .version {
-    font-size: 11px;
-    color: #2a3340;
-    letter-spacing: 0.3px;
+    font-family: "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
+    font-size: 10px;
+    color: #636862;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
     animation: fadein 400ms 500ms ease both;
   }
 

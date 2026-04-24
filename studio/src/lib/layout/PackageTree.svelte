@@ -15,7 +15,7 @@
 
   const CATEGORY_META: Record<string, { label: string; icon: string; color: string }> = {
     manipulators: { label: "Manipulators", icon: "⚙", color: "#a78bfa" },
-    mobile:        { label: "Mobile",       icon: "◉", color: "#4cc9f0" },
+    mobile:        { label: "Mobile",       icon: "◉", color: "#f2a83b" },
     sensors:       { label: "Sensors",      icon: "✦", color: "#f59e0b" },
     simulation:    { label: "Simulation",   icon: "⬡", color: "#3dd68c" },
     utilities:     { label: "Utilities",    icon: "⊞", color: "#9aa3b0" },

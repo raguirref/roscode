@@ -84,7 +84,12 @@
   <!-- ══ HEADER ══ -->
   <header class="ide-header">
     <div class="brand">
-      <span class="brand-name">roscode</span><span class="brand-sub"> studio</span>
+      <svg class="brand-mark" width="22" height="22" viewBox="0 0 32 32" fill="none">
+        <rect x="4" y="4" width="24" height="24" rx="4" stroke="#f2a83b" stroke-width="1.5"/>
+        <circle cx="16" cy="16" r="3.5" fill="#f2a83b"/>
+        <path d="M16 8v-3M16 27v-3M8 16h-3M27 16h-3" stroke="#f2a83b" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      <span class="brand-name">ROSCODE<span class="brand-sep">/</span>STUDIO</span>
     </div>
 
     <button class="cmd-btn" title="Command Palette (⌘K)">
@@ -99,10 +104,10 @@
     <div class="status-pill" data-kind={status.kind}>
       <span class="dot"></span>
       <span class="status-label">
-        {#if status.kind === "uninitialized"}runtime offline
-        {:else if status.kind === "starting"}starting…
-        {:else if status.kind === "ready"}{statusImage || "ready"}
-        {:else if status.kind === "error"}error
+        {#if status.kind === "uninitialized"}RUNTIME · OFFLINE
+        {:else if status.kind === "starting"}STARTING…
+        {:else if status.kind === "ready"}{(statusImage || "READY").toUpperCase()}
+        {:else if status.kind === "error"}ERROR
         {/if}
       </span>
     </div>
@@ -113,14 +118,14 @@
     {#if status.kind !== "ready"}
       <button class="start-btn" on:click={boot} disabled={booting || !workspacePath}>
         {#if booting}
-          <span class="spinner"></span> starting…
+          <span class="spinner"></span> STARTING…
         {:else}
           <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-          start runtime
+          START
         {/if}
       </button>
     {:else}
-      <span class="ready-badge">✦ live</span>
+      <span class="ready-badge">■ LIVE</span>
     {/if}
   </header>
 
@@ -218,30 +223,31 @@
     opacity: 0.35;
   }
 
-  .brand { display: flex; align-items: baseline; gap: 0; flex-shrink: 0; }
+  .brand { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .brand-mark { flex-shrink: 0; }
   .brand-name {
-    font-size: 15px;
-    font-weight: 700;
-    letter-spacing: -0.4px;
-    color: var(--accent);
-  }
-  .brand-sub {
+    font-family: var(--font-mono);
     font-size: 13px;
-    font-weight: 400;
-    color: #3d4a5c;
-    letter-spacing: 0.5px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    color: var(--fg-0);
+    text-transform: uppercase;
   }
+  .brand-sep { color: var(--accent); }
 
   .cmd-btn {
     display: flex;
     align-items: center;
     gap: 5px;
     padding: 4px 10px;
-    background: var(--bg-2);
+    background: transparent;
     border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius);
     color: var(--fg-2);
-    font-size: 11px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
     cursor: pointer;
     transition: border-color 120ms, color 120ms;
   }
@@ -250,27 +256,30 @@
   .status-pill {
     display: flex;
     align-items: center;
-    gap: 5px;
-    padding: 3px 9px;
-    border-radius: 20px;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: var(--radius);
     border: 1px solid var(--border-bright);
-    background: var(--bg-2);
-    font-size: 11px;
-    color: var(--fg-2);
-    letter-spacing: 0.2px;
+    background: transparent;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--fg-1);
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
   }
   .dot {
-    width: 6px; height: 6px;
+    width: 5px; height: 5px;
     border-radius: 50%;
     background: var(--fg-2);
     flex-shrink: 0;
   }
-  .status-pill[data-kind="ready"]    { border-color: rgba(61,214,140,0.3); color: var(--green); }
-  .status-pill[data-kind="ready"] .dot    { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 2s ease-in-out infinite; }
-  .status-pill[data-kind="starting"] { border-color: rgba(76,201,240,0.3); color: var(--accent); }
+  .status-pill[data-kind="ready"]    { border-color: rgba(139,195,74,0.38); color: var(--ok); background: rgba(139,195,74,0.08); }
+  .status-pill[data-kind="ready"] .dot    { background: var(--ok); box-shadow: 0 0 6px var(--ok); animation: pulse 2s ease-in-out infinite; }
+  .status-pill[data-kind="starting"] { border-color: var(--accent-line); color: var(--accent); background: var(--accent-dim); }
   .status-pill[data-kind="starting"] .dot { background: var(--accent); animation: pulse 1s ease-in-out infinite; }
-  .status-pill[data-kind="error"]    { border-color: rgba(248,113,113,0.3); color: var(--dot-error); }
-  .status-pill[data-kind="error"] .dot    { background: var(--dot-error); }
+  .status-pill[data-kind="error"]    { border-color: rgba(224,102,102,0.35); color: var(--err); background: rgba(224,102,102,0.08); }
+  .status-pill[data-kind="error"] .dot    { background: var(--err); }
+  .status-pill[data-kind="uninitialized"] .dot { background: var(--warn); }
 
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
@@ -280,25 +289,29 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 6px 16px;
+    padding: 7px 16px;
     background: var(--accent);
-    color: var(--bg-0);
-    border: none;
-    border-radius: var(--radius-sm);
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.2px;
+    color: #1a1408;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
     cursor: pointer;
     transition: opacity 120ms, transform 120ms;
   }
-  .start-btn:hover { opacity: 0.9; transform: translateY(-1px); background: var(--accent); color: var(--bg-0); border: none; }
+  .start-btn:hover { opacity: 0.9; transform: translateY(-1px); background: var(--accent); color: #1a1408; border: 1px solid var(--accent); }
   .start-btn:disabled { opacity: 0.35; cursor: default; transform: none; pointer-events: none; }
 
   .ready-badge {
+    font-family: var(--font-mono);
     font-size: 11px;
-    color: var(--green);
-    letter-spacing: 0.5px;
-    font-weight: 700;
+    color: var(--ok);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    font-weight: 600;
   }
 
   .spinner {

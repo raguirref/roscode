@@ -1,21 +1,22 @@
 /* ═══════════════════════════════════════════════════════════════
-   roscode studio — deep workbench branding
+   roscode studio — Blueprint Ops workbench branding
+   Warm amber HUD · monospace-forward · dark technical
    Injected into workbench.html via the extension (Cursor-style).
-   Hides every visible "VSCodium" / "Code - OSS" trace.
    ═══════════════════════════════════════════════════════════════ */
 
 /* ═══ Fonts & root ═══ */
 .monaco-workbench {
-  --roscode-accent: #4cc9f0;
-  --roscode-accent-dim: rgba(76, 201, 240, 0.15);
-  --roscode-accent-glow: rgba(76, 201, 240, 0.4);
-  --roscode-ink: #c9d1d9;
-  --roscode-ink-dim: #8b9ab0;
-  --roscode-ink-faint: #3d4a5c;
-  --roscode-bg: #080b0f;
-  --roscode-bg-soft: #0a0e14;
-  --roscode-bg-raised: #0d1520;
-  --roscode-border: #141e2e;
+  --roscode-accent: #f2a83b;
+  --roscode-accent-dim: rgba(242, 168, 59, 0.10);
+  --roscode-accent-line: rgba(242, 168, 59, 0.28);
+  --roscode-accent-glow: rgba(242, 168, 59, 0.4);
+  --roscode-ink: #e4e6e1;
+  --roscode-ink-dim: #9ea39a;
+  --roscode-ink-faint: #636862;
+  --roscode-bg: #0a0c0b;
+  --roscode-bg-soft: #0f1211;
+  --roscode-bg-raised: #121615;
+  --roscode-border: #22282660;
 }
 
 /* ═══ Title bar ═══ */
@@ -33,11 +34,14 @@
   position: relative;
 }
 .monaco-workbench .part.titlebar .window-title .monaco-breadcrumbs::before {
-  content: "roscode studio";
+  content: "roscode/studio";
   color: var(--roscode-accent);
-  font-weight: 700;
-  letter-spacing: -0.3px;
-  margin-right: 8px;
+  font-family: "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-right: 10px;
 }
 
 /* ═══ Activity bar ═══ */
@@ -176,11 +180,13 @@
 }
 .monaco-workbench .welcomePage .product-name::before,
 .monaco-workbench .gettingStartedContainer .header .product-name::before {
-  content: "roscode studio";
-  font-size: 36px;
+  content: "roscode/studio";
+  font-family: "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
+  font-size: 32px;
   color: var(--roscode-accent);
-  letter-spacing: -1px;
-  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  font-weight: 600;
 }
 .monaco-workbench .welcomePage .subtitle,
 .monaco-workbench .gettingStartedContainer .header .subtitle {
@@ -267,7 +273,7 @@
 }
 .monaco-workbench .monaco-scrollable-element > .scrollbar > .slider {
   border-radius: 4px !important;
-  background: rgba(76, 201, 240, 0.12) !important;
+  background: rgba(242, 168, 59, 0.12) !important;
 }
 .monaco-workbench .monaco-scrollable-element > .scrollbar > .slider:hover {
   background: var(--roscode-accent-dim) !important;
@@ -361,17 +367,18 @@
   z-index: 0;
 }
 
-/* Watermark: "roscode studio" */
+/* Watermark: "roscode/studio" */
 .monaco-workbench .editor-group-container.empty::after {
-  content: "roscode studio";
+  content: "roscode/studio";
   position: absolute;
   top: 50%; left: 50%;
   transform: translate(-50%, -50%);
   color: var(--roscode-ink-faint);
-  font-family: var(--vscode-font-family, -apple-system, system-ui, sans-serif);
-  font-size: 42px;
-  font-weight: 700;
-  letter-spacing: -1.2px;
+  font-family: "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
+  font-size: 36px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
   pointer-events: none;
   z-index: 1;
   opacity: 0.35;

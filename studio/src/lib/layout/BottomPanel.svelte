@@ -145,31 +145,43 @@
   .drag-handle:hover { background: var(--accent); opacity: 0.4; }
 
   .panel-tabs {
-    height: 35px;
+    height: 32px;
     display: flex;
     align-items: stretch;
     background: var(--bg-1);
     border-bottom: 1px solid var(--border);
-    padding: 0 4px;
+    padding: 0;
     flex-shrink: 0;
     gap: 0;
   }
 
   .ptab {
-    padding: 0 14px;
+    padding: 0 16px;
     background: transparent;
     border: none;
-    border-bottom: 2px solid transparent;
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid transparent;
     border-radius: 0;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    text-transform: uppercase;
     color: var(--fg-2);
     cursor: pointer;
-    transition: color 120ms;
+    transition: color 120ms, background 120ms;
+    position: relative;
   }
-  .ptab:hover { color: var(--fg-1); background: transparent; border-color: var(--border); border-bottom-color: transparent; }
-  .ptab.active { color: var(--fg-0); border-bottom-color: var(--accent); }
+  .ptab:hover { color: var(--fg-1); background: transparent; border: none; border-right: 1px solid var(--border); }
+  .ptab.active {
+    color: var(--accent);
+    background: var(--bg-0);
+  }
+  .ptab.active::before {
+    content: "";
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 2px; background: var(--accent);
+  }
 
   .tab-spacer { flex: 1; }
 
@@ -177,11 +189,13 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 0 12px;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.3px;
-    color: var(--green);
+    padding: 0 14px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--ok);
   }
 
   .live-dot {

@@ -76,14 +76,16 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 12px;
+    padding: 0 14px;
+    font-family: var(--font-mono);
     font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.8px;
+    font-weight: 500;
+    letter-spacing: 1.5px;
     text-transform: uppercase;
-    color: var(--fg-1);
+    color: var(--fg-2);
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
+    background: var(--bg-1);
   }
 
   .panel-content {

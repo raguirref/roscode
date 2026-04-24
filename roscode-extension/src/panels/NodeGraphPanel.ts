@@ -95,7 +95,7 @@ const status = document.getElementById('status');
 const empty = document.getElementById('empty');
 let simulation, nodes = [], links = [];
 
-const NODE_COLOR = '#4cc9f0';
+const NODE_COLOR = '#f2a83b';
 const TOPIC_COLOR = '#a78bfa';
 const NODE_R = 14, TOPIC_R = 9;
 

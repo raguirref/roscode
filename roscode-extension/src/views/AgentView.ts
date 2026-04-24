@@ -154,16 +154,20 @@ export class AgentView implements vscode.WebviewViewProvider {
 <meta charset="UTF-8"/>
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'nonce-${n}' ${webview.cspSource}; script-src 'nonce-${n}'; font-src ${webview.cspSource};">
 <style nonce="${n}">
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap");
 :root{
-  --accent:#4cc9f0; --accent-dim:#4cc9f060;
-  --bg:#0a0e14; --bg2:#0d1520; --bg3:#111b2b;
-  --fg:#c9d1d9; --fg2:#8b9ab0; --fg3:#3d4a5c;
-  --border:#141e2e; --red:#f87171; --red-dim:#f8717140; --green:#3dd68c; --green-dim:#3dd68c40;
+  --accent:#f2a83b; --accent-dim:rgba(242,168,59,0.10); --accent-line:rgba(242,168,59,0.28);
+  --bg:#0a0c0b; --bg2:#0f1211; --bg3:#121615;
+  --fg:#e4e6e1; --fg2:#9ea39a; --fg3:#636862;
+  --border:#22282660; --border-hi:#333b38;
+  --red:#e06666; --red-dim:rgba(224,102,102,0.25); --green:#8bc34a; --green-dim:rgba(139,195,74,0.25);
+  --font-mono:'Geist Mono','JetBrains Mono',ui-monospace,monospace;
+  --font-sans:'Geist','Inter',system-ui,sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
 body{
-  font-family:'Inter',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  font-family:var(--font-sans);
   font-size:12.5px;background:var(--bg);color:var(--fg);
   display:flex;flex-direction:column;height:100vh;overflow:hidden;
 }
@@ -246,7 +250,7 @@ body{
 .wrap:focus-within{border-color:var(--accent-dim)}
 #inp{flex:1;background:transparent;border:none;color:var(--fg);font-family:inherit;font-size:12.5px;resize:none;min-height:20px;max-height:140px;outline:none;line-height:1.5;padding:2px 0}
 #inp::placeholder{color:var(--fg3)}
-#send{background:var(--accent);color:#060809;border:none;border-radius:5px;width:28px;height:28px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 120ms}
+#send{background:var(--accent);color:#1a1408;border:none;border-radius:4px;width:28px;height:28px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 120ms}
 #send:hover{background:#7ddff5}
 #send:disabled{opacity:.25;cursor:default}
 .hint{font-size:10px;color:var(--fg3);text-align:left;padding:0 4px}

@@ -181,24 +181,28 @@ export class LauncherPanel {
 <meta http-equiv="Content-Security-Policy"
   content="default-src 'none'; style-src 'nonce-${n}' 'unsafe-inline'; script-src 'nonce-${n}' 'unsafe-inline';">
 <style nonce="${n}">
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap");
 :root{
-  --bg:#080c10; --bg2:#0d1117; --bg3:#161b22; --bg4:#21262d;
-  --fg:#e6edf3; --fg2:#8b949e; --fg3:#484f58;
-  --border:#21262d; --border2:#30363d;
-  --accent:#4cc9f0; --accent-dim:rgba(76,201,240,.12);
-  --red:#f85149;
+  --bg:#0a0c0b; --bg2:#0f1211; --bg3:#121615; --bg4:#181d1b;
+  --fg:#e4e6e1; --fg2:#9ea39a; --fg3:#636862;
+  --border:#22282660; --border2:#333b38;
+  --accent:#f2a83b; --accent-dim:rgba(242,168,59,.10); --accent-line:rgba(242,168,59,.28);
+  --accent2:#6dd3c8;
+  --ok:#8bc34a; --warn:#f2c84b; --red:#e06666;
+  --font-mono:'Geist Mono','JetBrains Mono',ui-monospace,monospace;
+  --font-sans:'Geist','Inter',system-ui,sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
 html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--fg);
-  font-family:'Inter',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;font-size:13px}
+  font-family:var(--font-sans);font-size:13px}
 button{cursor:pointer;font-family:inherit;font-size:inherit;border:none;background:none}
 
 /* ── BACKGROUND PATTERN ─── */
 #bg-grid{
   position:fixed;inset:0;pointer-events:none;z-index:0;
-  background-image:radial-gradient(circle at 50% 20%, rgba(76,201,240,.06) 0%, transparent 60%),
-    radial-gradient(rgba(76,201,240,.04) 1px, transparent 1px);
-  background-size:100% 100%, 24px 24px;
+  background-image:radial-gradient(var(--border2) 1px, transparent 1px);
+  background-size:24px 24px;
+  opacity:0.5;
 }
 
 /* ── MAIN LAYOUT ─── */
@@ -211,138 +215,143 @@ button{cursor:pointer;font-family:inherit;font-size:inherit;border:none;backgrou
 /* ── BRAND ─── */
 .brand{display:flex;flex-direction:column;align-items:center;gap:12px}
 .brand-row{display:flex;align-items:center;gap:14px}
-.logo-mark{width:40px;height:40px;flex-shrink:0;filter:drop-shadow(0 0 12px rgba(76,201,240,.35))}
-.wordmark{font-size:26px;font-weight:700;letter-spacing:-.6px;display:flex;align-items:baseline;gap:2px}
-.wordmark .ros{color:var(--accent)}
-.wordmark .stud{color:var(--fg3);font-weight:300;letter-spacing:0}
-.tagline{font-size:12px;color:var(--fg3);letter-spacing:.03em}
+.logo-mark{width:40px;height:40px;flex-shrink:0;filter:drop-shadow(0 0 12px rgba(242,168,59,.35))}
+.wordmark{font-family:var(--font-mono);font-size:22px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;display:flex;align-items:center;gap:2px}
+.wordmark .ros{color:var(--fg)}
+.wordmark .stud{color:var(--fg);font-weight:600;letter-spacing:.4px}
+.wordmark .slash{color:var(--accent)}
+.tagline{font-family:var(--font-mono);font-size:10px;color:var(--accent);letter-spacing:2px;text-transform:uppercase}
 
 /* ── ACTION CARDS ─── */
-.cards{display:flex;gap:12px}
+.cards{display:flex;gap:10px}
 .card{
-  width:160px;padding:24px 16px 20px;border-radius:10px;
-  border:1px solid var(--border);background:var(--bg2);
-  display:flex;flex-direction:column;align-items:center;gap:12px;
+  width:170px;padding:18px 16px;border-radius:4px;
+  border:1px solid var(--border);background:var(--bg3);
+  display:flex;flex-direction:column;gap:14px;
   cursor:pointer;
-  transition:border-color 150ms,background 150ms,box-shadow 150ms,transform 100ms;
+  transition:border-color 150ms,background 150ms,transform 100ms;
   color:inherit;
+  position:relative;
 }
 .card:hover{
-  border-color:var(--accent);background:var(--bg3);
-  box-shadow:0 0 0 1px rgba(76,201,240,.15), 0 8px 24px rgba(0,0,0,.35);
+  border-color:var(--accent-line);background:var(--bg4);
   transform:translateY(-1px);
 }
 .card:active{transform:translateY(0)}
 .card-icon{
-  width:36px;height:36px;border-radius:8px;
-  background:var(--accent-dim);border:1px solid rgba(76,201,240,.2);
+  width:32px;height:32px;border-radius:4px;
+  background:var(--accent-dim);border:1px solid var(--accent-line);
   display:flex;align-items:center;justify-content:center;color:var(--accent);
 }
 .card-icon svg{width:18px;height:18px}
-.card-label{font-size:12.5px;font-weight:600;color:var(--fg);text-align:center}
-.card-sub{font-size:11px;color:var(--fg3);text-align:center;line-height:1.4}
+.card-label{font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--fg);letter-spacing:.5px;text-transform:uppercase}
+.card-sub{font-size:11px;color:var(--fg3);line-height:1.4}
+.card-step{position:absolute;top:16px;right:16px;font-family:var(--font-mono);font-size:10px;color:var(--fg3)}
 
 /* ── API KEY BANNER ─── */
 #key-banner{
   width:100%;max-width:520px;
-  border:1px solid rgba(248,81,73,.3);background:rgba(248,81,73,.07);
-  border-radius:10px;padding:14px 16px;display:none;flex-direction:column;gap:10px;
+  border:1px solid rgba(224,102,102,.3);background:rgba(224,102,102,.07);
+  border-radius:4px;padding:14px 16px;display:none;flex-direction:column;gap:10px;
 }
 #key-banner.visible{display:flex}
 .kb-row{display:flex;align-items:flex-start;gap:10px}
 .kb-icon{
-  width:26px;height:26px;border-radius:6px;background:rgba(248,81,73,.2);
+  width:26px;height:26px;border-radius:4px;background:rgba(224,102,102,.18);
   display:flex;align-items:center;justify-content:center;flex-shrink:0;
-  color:#f85149;font-size:13px;font-weight:700;
+  color:var(--red);font-size:13px;font-weight:700;
 }
 .kb-body{flex:1}
-.kb-title{font-size:12.5px;font-weight:700;color:var(--fg);margin-bottom:3px}
+.kb-title{font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--fg);margin-bottom:3px;letter-spacing:.4px;text-transform:uppercase}
 .kb-text{font-size:11px;color:var(--fg2);line-height:1.5}
-.kb-text code{color:var(--accent);font-family:ui-monospace,monospace;font-size:10.5px}
+.kb-text code{color:var(--accent);font-family:var(--font-mono);font-size:10.5px}
 .kb-actions{display:flex;gap:6px;flex-wrap:wrap}
-.btn-key{padding:5px 14px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 100ms}
-.btn-key-primary{background:var(--accent);border:none;color:#0d1117}
-.btn-key-primary:hover{background:#7de8f7}
+.btn-key{padding:6px 14px;border-radius:4px;font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;transition:all 100ms}
+.btn-key-primary{background:var(--accent);border:none;color:#1a1408}
+.btn-key-primary:hover{opacity:.9}
 .btn-key-ghost{background:transparent;border:1px solid var(--border2);color:var(--fg2)}
 .btn-key-ghost:hover{border-color:var(--fg2);color:var(--fg)}
-.btn-key-dismiss{background:transparent;border:none;color:var(--fg3);margin-left:auto;padding:5px 8px;font-size:11px}
+.btn-key-dismiss{background:transparent;border:none;color:var(--fg3);margin-left:auto;padding:5px 8px;font-size:11px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.5px}
 .btn-key-dismiss:hover{color:var(--fg)}
 
 /* ── RECENTS ─── */
-#recents-section{width:100%;max-width:520px}
+#recents-section{width:100%;max-width:560px}
 .section-title{
-  font-size:10px;font-weight:600;color:var(--fg3);
-  letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;
+  font-family:var(--font-mono);font-size:10px;font-weight:500;color:var(--fg3);
+  letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;
   padding:0 4px;
 }
-#recents-list{display:flex;flex-direction:column;gap:1px}
+.section-title::before{content:"// ";color:var(--accent)}
+#recents-list{display:flex;flex-direction:column;gap:0;border:1px solid var(--border);border-radius:4px;overflow:hidden;background:var(--bg2)}
 .recent-item{
-  display:flex;align-items:center;gap:8px;
-  padding:7px 10px;border-radius:6px;cursor:pointer;
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px;cursor:pointer;
+  border-bottom:1px solid var(--border);
   transition:background 100ms;
 }
+.recent-item:last-child{border-bottom:none}
 .recent-item:hover{background:var(--bg3)}
-.recent-item .r-dot{width:5px;height:5px;border-radius:50%;background:var(--fg3);flex-shrink:0}
-.recent-item .r-name{font-size:12px;font-weight:500;color:var(--fg);flex-shrink:0}
-.recent-item .r-path{font-size:10.5px;color:var(--fg3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;text-align:right}
-.no-recents{font-size:11px;color:var(--fg3);padding:4px 10px}
+.recent-item .r-dot{width:5px;height:5px;border-radius:50%;background:var(--accent);flex-shrink:0}
+.recent-item .r-name{font-family:var(--font-mono);font-size:12px;font-weight:500;color:var(--fg);flex-shrink:0}
+.recent-item .r-path{font-family:var(--font-mono);font-size:10.5px;color:var(--fg3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;text-align:right}
+.no-recents{font-family:var(--font-mono);font-size:11px;color:var(--fg3);padding:10px 14px;text-align:center;border:1px dashed var(--border);border-radius:4px}
 
 /* ── MODALS ─── */
 .modal-backdrop{
-  display:none;position:fixed;inset:0;background:rgba(1,4,9,.88);
+  display:none;position:fixed;inset:0;background:rgba(10,12,11,.92);
   align-items:center;justify-content:center;z-index:200;
-  backdrop-filter:blur(2px);
 }
 .modal-backdrop.open{display:flex}
 .modal-box{
-  background:var(--bg3);border:1px solid var(--border2);border-radius:14px;
-  width:500px;max-width:calc(100vw - 40px);padding:28px;
-  display:flex;flex-direction:column;gap:20px;
+  background:var(--bg3);border:1px solid var(--border2);border-radius:4px;
+  width:500px;max-width:calc(100vw - 40px);padding:24px;
+  display:flex;flex-direction:column;gap:18px;
   box-shadow:0 24px 60px rgba(0,0,0,.6);
 }
-.modal-title{font-size:15px;font-weight:700;color:var(--fg);letter-spacing:-.2px}
-.modal-step-label{font-size:10px;font-weight:600;color:var(--fg3);letter-spacing:.08em;text-transform:uppercase}
+.modal-title{font-family:var(--font-mono);font-size:14px;font-weight:600;color:var(--fg);letter-spacing:.4px;text-transform:uppercase}
+.modal-step-label{font-family:var(--font-mono);font-size:10px;font-weight:500;color:var(--accent);letter-spacing:1.5px;text-transform:uppercase}
+.modal-step-label::before{content:"// "}
 .step{display:none;flex-direction:column;gap:14px}
 .step.active{display:flex}
 .m-input{
-  background:var(--bg2);border:1px solid var(--border2);border-radius:8px;
-  padding:10px 13px;color:var(--fg);font-family:inherit;font-size:13px;outline:none;width:100%;
+  background:var(--bg2);border:1px solid var(--border2);border-radius:4px;
+  padding:10px 13px;color:var(--fg);font-family:var(--font-mono);font-size:13px;outline:none;width:100%;
   transition:border-color 100ms;
 }
 .m-input:focus{border-color:var(--accent)}
 .m-input::placeholder{color:var(--fg3)}
-.m-error{font-size:11px;color:#f85149;min-height:16px}
-.m-hint{font-size:11px;color:var(--fg3)}
+.m-error{font-family:var(--font-mono);font-size:11px;color:var(--red);min-height:16px}
+.m-hint{font-family:var(--font-mono);font-size:11px;color:var(--fg3)}
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
 .btn-secondary{
-  padding:7px 16px;border-radius:7px;border:1px solid var(--border2);
-  background:transparent;color:var(--fg2);font-size:12px;cursor:pointer;font-family:inherit;
+  padding:8px 16px;border-radius:4px;border:1px solid var(--border2);
+  background:transparent;color:var(--fg2);font-family:var(--font-mono);font-size:11px;font-weight:500;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;
   transition:all 100ms;
 }
 .btn-secondary:hover{border-color:var(--fg);color:var(--fg)}
 .btn-primary{
-  padding:7px 20px;border-radius:7px;border:none;
-  background:var(--accent);color:#0d1117;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;
-  transition:background 100ms;
+  padding:8px 20px;border-radius:4px;border:1px solid var(--accent);
+  background:var(--accent);color:#1a1408;font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;
+  transition:opacity 100ms;
 }
-.btn-primary:hover{background:#7de8f7}
+.btn-primary:hover{opacity:.9}
 .btn-primary:disabled{opacity:.35;cursor:default}
 
 /* Robot type selector */
 .robot-cards{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .r-card{
-  border:1px solid var(--border);border-radius:8px;padding:13px 11px;
+  border:1px solid var(--border);border-radius:4px;padding:13px 11px;
   cursor:pointer;transition:border-color 100ms,background 100ms;
   display:flex;flex-direction:column;gap:5px;background:var(--bg2);
 }
-.r-card:hover{border-color:var(--accent);background:var(--bg3)}
-.r-card.selected{border-color:var(--accent);background:rgba(76,201,240,.08)}
+.r-card:hover{border-color:var(--accent-line);background:var(--bg3)}
+.r-card.selected{border-color:var(--accent);background:var(--accent-dim)}
 .r-card.disabled{opacity:.3;cursor:not-allowed;pointer-events:none}
-.r-label{font-size:10px;font-weight:700;font-family:ui-monospace,monospace;color:var(--accent);letter-spacing:.05em}
+.r-label{font-family:var(--font-mono);font-size:9px;font-weight:500;color:var(--accent);letter-spacing:1.5px;text-transform:uppercase}
 .r-card.disabled .r-label{color:var(--fg3)}
-.r-name{font-size:12px;font-weight:600;color:var(--fg)}
-.r-desc{font-size:10.5px;color:var(--fg2);line-height:1.3}
-.r-badge{font-size:9px;padding:2px 5px;border-radius:3px;background:var(--bg4);color:var(--fg3);width:fit-content;margin-top:2px}
+.r-name{font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--fg);letter-spacing:.3px;text-transform:uppercase}
+.r-desc{font-size:10.5px;color:var(--fg2);line-height:1.4}
+.r-badge{font-family:var(--font-mono);font-size:9px;padding:2px 6px;border-radius:3px;background:transparent;border:1px solid var(--border2);color:var(--fg3);width:fit-content;margin-top:2px;letter-spacing:.5px;text-transform:uppercase}
 
 /* File tree preview */
 .tree{
@@ -373,32 +382,35 @@ button{cursor:pointer;font-family:inherit;font-size:inherit;border:none;backgrou
         <line x1="7.8"  y1="20" x2="13" y2="20" stroke="#4cc9f0" stroke-width="1.2" opacity=".3"/>
         <line x1="27"  y1="20" x2="32.2" y2="20" stroke="#4cc9f0" stroke-width="1.2" opacity=".3"/>
       </svg>
-      <div class="wordmark"><span class="ros">roscode</span><span class="stud">&thinsp;studio</span></div>
+      <div class="wordmark"><span class="ros">roscode</span><span class="slash">/</span><span class="stud">studio</span></div>
     </div>
-    <div class="tagline">The ROS 2 IDE powered by Claude AI</div>
+    <div class="tagline">// BLUEPRINT OPS · ROS 2 IDE · POWERED BY CLAUDE</div>
   </div>
 
   <!-- Action cards — using <button> so they always receive click events -->
   <div class="cards">
     <button type="button" class="card" id="btn-new">
+      <div class="card-step">01</div>
       <div class="card-icon">
         <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6">
           <line x1="9" y1="3" x2="9" y2="15"/><line x1="3" y1="9" x2="15" y2="9"/>
         </svg>
       </div>
-      <div class="card-label">New Project</div>
-      <div class="card-sub">Scaffold a ROS 2 workspace</div>
+      <div class="card-label">NEW PROJECT</div>
+      <div class="card-sub">ros 2 template scaffold</div>
     </button>
     <button type="button" class="card" id="btn-open">
+      <div class="card-step">02</div>
       <div class="card-icon">
         <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6">
           <path d="M2 5a2 2 0 012-2h3l2 2h6a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V5z"/>
         </svg>
       </div>
-      <div class="card-label">Open Project</div>
-      <div class="card-sub">Open an existing workspace</div>
+      <div class="card-label">OPEN WS</div>
+      <div class="card-sub">load existing workspace</div>
     </button>
     <button type="button" class="card" id="btn-clone">
+      <div class="card-step">03</div>
       <div class="card-icon">
         <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6">
           <circle cx="5" cy="4" r="1.5"/><circle cx="13" cy="4" r="1.5"/><circle cx="5" cy="14" r="1.5"/>
@@ -407,8 +419,8 @@ button{cursor:pointer;font-family:inherit;font-size:inherit;border:none;backgrou
           <path d="M5 12.5c0-2 1.5-3 3-3h3"/>
         </svg>
       </div>
-      <div class="card-label">Clone Repo</div>
-      <div class="card-sub">Clone from Git URL</div>
+      <div class="card-label">CLONE REPO</div>
+      <div class="card-sub">git / github url</div>
     </button>
   </div>
 
@@ -417,7 +429,7 @@ button{cursor:pointer;font-family:inherit;font-size:inherit;border:none;backgrou
     <div class="kb-row">
       <div class="kb-icon">!</div>
       <div class="kb-body">
-        <div class="kb-title">Anthropic API key required</div>
+        <div class="kb-title">ANTHROPIC API KEY REQUIRED</div>
         <div class="kb-text">Set the <code>ANTHROPIC_API_KEY</code> environment variable, or add it in settings to enable the AI agent.</div>
       </div>
     </div>
@@ -430,7 +442,7 @@ button{cursor:pointer;font-family:inherit;font-size:inherit;border:none;backgrou
 
   <!-- Recent projects -->
   <div id="recents-section">
-    <div class="section-title">Recent</div>
+    <div class="section-title">Recent Workspaces</div>
     <div id="recents-list"><div class="no-recents">No recent projects yet</div></div>
   </div>
 </div>
@@ -438,54 +450,54 @@ button{cursor:pointer;font-family:inherit;font-size:inherit;border:none;backgrou
 <!-- ── NEW PROJECT MODAL ─── -->
 <div class="modal-backdrop" id="modal-overlay">
   <div class="modal-box">
-    <div class="modal-title" id="modal-title">New ROS 2 Project</div>
+    <div class="modal-title" id="modal-title">NEW · ROS 2 PROJECT</div>
     <div class="step active" id="step1">
-      <div class="modal-step-label">Step 1 of 3 &mdash; Project name</div>
+      <div class="modal-step-label">Step 01 / 03 &mdash; Name</div>
       <input class="m-input" id="proj-name" type="text" placeholder="my_robot" autocomplete="off"/>
       <div class="m-error" id="name-error"></div>
-      <div class="m-hint">Lowercase letters, numbers, underscores. Must start with a letter.</div>
+      <div class="m-hint">// lowercase · letters · numbers · underscores · start with a letter</div>
       <div class="modal-actions">
-        <button type="button" class="btn-secondary" id="s1-cancel">Cancel</button>
-        <button type="button" class="btn-primary" id="s1-next" disabled>Next &rarr;</button>
+        <button type="button" class="btn-secondary" id="s1-cancel">CANCEL</button>
+        <button type="button" class="btn-primary" id="s1-next" disabled>NEXT &rarr;</button>
       </div>
     </div>
     <div class="step" id="step2">
-      <div class="modal-step-label">Step 2 of 3 &mdash; Robot type</div>
+      <div class="modal-step-label">Step 02 / 03 &mdash; Template</div>
       <div class="robot-cards">
         <div class="r-card" id="rc-diff">
-          <div class="r-label">DD</div>
-          <div class="r-name">Diff Drive</div>
-          <div class="r-desc">Non-holonomic &middot; /cmd_vel &rarr; /odom</div>
+          <div class="r-label">DIFF-DRIVE</div>
+          <div class="r-name">DIFF DRIVE</div>
+          <div class="r-desc">non-holonomic · /cmd_vel → /odom</div>
         </div>
         <div class="r-card" id="rc-empty">
-          <div class="r-label">{ }</div>
-          <div class="r-name">Empty</div>
-          <div class="r-desc">Hello-world publisher. Start from scratch.</div>
+          <div class="r-label">EMPTY</div>
+          <div class="r-name">EMPTY</div>
+          <div class="r-desc">hello-world publisher · scaffold only</div>
         </div>
         <div class="r-card disabled" id="rc-ack">
-          <div class="r-label" style="color:var(--fg3)">AK</div>
-          <div class="r-name">Ackermann</div>
-          <div class="r-desc">Car-like steering geometry</div>
+          <div class="r-label">ACKERMANN</div>
+          <div class="r-name">ACKERMANN</div>
+          <div class="r-desc">car-like steering geometry</div>
           <div class="r-badge">coming soon</div>
         </div>
         <div class="r-card disabled" id="rc-man">
-          <div class="r-label" style="color:var(--fg3)">6D</div>
-          <div class="r-name">Manipulator</div>
-          <div class="r-desc">6-DOF robotic arm</div>
+          <div class="r-label">ARM-6DOF</div>
+          <div class="r-name">ARM</div>
+          <div class="r-desc">6-dof robotic arm · moveit2</div>
           <div class="r-badge">coming soon</div>
         </div>
       </div>
       <div class="modal-actions">
-        <button type="button" class="btn-secondary" id="s2-back">&larr; Back</button>
-        <button type="button" class="btn-primary" id="s2-next" disabled>Next &rarr;</button>
+        <button type="button" class="btn-secondary" id="s2-back">&larr; BACK</button>
+        <button type="button" class="btn-primary" id="s2-next" disabled>NEXT &rarr;</button>
       </div>
     </div>
     <div class="step" id="step3">
-      <div class="modal-step-label">Step 3 of 3 &mdash; Confirm</div>
+      <div class="modal-step-label">Step 03 / 03 &mdash; Confirm</div>
       <div id="tree-preview" class="tree"></div>
       <div class="modal-actions">
-        <button type="button" class="btn-secondary" id="s3-back">&larr; Back</button>
-        <button type="button" class="btn-primary" id="btn-create">Create project</button>
+        <button type="button" class="btn-secondary" id="s3-back">&larr; BACK</button>
+        <button type="button" class="btn-primary" id="btn-create">CREATE →</button>
       </div>
     </div>
   </div>
@@ -494,11 +506,11 @@ button{cursor:pointer;font-family:inherit;font-size:inherit;border:none;backgrou
 <!-- ── CLONE MODAL ─── -->
 <div class="modal-backdrop" id="clone-overlay">
   <div class="modal-box">
-    <div class="modal-title">Clone Git Repository</div>
+    <div class="modal-title">CLONE · GIT REPOSITORY</div>
     <input class="m-input" id="clone-url" type="text" placeholder="https://github.com/org/repo.git"/>
     <div class="modal-actions">
       <button type="button" class="btn-secondary" id="clone-cancel">Cancel</button>
-      <button type="button" class="btn-primary" id="clone-go">Clone</button>
+      <button type="button" class="btn-primary" id="clone-go">CLONE</button>
     </div>
   </div>
 </div>
@@ -592,7 +604,7 @@ function closeModal() { document.getElementById('modal-overlay').classList.remov
 
 function goStep(n) {
   [1,2,3].forEach(i => document.getElementById('step'+i).classList.toggle('active', i===n));
-  document.getElementById('modal-title').textContent = n===1 ? 'New ROS 2 Project' : n===2 ? 'Choose Robot Type' : 'Confirm Project';
+  document.getElementById('modal-title').textContent = n===1 ? 'NEW · ROS 2 PROJECT' : n===2 ? 'PICK A TEMPLATE' : 'CONFIRM · CREATE';
 }
 
 function goStep2() { if (!validateNameNow()) return; goStep(2); }

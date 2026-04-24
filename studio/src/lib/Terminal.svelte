@@ -16,31 +16,31 @@
   onMount(() => {
     term = new Terminal({
       theme: {
-        background: "#0d0d14",
-        foreground: "#e2e2e2",
-        cursor: "#4cc9f0",
-        cursorAccent: "#0d0d14",
-        selectionBackground: "rgba(76, 201, 240, 0.25)",
-        black: "#0d0d14",
-        brightBlack: "#555",
-        red: "#f87171",
-        brightRed: "#f87171",
-        green: "#7ee787",
-        brightGreen: "#7ee787",
-        yellow: "#f0a050",
-        brightYellow: "#f0a050",
-        blue: "#4cc9f0",
-        brightBlue: "#93c5fd",
-        magenta: "#a78bfa",
-        brightMagenta: "#c4b5fd",
-        cyan: "#34d399",
-        brightCyan: "#6ee7b7",
-        white: "#e2e2e2",
+        background: "#0a0d0c",
+        foreground: "#e4e6e1",
+        cursor: "#f2a83b",
+        cursorAccent: "#0a0d0c",
+        selectionBackground: "rgba(242, 168, 59, 0.25)",
+        black: "#0a0d0c",
+        brightBlack: "#636862",
+        red: "#e06666",
+        brightRed: "#e06666",
+        green: "#8bc34a",
+        brightGreen: "#bddb8a",
+        yellow: "#f2c84b",
+        brightYellow: "#e4cf8f",
+        blue: "#6dd3c8",
+        brightBlue: "#6dd3c8",
+        magenta: "#e4a87f",
+        brightMagenta: "#e4a87f",
+        cyan: "#6dd3c8",
+        brightCyan: "#6dd3c8",
+        white: "#e4e6e1",
         brightWhite: "#ffffff",
       },
-      fontFamily: '"SF Mono", Menlo, "Cascadia Code", monospace',
+      fontFamily: '"Geist Mono", "JetBrains Mono", "SF Mono", Menlo, monospace',
       fontSize: 12,
-      lineHeight: 1.35,
+      lineHeight: 1.4,
       cursorBlink: true,
       cursorStyle: "bar",
       scrollback: 2000,
@@ -127,7 +127,7 @@
   .term-wrap {
     width: 100%;
     height: 100%;
-    background: #0d0d14;
+    background: #0a0d0c;
     overflow: hidden;
     cursor: text;
   }
@@ -145,7 +145,7 @@
   }
 
   .xterm-container :global(.xterm-viewport) {
-    background: #0d0d14 !important;
+    background: #0a0d0c !important;
   }
 
   .xterm-container :global(.xterm-screen) {

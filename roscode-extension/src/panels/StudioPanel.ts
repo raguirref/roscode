@@ -416,7 +416,7 @@ Return ONLY the JSON array, no other text.`,
   --bg:#0d1117; --bg1:#010409; --bg2:#161b22; --bg3:#21262d;
   --fg:#e6edf3; --fg2:#8b949e; --fg3:#484f58;
   --border:#30363d; --border2:#21262d;
-  --accent:#4cc9f0; --accent-dim:rgba(76,201,240,.15);
+  --accent:#f2a83b; --accent-dim:rgba(242,168,59,.15);
   --green:#3fb950; --green-dim:rgba(63,185,80,.15);
   --red:#f85149;   --red-dim:rgba(248,81,73,.15);
   --yellow:#e3b341;
@@ -439,7 +439,7 @@ button{cursor:pointer;font-family:inherit}
   -webkit-app-region:drag;
 }
 #top *{-webkit-app-region:no-drag}
-.brand-mark{width:22px;height:22px;flex-shrink:0;filter:drop-shadow(0 0 6px rgba(76,201,240,.3))}
+.brand-mark{width:22px;height:22px;flex-shrink:0;filter:drop-shadow(0 0 6px rgba(242,168,59,.3))}
 .wordmark{display:flex;align-items:baseline;gap:1px;font-weight:700;font-size:13px;letter-spacing:-.3px}
 .wordmark .ros{color:var(--accent)}.wordmark .stud{color:var(--fg3);font-weight:400}
 .top-divider{width:1px;height:18px;background:var(--border2);flex-shrink:0;margin:0 2px}
@@ -525,7 +525,7 @@ button{cursor:pointer;font-family:inherit}
   flex:1;position:relative;overflow:hidden;
   background:var(--bg);
   background-image:
-    radial-gradient(circle at 50% 40%, rgba(76,201,240,.04) 0%, transparent 55%),
+    radial-gradient(circle at 50% 40%, rgba(242,168,59,.04) 0%, transparent 55%),
     radial-gradient(rgba(48,54,61,.7) 1px, transparent 1px);
   background-size:100% 100%, 28px 28px;
 }
@@ -561,7 +561,7 @@ button{cursor:pointer;font-family:inherit}
 }
 #bottom button:hover{color:var(--fg);background:var(--bg2)}
 .v-tag{font-size:9.5px;padding:1px 5px;border-radius:3px;
-  background:var(--accent-dim);border:1px solid rgba(76,201,240,.2);color:var(--accent);
+  background:var(--accent-dim);border:1px solid rgba(242,168,59,.2);color:var(--accent);
   font-family:ui-monospace,monospace;letter-spacing:.02em}
 
 /* ── LIBRARY TAB ───────────────────────────────────────── */
@@ -762,16 +762,16 @@ button{cursor:pointer;font-family:inherit}
 <!-- TOP BAR -->
 <div id="top">
   <svg class="brand-mark" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="20" cy="20" r="19" stroke="#4cc9f0" stroke-width="1.5"/>
-    <circle cx="20" cy="20" r="7" fill="#4cc9f0" opacity="0.92"/>
-    <circle cx="20" cy="5"  r="2.8" fill="#4cc9f0" opacity="0.3"/>
-    <circle cx="20" cy="35" r="2.8" fill="#4cc9f0" opacity="0.3"/>
-    <circle cx="5"  cy="20" r="2.8" fill="#4cc9f0" opacity="0.3"/>
-    <circle cx="35" cy="20" r="2.8" fill="#4cc9f0" opacity="0.3"/>
-    <line x1="20" y1="7.8"  x2="20" y2="13" stroke="#4cc9f0" stroke-width="1.2" opacity=".3"/>
-    <line x1="20" y1="27"  x2="20" y2="32.2" stroke="#4cc9f0" stroke-width="1.2" opacity=".3"/>
-    <line x1="7.8" y1="20" x2="13" y2="20" stroke="#4cc9f0" stroke-width="1.2" opacity=".3"/>
-    <line x1="27" y1="20" x2="32.2" y2="20" stroke="#4cc9f0" stroke-width="1.2" opacity=".3"/>
+    <circle cx="20" cy="20" r="19" stroke="#f2a83b" stroke-width="1.5"/>
+    <circle cx="20" cy="20" r="7" fill="#f2a83b" opacity="0.92"/>
+    <circle cx="20" cy="5"  r="2.8" fill="#f2a83b" opacity="0.3"/>
+    <circle cx="20" cy="35" r="2.8" fill="#f2a83b" opacity="0.3"/>
+    <circle cx="5"  cy="20" r="2.8" fill="#f2a83b" opacity="0.3"/>
+    <circle cx="35" cy="20" r="2.8" fill="#f2a83b" opacity="0.3"/>
+    <line x1="20" y1="7.8"  x2="20" y2="13" stroke="#f2a83b" stroke-width="1.2" opacity=".3"/>
+    <line x1="20" y1="27"  x2="20" y2="32.2" stroke="#f2a83b" stroke-width="1.2" opacity=".3"/>
+    <line x1="7.8" y1="20" x2="13" y2="20" stroke="#f2a83b" stroke-width="1.2" opacity=".3"/>
+    <line x1="27" y1="20" x2="32.2" y2="20" stroke="#f2a83b" stroke-width="1.2" opacity=".3"/>
   </svg>
   <div class="wordmark"><span class="ros">roscode</span><span class="stud">&thinsp;studio</span></div>
   <div class="top-divider"></div>
@@ -806,16 +806,16 @@ button{cursor:pointer;font-family:inherit}
     </div>
     <div id="graph-overlay">
       <svg width="48" height="48" viewBox="0 0 48 48" fill="none" style="opacity:.25" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="24" cy="24" r="22" stroke="#4cc9f0" stroke-width="1.5"/>
-        <circle cx="24" cy="24" r="7" fill="#4cc9f0" opacity=".6"/>
-        <circle cx="24" cy="6"  r="3" fill="#4cc9f0" opacity=".3"/>
-        <circle cx="24" cy="42" r="3" fill="#4cc9f0" opacity=".3"/>
-        <circle cx="6"  cy="24" r="3" fill="#4cc9f0" opacity=".3"/>
-        <circle cx="42" cy="24" r="3" fill="#4cc9f0" opacity=".3"/>
-        <line x1="24" y1="9"  x2="24" y2="17" stroke="#4cc9f0" stroke-width="1" opacity=".3"/>
-        <line x1="24" y1="31" x2="24" y2="39" stroke="#4cc9f0" stroke-width="1" opacity=".3"/>
-        <line x1="9"  y1="24" x2="17" y2="24" stroke="#4cc9f0" stroke-width="1" opacity=".3"/>
-        <line x1="31" y1="24" x2="39" y2="24" stroke="#4cc9f0" stroke-width="1" opacity=".3"/>
+        <circle cx="24" cy="24" r="22" stroke="#f2a83b" stroke-width="1.5"/>
+        <circle cx="24" cy="24" r="7" fill="#f2a83b" opacity=".6"/>
+        <circle cx="24" cy="6"  r="3" fill="#f2a83b" opacity=".3"/>
+        <circle cx="24" cy="42" r="3" fill="#f2a83b" opacity=".3"/>
+        <circle cx="6"  cy="24" r="3" fill="#f2a83b" opacity=".3"/>
+        <circle cx="42" cy="24" r="3" fill="#f2a83b" opacity=".3"/>
+        <line x1="24" y1="9"  x2="24" y2="17" stroke="#f2a83b" stroke-width="1" opacity=".3"/>
+        <line x1="24" y1="31" x2="24" y2="39" stroke="#f2a83b" stroke-width="1" opacity=".3"/>
+        <line x1="9"  y1="24" x2="17" y2="24" stroke="#f2a83b" stroke-width="1" opacity=".3"/>
+        <line x1="31" y1="24" x2="39" y2="24" stroke="#f2a83b" stroke-width="1" opacity=".3"/>
       </svg>
       <div class="overlay-title">Robot offline</div>
       <div class="overlay-sub">Start runtime to see the ROS graph</div>
@@ -841,17 +841,17 @@ button{cursor:pointer;font-family:inherit}
         <div id="agent-pane">
           <div id="agent-feed">
             <div class="a-empty" id="a-empty">
-              <svg width="32" height="32" viewBox="0 0 40 40" fill="none" style="opacity:.55;filter:drop-shadow(0 0 8px rgba(76,201,240,.3))" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="20" cy="20" r="19" stroke="#4cc9f0" stroke-width="1.5"/>
-                <circle cx="20" cy="20" r="7" fill="#4cc9f0" opacity=".85"/>
-                <circle cx="20" cy="5"  r="2.8" fill="#4cc9f0" opacity=".3"/>
-                <circle cx="20" cy="35" r="2.8" fill="#4cc9f0" opacity=".3"/>
-                <circle cx="5"  cy="20" r="2.8" fill="#4cc9f0" opacity=".3"/>
-                <circle cx="35" cy="20" r="2.8" fill="#4cc9f0" opacity=".3"/>
-                <line x1="20" y1="7.8"  x2="20" y2="13" stroke="#4cc9f0" stroke-width="1.2" opacity=".3"/>
-                <line x1="20" y1="27"  x2="20" y2="32.2" stroke="#4cc9f0" stroke-width="1.2" opacity=".3"/>
-                <line x1="7.8" y1="20" x2="13" y2="20" stroke="#4cc9f0" stroke-width="1.2" opacity=".3"/>
-                <line x1="27" y1="20" x2="32.2" y2="20" stroke="#4cc9f0" stroke-width="1.2" opacity=".3"/>
+              <svg width="32" height="32" viewBox="0 0 40 40" fill="none" style="opacity:.55;filter:drop-shadow(0 0 8px rgba(242,168,59,.3))" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="20" cy="20" r="19" stroke="#f2a83b" stroke-width="1.5"/>
+                <circle cx="20" cy="20" r="7" fill="#f2a83b" opacity=".85"/>
+                <circle cx="20" cy="5"  r="2.8" fill="#f2a83b" opacity=".3"/>
+                <circle cx="20" cy="35" r="2.8" fill="#f2a83b" opacity=".3"/>
+                <circle cx="5"  cy="20" r="2.8" fill="#f2a83b" opacity=".3"/>
+                <circle cx="35" cy="20" r="2.8" fill="#f2a83b" opacity=".3"/>
+                <line x1="20" y1="7.8"  x2="20" y2="13" stroke="#f2a83b" stroke-width="1.2" opacity=".3"/>
+                <line x1="20" y1="27"  x2="20" y2="32.2" stroke="#f2a83b" stroke-width="1.2" opacity=".3"/>
+                <line x1="7.8" y1="20" x2="13" y2="20" stroke="#f2a83b" stroke-width="1.2" opacity=".3"/>
+                <line x1="27" y1="20" x2="32.2" y2="20" stroke="#f2a83b" stroke-width="1.2" opacity=".3"/>
               </svg>
               <p>Ask Claude about your ROS system &mdash; inspect topics, fix bugs, or build new nodes.</p>
               <div class="a-sug" id="a-sug-static">
@@ -1027,7 +1027,7 @@ function renderRealGraph(nodes, edges) {
     const f = posMap[e.source], t = posMap[e.target];
     if (f && t) s += \`<line x1="\${f.x}" y1="\${f.y}" x2="\${t.x}" y2="\${t.y}" stroke="#21262d" stroke-width="1.5" marker-end="url(#arr)"/>\`;
   });
-  const colors = ['#4cc9f0','#a371f7','#f78166','#56d364','#e3b341','#ffa657'];
+  const colors = ['#f2a83b','#a371f7','#f78166','#56d364','#e3b341','#ffa657'];
   positioned.forEach((n, i) => {
     const col = colors[i % colors.length];
     const label = n.id.length > 20 ? n.id.slice(0,18)+'…' : n.id;
@@ -1042,7 +1042,7 @@ function drawPlaceholderGraph() {
   if (!svg) return;
   const W = svg.clientWidth || 600, H = svg.clientHeight || 400;
   const nodes = [
-    { id:'n1', label:'/robot_node',       x:.3, y:.35, color:'#4cc9f0' },
+    { id:'n1', label:'/robot_node',       x:.3, y:.35, color:'#f2a83b' },
     { id:'n2', label:'/slam_node',         x:.65,.25, color:'#a371f7' },
     { id:'n3', label:'/nav2_planner',      x:.65,.65, color:'#a371f7' },
     { id:'n4', label:'/sensor_driver',     x:.15,.6,  color:'#f78166' },
@@ -1358,17 +1358,17 @@ function resetAgent() {
   const feed = document.getElementById('agent-feed');
   if (!feed) return;
   feed.innerHTML = \`<div class="a-empty" id="a-empty">
-    <svg width="32" height="32" viewBox="0 0 40 40" fill="none" style="opacity:.55;filter:drop-shadow(0 0 8px rgba(76,201,240,.3))" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="20" cy="20" r="19" stroke="#4cc9f0" stroke-width="1.5"/>
-      <circle cx="20" cy="20" r="7" fill="#4cc9f0" opacity=".85"/>
-      <circle cx="20" cy="5"  r="2.8" fill="#4cc9f0" opacity=".3"/>
-      <circle cx="20" cy="35" r="2.8" fill="#4cc9f0" opacity=".3"/>
-      <circle cx="5"  cy="20" r="2.8" fill="#4cc9f0" opacity=".3"/>
-      <circle cx="35" cy="20" r="2.8" fill="#4cc9f0" opacity=".3"/>
-      <line x1="20" y1="7.8"  x2="20" y2="13" stroke="#4cc9f0" stroke-width="1.2" opacity=".3"/>
-      <line x1="20" y1="27"  x2="20" y2="32.2" stroke="#4cc9f0" stroke-width="1.2" opacity=".3"/>
-      <line x1="7.8" y1="20" x2="13" y2="20" stroke="#4cc9f0" stroke-width="1.2" opacity=".3"/>
-      <line x1="27" y1="20" x2="32.2" y2="20" stroke="#4cc9f0" stroke-width="1.2" opacity=".3"/>
+    <svg width="32" height="32" viewBox="0 0 40 40" fill="none" style="opacity:.55;filter:drop-shadow(0 0 8px rgba(242,168,59,.3))" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="20" cy="20" r="19" stroke="#f2a83b" stroke-width="1.5"/>
+      <circle cx="20" cy="20" r="7" fill="#f2a83b" opacity=".85"/>
+      <circle cx="20" cy="5"  r="2.8" fill="#f2a83b" opacity=".3"/>
+      <circle cx="20" cy="35" r="2.8" fill="#f2a83b" opacity=".3"/>
+      <circle cx="5"  cy="20" r="2.8" fill="#f2a83b" opacity=".3"/>
+      <circle cx="35" cy="20" r="2.8" fill="#f2a83b" opacity=".3"/>
+      <line x1="20" y1="7.8"  x2="20" y2="13" stroke="#f2a83b" stroke-width="1.2" opacity=".3"/>
+      <line x1="20" y1="27"  x2="20" y2="32.2" stroke="#f2a83b" stroke-width="1.2" opacity=".3"/>
+      <line x1="7.8" y1="20" x2="13" y2="20" stroke="#f2a83b" stroke-width="1.2" opacity=".3"/>
+      <line x1="27" y1="20" x2="32.2" y2="20" stroke="#f2a83b" stroke-width="1.2" opacity=".3"/>
     </svg>
     <p>Ask Claude about your ROS system &mdash; inspect topics, fix bugs, or build new nodes.</p>
     <div class="a-sug">

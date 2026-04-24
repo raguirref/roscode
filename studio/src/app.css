@@ -1,42 +1,68 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap");
+/* ═══════════════════════════════════════════════════════════════
+   roscode studio — Blueprint Ops palette
+   Dark technical HUD · warm amber accent · monospace-forward
+   ═══════════════════════════════════════════════════════════════ */
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap");
 
 :root {
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-family: "Geist", "Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   font-size: 13px;
   color-scheme: dark;
 
-  --bg-0: #080b0f;
-  --bg-1: #0f1318;
-  --bg-2: #161b23;
-  --bg-3: #1e2430;
-  --fg-0: #e8ecf0;
-  --fg-1: #9aa3b0;
-  --fg-2: #4e5868;
-  --accent: #4cc9f0;
-  --accent-dim: rgba(76, 201, 240, 0.12);
-  --accent-warm: #f59e0b;
-  --accent-warm-dim: rgba(245, 158, 11, 0.12);
-  --green: #3dd68c;
-  --purple: #a78bfa;
-  --border: #1e2430;
-  --border-bright: #2a3340;
-  --radius: 8px;
-  --radius-sm: 5px;
+  /* Blueprint B background ladder */
+  --bg-0: #0a0c0b;
+  --bg-1: #0f1211;
+  --bg-2: #121615;
+  --bg-3: #181d1b;
+  --fg-0: #e4e6e1;
+  --fg-1: #9ea39a;
+  --fg-2: #636862;
+  --fg-3: #3a3e3a;
+
+  /* Primary accent: warm amber (ROS-ish) */
+  --accent: #f2a83b;
+  --accent-dim: rgba(242, 168, 59, 0.10);
+  --accent-line: rgba(242, 168, 59, 0.28);
+  --accent-glow: rgba(242, 168, 59, 0.4);
+
+  /* Secondary: teal */
+  --accent2: #6dd3c8;
+
+  /* Keep older name for components that still reference it (now = warn/golden) */
+  --accent-warm: #f2c84b;
+  --accent-warm-dim: rgba(242, 200, 75, 0.12);
+
+  /* Signals */
+  --green: #8bc34a;
+  --ok:    #8bc34a;
+  --warn:  #f2c84b;
+  --err:   #e06666;
+  --purple: #6dd3c8;
+
+  --border: #222826;
+  --border-bright: #333b38;
+
+  /* Blueprint B uses tighter radii */
+  --radius: 4px;
+  --radius-sm: 3px;
+
+  /* Monospace stack */
+  --font-mono: "Geist Mono", "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
 
   /* IDE shell layout */
-  --activity-bar-width: 48px;
+  --activity-bar-width: 52px;
   --sidebar-width: 260px;
   --bottom-panel-height: 280px;
   --statusbar-height: 22px;
   --header-height: 40px;
-  --tab-bar-height: 35px;
+  --tab-bar-height: 32px;
   --pane-title-height: 30px;
 
   /* Status dots */
-  --dot-active: var(--green);
+  --dot-active: var(--ok);
   --dot-idle: var(--fg-2);
-  --dot-warning: var(--accent-warm);
-  --dot-error: #f87171;
+  --dot-warning: var(--warn);
+  --dot-error: var(--err);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -50,18 +76,25 @@ html, body, #app {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Dot-grid background utility (used by HUD panels) */
+.bp-grid {
+  background-image: radial-gradient(var(--border-bright) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
 button {
-  font-family: inherit;
-  font-size: 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
   font-weight: 500;
-  background: var(--bg-3);
+  background: transparent;
   color: var(--fg-0);
   border: 1px solid var(--border-bright);
-  border-radius: var(--radius-sm);
-  padding: 6px 14px;
+  border-radius: var(--radius);
+  padding: 7px 12px;
   cursor: pointer;
   transition: background 120ms, border-color 120ms, color 120ms;
-  letter-spacing: 0.2px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
 }
 
 button:hover { background: var(--bg-2); border-color: var(--accent); color: var(--accent); }
