@@ -5,113 +5,94 @@ content = target.read_text(encoding="utf-8")
 
 NUCLEAR_CSS = """
 <style id="roscode-nuclear">
-/* ═══ NUCLEAR: ocultar TODO el chrome de VS Code ═══ */
+/* ═══ NUCLEAR CHROME REMOVAL — roscode studio ═══ */
 
-/* Activity bar (izquierda con íconos) */
+/* ── Workbench background ─────────────────────── */
+body, .monaco-workbench { background: #0d1117 !important; }
+.part.editor           { background: #0d1117 !important; }
+
+/* ── Activity bar ─────────────────────────────── */
 .activitybar { display: none !important; }
 
-/* Sidebar (explorer, search, etc.) */
+/* ── Sidebar ──────────────────────────────────── */
 .sidebar { display: none !important; }
 
-/* Status bar inferior */
+/* ── Status bar ───────────────────────────────── */
 .part.statusbar { display: none !important; }
 
-/* Menú nativo (File Edit Selection...) */
+/* ── Menu bar ─────────────────────────────────── */
 .menubar { display: none !important; }
 
-/* Tabs de archivos abiertos */
+/* ── Editor tabs + breadcrumbs ────────────────── */
 .tabs-and-actions-container { display: none !important; }
-
-/* Breadcrumbs */
 .breadcrumbs-below-tabs, .breadcrumb-item { display: none !important; }
 
-/* Title bar de Electron */
-.part.titlebar .window-controls-container { opacity: 0 !important; }
-.part.titlebar { background: #0d1117 !important; border: none !important; }
+/* ── Title bar — keep drag region, kill content ─ */
+.part.titlebar {
+  background: #0d1117 !important;
+  border: none !important;
+  height: 28px !important;
+}
 .monaco-title-bar { background: #0d1117 !important; }
+/* Hide EVERYTHING inside the title bar except the macOS traffic lights area */
+.part.titlebar .titlebar-left  { display: none !important; }
+.part.titlebar .titlebar-right { display: none !important; }
+.part.titlebar .titlebar-center { display: none !important; }
+.part.titlebar .window-title   { display: none !important; }
+.part.titlebar .monaco-action-bar { display: none !important; }
+.part.titlebar .monaco-toolbar  { display: none !important; }
+.part.titlebar .layout-controls-container { display: none !important; }
+.part.titlebar .action-bar      { display: none !important; }
+/* Keep left side for macOS traffic lights (uses native -webkit-app-region:drag) */
+.part.titlebar .window-controls-container.left { opacity: 1 !important; display: flex !important; }
+.part.titlebar .window-controls-container.right { display: none !important; }
 
-/* Notificaciones pop-up de VS Code */
-.notifications-toasts { display: none !important; }
-.notification-list-item { display: none !important; }
+/* ── Bottom panel — hide UNLESS a terminal is open ── */
+/* :has(.xterm) = panel has an active terminal = keep it visible */
+.part.panel:not(:has(.xterm)) { display: none !important; }
 
-/* Welcome tab, walkthrough, empty states */
-.gettingStartedContainer { display: none !important; }
-.welcomePage { display: none !important; }
-.welcome-view-content { display: none !important; }
+/* ── SCM / Source control specific kills ──────── */
+.scm-view                   { display: none !important; }
+.scm-provider               { display: none !important; }
+.scm-empty-state            { display: none !important; }
+.scm-empty-message          { display: none !important; }
+[id="workbench.view.scm"]   { display: none !important; }
+[id="workbench.panel.scm"]  { display: none !important; }
 
-/* Empty editor state — "Clone Git Repository" / "Open Folder" prompts */
-.editor-empty-message { display: none !important; }
-.empty-editor-hint { display: none !important; }
-.editorPlaceholder { display: none !important; }
-.scm-empty-state { display: none !important; }
-.empty-view { display: none !important; }
+/* ── Empty editor states ──────────────────────── */
+.editor-group-empty-state   { display: none !important; }
+.editor-empty-message       { display: none !important; }
+.empty-editor-hint          { display: none !important; }
+.editorPlaceholder          { display: none !important; }
+.empty-view                 { display: none !important; }
+[class*="emptyEditorHint"]  { display: none !important; }
+.watermark                  { display: none !important; }
 
-/* Workspace Trust dialog */
-.monaco-dialog-box { display: none !important; }
-.dialog-message-container { display: none !important; }
-
-/* Git clone / open folder CTA in editor area */
-.editor-group-empty-state { display: none !important; }
-[class*="emptyEditorHint"] { display: none !important; }
-
-/* Native VS Code dialog boxes (git clone, trust, etc.) */
-.monaco-dialog-box { display: none !important; }
-.dialog-shadow { display: none !important; }
-.dialog-message-container { display: none !important; }
-.monaco-dialog { display: none !important; }
-
-/* Title bar layout controls (top-right VS Code icons) */
-.layout-controls-container { display: none !important; }
-.titlebar-right .action-bar { display: none !important; }
-.title-actions { display: none !important; }
-.window-controls-container.right { display: none !important; }
-
-/* Kill the bottom panel area — SCM, git clone, welcome panel */
-/* We hide the panel but VS Code will re-show it when terminal is explicitly opened */
-.part.panel .monaco-workbench .composite.title { display: none !important; }
-.scm-view { display: none !important; }
-.scm-provider { display: none !important; }
-.welcome-view-content[id*="scm"] { display: none !important; }
-.panel-placeholder { display: none !important; }
-/* Kill source control panel container specifically */
-[id="workbench.panel.scm"] { display: none !important; }
-[id="workbench.view.scm"] { display: none !important; }
-
-/* Kill all toasts / notifications that mention VSCodium */
-.notifications-center { display: none !important; }
-.notification-toast { display: none !important; }
-
-/* Title bar — replace any VSCodium text references */
-.window-title { opacity: 0 !important; }
-.monaco-title-bar .menubar { display: none !important; }
-
-/* Kill the "Open Folder" / "Clone Repository" empty hint in editor */
-.editor-group-empty-state { display: none !important; }
-.watermark { display: none !important; }
+/* ── Welcome / onboarding ─────────────────────── */
+.gettingStartedContainer    { display: none !important; }
+.welcomePage                { display: none !important; }
+.welcome-view-content       { display: none !important; }
 [class*="welcomePageContainer"] { display: none !important; }
-.scm-empty-message { display: none !important; }
 
-/* VSCodium flash: force black background so any brief native chrome is invisible */
-.monaco-workbench { background: #0d1117 !important; }
+/* ── Dialogs (workspace trust, git clone, etc.) ── */
+.monaco-dialog-box          { display: none !important; }
+.dialog-shadow              { display: none !important; }
+.dialog-message-container   { display: none !important; }
+.monaco-dialog              { display: none !important; }
 
-/* Background general */
-body, .monaco-workbench {
-  background: #0d1117 !important;
-  font-family: 'Inter', 'SF Pro Display', system-ui, sans-serif !important;
-}
+/* ── Notifications ────────────────────────────── */
+.notifications-toasts       { display: none !important; }
+.notification-list-item     { display: none !important; }
+.notifications-center       { display: none !important; }
+.notification-toast         { display: none !important; }
 
-/* Editor area — solo visible cuando se pide explícitamente */
-.part.editor {
-  background: #0d1117 !important;
-}
-
-/* Scrollbars */
+/* ── Scrollbars ───────────────────────────────── */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 2px; }
 ::-webkit-scrollbar-thumb:hover { background: #4cc9f0; }
 
-/* Focus outline: usar color cyan */
+/* ── Focus ring ───────────────────────────────── */
 :focus-visible { outline-color: #4cc9f0 !important; }
 </style>
 """

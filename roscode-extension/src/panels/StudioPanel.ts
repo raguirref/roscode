@@ -408,8 +408,8 @@ Return ONLY the JSON array, no other text.`,
 <meta charset="UTF-8"/>
 <meta http-equiv="Content-Security-Policy"
   content="default-src 'none';
-           style-src 'nonce-${n}';
-           script-src 'nonce-${n}';
+           style-src 'nonce-${n}' 'unsafe-inline';
+           script-src 'nonce-${n}' 'unsafe-inline';
            img-src data:;
            font-src data:;">
 <style nonce="${n}">
@@ -433,13 +433,15 @@ button{cursor:pointer;font-family:inherit}
 
 /* ── TOP BAR ───────────────────────────────────────────── */
 #top{
-  height:40px;background:var(--bg1);border-bottom:1px solid var(--border2);
+  height:42px;background:var(--bg1);border-bottom:1px solid var(--border2);
   display:flex;align-items:center;padding:0 14px;gap:10px;flex-shrink:0;
   -webkit-app-region:drag;
 }
 #top *{-webkit-app-region:no-drag}
+.brand-mark{width:22px;height:22px;flex-shrink:0;filter:drop-shadow(0 0 6px rgba(76,201,240,.3))}
 .wordmark{display:flex;align-items:baseline;gap:1px;font-weight:700;font-size:13px;letter-spacing:-.3px}
 .wordmark .ros{color:var(--accent)}.wordmark .stud{color:var(--fg3);font-weight:400}
+.top-divider{width:1px;height:18px;background:var(--border2);flex-shrink:0;margin:0 2px}
 #ros-pill{
   margin-left:auto;display:flex;align-items:center;gap:6px;
   padding:4px 10px;border-radius:20px;border:1px solid var(--border);
@@ -492,9 +494,9 @@ button{cursor:pointer;font-family:inherit}
 .panel-tabs{display:flex;border-bottom:1px solid var(--border2);height:34px;flex-shrink:0;background:var(--bg1)}
 .panel-tabs button{
   flex:1;border:none;background:transparent;color:var(--fg3);
-  font-size:11px;font-weight:600;padding:0 4px;border-bottom:2px solid transparent;
+  font-size:10.5px;font-weight:600;padding:0 4px;border-bottom:2px solid transparent;
   display:flex;align-items:center;justify-content:center;gap:4px;
-  letter-spacing:.04em;text-transform:uppercase;
+  letter-spacing:.05em;text-transform:uppercase;transition:color 100ms;
 }
 .panel-tabs button.active{color:var(--accent);border-bottom-color:var(--accent)}
 .panel-tabs button:hover:not(.active){color:var(--fg2)}
@@ -520,14 +522,22 @@ button{cursor:pointer;font-family:inherit}
 .resizer:hover,.resizer.dragging{background:var(--accent)}
 
 /* ── GRAPH CENTER ──────────────────────────────────────── */
-#graph-center{flex:1;position:relative;background:var(--bg);overflow:hidden}
+#graph-center{
+  flex:1;position:relative;overflow:hidden;
+  background:var(--bg);
+  background-image:
+    radial-gradient(circle at 50% 40%, rgba(76,201,240,.04) 0%, transparent 55%),
+    radial-gradient(rgba(48,54,61,.7) 1px, transparent 1px);
+  background-size:100% 100%, 28px 28px;
+}
 #cy-container{width:100%;height:100%;position:relative}
 #cy-svg{width:100%;height:100%;position:absolute;top:0;left:0}
 
 /* Offline overlay */
 #graph-overlay{
   position:absolute;inset:0;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:14px;background:var(--bg);
+  align-items:center;justify-content:center;gap:12px;
+  background:transparent;
   pointer-events:all;
 }
 #graph-overlay.hidden{display:none}
@@ -536,20 +546,24 @@ button{cursor:pointer;font-family:inherit}
 .overlay-sub{font-size:12px;color:var(--fg3)}
 .overlay-btn{
   padding:7px 18px;border-radius:6px;border:1px solid var(--border);
-  background:var(--bg2);color:var(--fg);font-size:12px;margin-top:4px;
+  background:rgba(13,17,23,.8);color:var(--fg);font-size:12px;margin-top:4px;
+  backdrop-filter:blur(4px);
 }
 .overlay-btn:hover{border-color:var(--accent);color:var(--accent)}
 
 /* ── BOTTOM BAR ────────────────────────────────────────── */
 #bottom{
-  height:32px;border-top:1px solid var(--border2);background:var(--bg1);
-  display:flex;align-items:center;padding:0 12px;gap:10px;flex-shrink:0;color:var(--fg3);font-size:11px;
+  height:28px;border-top:1px solid var(--border2);background:var(--bg1);
+  display:flex;align-items:center;padding:0 12px;gap:8px;flex-shrink:0;color:var(--fg3);font-size:10.5px;
 }
 #bottom button{
   display:flex;align-items:center;gap:5px;border:none;background:transparent;
-  color:var(--fg3);font-size:11px;padding:3px 7px;border-radius:4px;
+  color:var(--fg3);font-size:10.5px;padding:2px 6px;border-radius:3px;
 }
 #bottom button:hover{color:var(--fg);background:var(--bg2)}
+.v-tag{font-size:9.5px;padding:1px 5px;border-radius:3px;
+  background:var(--accent-dim);border:1px solid rgba(76,201,240,.2);color:var(--accent);
+  font-family:ui-monospace,monospace;letter-spacing:.02em}
 
 /* ── FILES TAB ─────────────────────────────────────────── */
 #files-pane{padding:6px 0;overflow-y:auto}
@@ -654,13 +668,15 @@ button{cursor:pointer;font-family:inherit}
 .td{width:4px;height:4px;border-radius:50%;background:var(--accent);animation:pulse 1.3s ease infinite}
 .td:nth-child(2){animation-delay:.15s}.td:nth-child(3){animation-delay:.3s}
 @keyframes pulse{0%,80%,100%{opacity:.2;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
-.a-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px;text-align:center}
-.a-empty .hex{font-size:24px;color:var(--accent);opacity:.5}
+.a-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:20px 16px;text-align:center}
 .a-empty p{font-size:11.5px;color:var(--fg2);line-height:1.5;max-width:200px}
-.a-sug{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin-top:4px}
-.a-sg{background:var(--bg2);border:1px solid var(--border2);border-radius:12px;
-  padding:3px 9px;font-size:10.5px;color:var(--fg2);cursor:pointer}
-.a-sg:hover{border-color:var(--accent);color:var(--accent)}
+.a-sug{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin-top:6px}
+.a-sg{
+  background:var(--bg2);border:1px solid var(--border2);border-radius:12px;
+  padding:4px 10px;font-size:10.5px;color:var(--fg2);cursor:pointer;
+  transition:border-color 100ms,color 100ms,background 100ms;
+}
+.a-sg:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
 .banner{padding:7px 10px;border-radius:5px;font-size:11px;border:1px solid}
 .banner.err{background:#1f0a0a;border-color:#3a1515;color:var(--red)}
 .banner.warn{background:#1a1405;border-color:#3a2c0a;color:var(--yellow)}
@@ -755,7 +771,20 @@ button{cursor:pointer;font-family:inherit}
 <body>
 <!-- TOP BAR -->
 <div id="top">
-  <div class="wordmark"><span class="ros">roscode</span><span class="stud">&nbsp;studio</span></div>
+  <svg class="brand-mark" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="20" cy="20" r="19" stroke="#4cc9f0" stroke-width="1.5"/>
+    <circle cx="20" cy="20" r="7" fill="#4cc9f0" opacity="0.92"/>
+    <circle cx="20" cy="5"  r="2.8" fill="#4cc9f0" opacity="0.3"/>
+    <circle cx="20" cy="35" r="2.8" fill="#4cc9f0" opacity="0.3"/>
+    <circle cx="5"  cy="20" r="2.8" fill="#4cc9f0" opacity="0.3"/>
+    <circle cx="35" cy="20" r="2.8" fill="#4cc9f0" opacity="0.3"/>
+    <line x1="20" y1="7.8"  x2="20" y2="13" stroke="#4cc9f0" stroke-width="1.2" opacity=".3"/>
+    <line x1="20" y1="27"  x2="20" y2="32.2" stroke="#4cc9f0" stroke-width="1.2" opacity=".3"/>
+    <line x1="7.8" y1="20" x2="13" y2="20" stroke="#4cc9f0" stroke-width="1.2" opacity=".3"/>
+    <line x1="27" y1="20" x2="32.2" y2="20" stroke="#4cc9f0" stroke-width="1.2" opacity=".3"/>
+  </svg>
+  <div class="wordmark"><span class="ros">roscode</span><span class="stud">&thinsp;studio</span></div>
+  <div class="top-divider"></div>
 
   <div id="ros-pill"><span class="dot"></span><span id="ros-text">Offline</span></div>
 
@@ -856,21 +885,25 @@ button{cursor:pointer;font-family:inherit}
         <div id="agent-pane">
           <div id="agent-feed">
             <div class="a-empty" id="a-empty">
-              <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style="opacity:.4" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="14" cy="14" r="13" stroke="#4cc9f0" stroke-width="1.2"/>
-                <circle cx="14" cy="14" r="4.5" fill="#4cc9f0" opacity=".7"/>
-                <circle cx="14" cy="4" r="2" fill="#4cc9f0" opacity=".3"/>
-                <circle cx="14" cy="24" r="2" fill="#4cc9f0" opacity=".3"/>
-                <circle cx="4" cy="14" r="2" fill="#4cc9f0" opacity=".3"/>
-                <circle cx="24" cy="14" r="2" fill="#4cc9f0" opacity=".3"/>
+              <svg width="32" height="32" viewBox="0 0 40 40" fill="none" style="opacity:.55;filter:drop-shadow(0 0 8px rgba(76,201,240,.3))" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="20" cy="20" r="19" stroke="#4cc9f0" stroke-width="1.5"/>
+                <circle cx="20" cy="20" r="7" fill="#4cc9f0" opacity=".85"/>
+                <circle cx="20" cy="5"  r="2.8" fill="#4cc9f0" opacity=".3"/>
+                <circle cx="20" cy="35" r="2.8" fill="#4cc9f0" opacity=".3"/>
+                <circle cx="5"  cy="20" r="2.8" fill="#4cc9f0" opacity=".3"/>
+                <circle cx="35" cy="20" r="2.8" fill="#4cc9f0" opacity=".3"/>
+                <line x1="20" y1="7.8"  x2="20" y2="13" stroke="#4cc9f0" stroke-width="1.2" opacity=".3"/>
+                <line x1="20" y1="27"  x2="20" y2="32.2" stroke="#4cc9f0" stroke-width="1.2" opacity=".3"/>
+                <line x1="7.8" y1="20" x2="13" y2="20" stroke="#4cc9f0" stroke-width="1.2" opacity=".3"/>
+                <line x1="27" y1="20" x2="32.2" y2="20" stroke="#4cc9f0" stroke-width="1.2" opacity=".3"/>
               </svg>
-              <p>Ask Claude about your ROS system — inspect, fix, or build.</p>
+              <p>Ask Claude about your ROS system &mdash; inspect topics, fix bugs, or build new nodes.</p>
               <div class="a-sug">
                 <span class="a-sg" onclick="prefill('List all active topics and their types')">topics?</span>
                 <span class="a-sg" onclick="prefill('Show the full node graph and explain what each node does')">graph</span>
                 <span class="a-sg" onclick="prefill('Read my source files and find any bugs or improvements')">audit</span>
                 <span class="a-sg" onclick="prefill('Scaffold a new publisher node for this workspace')">new node</span>
-                <span class="a-sg" onclick="prefill('What parameters can I tune to improve robot behavior?')">tune</span>
+                <span class="a-sg" onclick="prefill('What parameters can I tune to improve robot behavior?')">tune params</span>
                 <span class="a-sg" onclick="prefill('Build the workspace and show me any errors')">build</span>
               </div>
             </div>
@@ -921,12 +954,12 @@ button{cursor:pointer;font-family:inherit}
 
 <!-- BOTTOM BAR -->
 <div id="bottom">
-  <span>roscode studio</span>
+  <span class="v-tag">v0.1.0</span>
   <button id="btn-build" onclick="requestBuild()" title="colcon build">
-    <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.4" style="vertical-align:middle;margin-right:3px"><polyline points="1,3 5.5,1 10,3 10,8 5.5,10 1,8 1,3"/><line x1="5.5" y1="1" x2="5.5" y2="5.5"/><line x1="5.5" y1="5.5" x2="10" y2="3"/><line x1="5.5" y1="5.5" x2="1" y2="3"/></svg>Build
+    <svg width="10" height="10" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.4"><polyline points="1,3 5.5,1 10,3 10,8 5.5,10 1,8 1,3"/><line x1="5.5" y1="1" x2="5.5" y2="5.5"/><line x1="5.5" y1="5.5" x2="10" y2="3"/><line x1="5.5" y1="5.5" x2="1" y2="3"/></svg>Build
   </button>
   <button onclick="vscode.postMessage({type:'launchTool',tool:'terminal'})">
-    <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.4" style="vertical-align:middle;margin-right:3px"><polyline points="1,2.5 5,5.5 1,8.5"/><line x1="5.5" y1="8.5" x2="10" y2="8.5"/></svg>Terminal
+    <svg width="10" height="10" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.4"><polyline points="1,2.5 5,5.5 1,8.5"/><line x1="5.5" y1="8.5" x2="10" y2="8.5"/></svg>Terminal
   </button>
   <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
     <span id="ws-label" style="color:var(--fg3)"></span>
@@ -1403,21 +1436,25 @@ function resetAgent() {
   const feed = document.getElementById('agent-feed');
   if (!feed) return;
   feed.innerHTML = \`<div class="a-empty" id="a-empty">
-    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style="opacity:.4" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="14" cy="14" r="13" stroke="#4cc9f0" stroke-width="1.2"/>
-      <circle cx="14" cy="14" r="4.5" fill="#4cc9f0" opacity=".7"/>
-      <circle cx="14" cy="4" r="2" fill="#4cc9f0" opacity=".3"/>
-      <circle cx="14" cy="24" r="2" fill="#4cc9f0" opacity=".3"/>
-      <circle cx="4" cy="14" r="2" fill="#4cc9f0" opacity=".3"/>
-      <circle cx="24" cy="14" r="2" fill="#4cc9f0" opacity=".3"/>
+    <svg width="32" height="32" viewBox="0 0 40 40" fill="none" style="opacity:.55;filter:drop-shadow(0 0 8px rgba(76,201,240,.3))" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="20" cy="20" r="19" stroke="#4cc9f0" stroke-width="1.5"/>
+      <circle cx="20" cy="20" r="7" fill="#4cc9f0" opacity=".85"/>
+      <circle cx="20" cy="5"  r="2.8" fill="#4cc9f0" opacity=".3"/>
+      <circle cx="20" cy="35" r="2.8" fill="#4cc9f0" opacity=".3"/>
+      <circle cx="5"  cy="20" r="2.8" fill="#4cc9f0" opacity=".3"/>
+      <circle cx="35" cy="20" r="2.8" fill="#4cc9f0" opacity=".3"/>
+      <line x1="20" y1="7.8"  x2="20" y2="13" stroke="#4cc9f0" stroke-width="1.2" opacity=".3"/>
+      <line x1="20" y1="27"  x2="20" y2="32.2" stroke="#4cc9f0" stroke-width="1.2" opacity=".3"/>
+      <line x1="7.8" y1="20" x2="13" y2="20" stroke="#4cc9f0" stroke-width="1.2" opacity=".3"/>
+      <line x1="27" y1="20" x2="32.2" y2="20" stroke="#4cc9f0" stroke-width="1.2" opacity=".3"/>
     </svg>
-    <p>Ask Claude about your ROS system — inspect, fix, or build.</p>
+    <p>Ask Claude about your ROS system &mdash; inspect topics, fix bugs, or build new nodes.</p>
     <div class="a-sug">
       <span class="a-sg" onclick="prefill('List all active topics and their types')">topics?</span>
       <span class="a-sg" onclick="prefill('Show the full node graph and explain what each node does')">graph</span>
       <span class="a-sg" onclick="prefill('Read my source files and find any bugs or improvements')">audit</span>
       <span class="a-sg" onclick="prefill('Scaffold a new publisher node for this workspace')">new node</span>
-      <span class="a-sg" onclick="prefill('What parameters can I tune to improve robot behavior?')">tune</span>
+      <span class="a-sg" onclick="prefill('What parameters can I tune to improve robot behavior?')">tune params</span>
       <span class="a-sg" onclick="prefill('Build the workspace and show me any errors')">build</span>
     </div></div>\`;
   agentRunning=false;
