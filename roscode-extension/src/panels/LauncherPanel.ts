@@ -177,6 +177,9 @@ button{cursor:pointer;font-family:inherit;font-size:inherit}
 #app{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;gap:40px}
 
 /* ── WORDMARK ─── */
+.brand{display:flex;align-items:center;gap:12px}
+/* TODO: replace .logo-mark with final vector SVG from design */
+.logo-mark{width:32px;height:32px;flex-shrink:0}
 .wordmark{font-size:22px;font-weight:700;letter-spacing:-.5px;display:flex;align-items:baseline;gap:2px}
 .wordmark .ros{color:var(--accent)}
 .wordmark .stud{color:var(--fg3);font-weight:400}
@@ -184,13 +187,13 @@ button{cursor:pointer;font-family:inherit;font-size:inherit}
 /* ── ACTION CARDS ─── */
 .cards{display:flex;gap:14px}
 .card{
-  width:160px;padding:22px 18px 20px;border-radius:8px;
+  width:156px;padding:22px 16px 20px;border-radius:8px;
   border:1px solid var(--border);background:var(--bg);
   display:flex;flex-direction:column;align-items:center;gap:10px;
   cursor:pointer;transition:border-color 100ms,background 100ms;
 }
 .card:hover{border-color:var(--accent);background:var(--bg2)}
-.card .icon{font-size:22px;line-height:1}
+.card .icon{width:24px;height:24px;color:var(--fg2)}
 .card .label{font-size:12.5px;font-weight:600;color:var(--fg);text-align:center}
 .card .sub{font-size:11px;color:var(--fg2);text-align:center;line-height:1.4}
 
@@ -271,23 +274,41 @@ button{cursor:pointer;font-family:inherit;font-size:inherit}
 </head>
 <body>
 <div id="app">
-  <!-- Wordmark -->
-  <div class="wordmark"><span class="ros">roscode</span><span class="stud">&nbsp;studio</span></div>
+  <!-- Brand: logo + wordmark -->
+  <!-- TODO: replace logo-mark SVG with final vector from design team -->
+  <div class="brand">
+    <svg class="logo-mark" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="16" cy="16" r="15" stroke="#4cc9f0" stroke-width="1.5"/>
+      <circle cx="16" cy="16" r="5" fill="#4cc9f0" opacity="0.9"/>
+      <circle cx="16" cy="5"  r="2" fill="#4cc9f0" opacity="0.4"/>
+      <circle cx="16" cy="27" r="2" fill="#4cc9f0" opacity="0.4"/>
+      <circle cx="5"  cy="16" r="2" fill="#4cc9f0" opacity="0.4"/>
+      <circle cx="27" cy="16" r="2" fill="#4cc9f0" opacity="0.4"/>
+    </svg>
+    <div class="wordmark"><span class="ros">roscode</span><span class="stud">&nbsp;studio</span></div>
+  </div>
 
   <!-- Action cards -->
   <div class="cards">
     <div class="card" onclick="openWizard()">
-      <div class="icon">+</div>
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
       <div class="label">New Project</div>
       <div class="sub">Scaffold a ROS 2 workspace</div>
     </div>
     <div class="card" onclick="openProject()">
-      <div class="icon">📁</div>
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
+      </svg>
       <div class="label">Open Project</div>
       <div class="sub">Open an existing workspace</div>
     </div>
     <div class="card" onclick="openCloneModal()">
-      <div class="icon">🔗</div>
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="6" cy="18" r="2"/>
+        <path d="M6 8v8M8 6h8M6 16c0-2.5 2-4 4-4h2"/>
+      </svg>
       <div class="label">Clone Repo</div>
       <div class="sub">Clone from Git URL</div>
     </div>
@@ -322,26 +343,26 @@ button{cursor:pointer;font-family:inherit;font-size:inherit}
       <div class="step-label">Step 2 of 3 — Robot type</div>
       <div class="robot-cards">
         <div class="r-card" id="rc-diff" onclick="selectRobot('diff-drive')">
-          <div class="r-icon">🚗</div>
+          <div class="r-icon" style="font-size:18px;font-weight:700;color:var(--accent);font-family:monospace">DD</div>
           <div class="r-name">Diff Drive</div>
-          <div class="r-desc">Non-holonomic. /cmd_vel → /odom subscriber + publisher</div>
+          <div class="r-desc">Non-holonomic · /cmd_vel → /odom</div>
         </div>
         <div class="r-card" id="rc-empty" onclick="selectRobot('empty')">
-          <div class="r-icon">⬜</div>
+          <div class="r-icon" style="font-size:18px;font-weight:700;color:var(--accent);font-family:monospace">{ }</div>
           <div class="r-name">Empty</div>
-          <div class="r-desc">Hello-world publisher node. Start from scratch.</div>
+          <div class="r-desc">Hello-world publisher. Start from scratch.</div>
         </div>
         <div class="r-card disabled" id="rc-ack">
-          <div class="r-icon">🏎</div>
+          <div class="r-icon" style="font-size:18px;font-weight:700;color:var(--fg3);font-family:monospace">AK</div>
           <div class="r-name">Ackermann</div>
           <div class="r-desc">Car-like steering geometry</div>
-          <div class="r-badge">uses diff-drive template</div>
+          <div class="r-badge">coming soon</div>
         </div>
         <div class="r-card disabled" id="rc-man">
-          <div class="r-icon">🦾</div>
+          <div class="r-icon" style="font-size:18px;font-weight:700;color:var(--fg3);font-family:monospace">6D</div>
           <div class="r-name">Manipulator</div>
           <div class="r-desc">6DOF robotic arm</div>
-          <div class="r-badge">uses diff-drive template</div>
+          <div class="r-badge">coming soon</div>
         </div>
       </div>
       <div class="modal-actions">

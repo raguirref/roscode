@@ -236,7 +236,7 @@ async function tryPinAgentToRight(): Promise<void> {
 
 async function applyFirstRunDefaults(context: vscode.ExtensionContext) {
   // Version bump: force re-apply when we add new settings
-  const SETTINGS_VERSION = 2;
+  const SETTINGS_VERSION = 3;
   if (context.globalState.get("roscode.defaultsVersion", 0) >= SETTINGS_VERSION) return;
 
   const updates: Array<[string, unknown, string]> = [
@@ -249,11 +249,11 @@ async function applyFirstRunDefaults(context: vscode.ExtensionContext) {
     ["update.showReleaseNotes",          false,                  "update"],
     // Disable workspace trust dialog entirely
     ["security.workspace.trust.enabled", false,                  "security"],
-    // Suppress Git "Clone Repository" and repo detection prompts
+    // Disable Git extension UI — prevents "Clone Git Repository" dialog on startup
+    ["git.enabled",                      false,                  "git"],
     ["git.openRepositoryInParentFolders","never",                "git"],
     ["git.autoRepositoryDetection",      false,                  "git"],
     ["git.suggestSmartCommit",           false,                  "git"],
-    ["git.showPushSuccessNotification",  false,                  "git"],
     // Suppress SCM empty state view in editor area
     ["scm.alwaysShowActions",            false,                  "scm"],
     ["editor.fontSize",                  13,                     "editor"],
@@ -362,6 +362,7 @@ function defaultDockerCompose(): string {
     restart: unless-stopped
 `;
 }
+
 
 export function deactivate() {
   rosConnection?.disconnect();

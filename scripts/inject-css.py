@@ -3,6 +3,15 @@ import sys, pathlib
 target = pathlib.Path(sys.argv[1])
 content = target.read_text(encoding="utf-8")
 
+NUCLEAR_SCRIPT = """<script>
+// roscode: fade-in after extension panels load (hides VSCodium flash)
+setTimeout(function(){
+  var wb = document.querySelector('.monaco-workbench');
+  if(wb){ wb.style.transition='opacity 120ms ease'; wb.classList.add('ready'); }
+}, 700);
+</script>
+"""
+
 NUCLEAR_CSS = """
 <style id="roscode-nuclear">
 /* ═══ NUCLEAR: ocultar TODO el chrome de VS Code ═══ */
@@ -54,6 +63,22 @@ NUCLEAR_CSS = """
 .editor-group-empty-state { display: none !important; }
 [class*="emptyEditorHint"] { display: none !important; }
 
+/* Native VS Code dialog boxes (git clone, trust, etc.) */
+.monaco-dialog-box { display: none !important; }
+.dialog-shadow { display: none !important; }
+.dialog-message-container { display: none !important; }
+.monaco-dialog { display: none !important; }
+
+/* Title bar layout controls (top-right VS Code icons) */
+.layout-controls-container { display: none !important; }
+.titlebar-right .action-bar { display: none !important; }
+.title-actions { display: none !important; }
+.window-controls-container.right { display: none !important; }
+
+/* Hide EVERYTHING until extension is ready (prevents VSCodium flash) */
+.monaco-workbench { opacity: 0; transition: opacity 0ms; }
+.monaco-workbench.ready { opacity: 1; }
+
 /* Background general */
 body, .monaco-workbench {
   background: #0d1117 !important;
@@ -81,7 +106,7 @@ if target.suffix == ".html":
     if "roscode-nuclear" in content:
         print(f"⏭  {target.name} ya tiene CSS inyectado, saltando")
     elif "</head>" in content:
-        content = content.replace("</head>", NUCLEAR_CSS + "\n</head>", 1)
+        content = content.replace("</head>", NUCLEAR_CSS + "\n" + NUCLEAR_SCRIPT + "\n</head>", 1)
         target.write_text(content, encoding="utf-8")
         print(f"✅ CSS inyectado en {target.name}")
     else:
