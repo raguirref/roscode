@@ -75,8 +75,17 @@ Object.assign(p, {
   licenseUrl: "https://github.com/rickycrack/roscode/blob/main/LICENSE",
   documentationUrl: "https://github.com/rickycrack/roscode",
 });
+// Clear checksums so VS Codium does not flag the patched resources/app as
+// "corrupt installation" (we edit workbench.html and bake the extension).
+delete p.checksums;
+delete p.checksumFailMoreInfoUrl;
+// Turn off telemetry + reporting endpoints so no VSCodium/MS hosts are hit.
+p.enableTelemetry = false;
+p.enableCrashReporter = false;
+delete p.aiConfig;
+delete p.sendASmile;
 fs.writeFileSync(path, JSON.stringify(p, null, 2));
-console.log("rebranded:", Object.keys(p).length, "fields");
+console.log("rebranded:", Object.keys(p).length, "fields (checksums cleared)");
 ' "$PRODUCT_JSON"
 ok "product.json patched"
 

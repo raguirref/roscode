@@ -204,25 +204,33 @@ export async function activate(context: vscode.ExtensionContext) {
     StudioPanel.currentPanel.notifyActiveEditor(filename, code, doc.lineCount);
   }, null, context.subscriptions);
 
-  // On startup: close VS Code default UI then show launcher or studio
+  // On startup: close VS Code default UI, open the launcher, focus the HOM tab,
+  // and open the agent container as a side panel so it's visible immediately.
   setTimeout(async () => {
     try { await vscode.commands.executeCommand("workbench.action.closeAllEditors"); } catch {}
-    try { await vscode.commands.executeCommand("workbench.action.closeSidebar"); } catch {}
     try { await vscode.commands.executeCommand("workbench.action.closePanel"); } catch {}
-    try { await vscode.commands.executeCommand("workbench.action.closeAuxiliaryBar"); } catch {}
+
     const hasWorkspace = (vscode.workspace.workspaceFolders?.length ?? 0) > 0;
     if (!hasWorkspace) {
       LauncherPanel.createOrShow(context);
     } else {
       await checkForRoscodeProject();
     }
-  }, 600);
+
+    // Open the aux (right) bar so there's always a spot for chat/monitors.
+    // Users can drag roscode.agent there; many will leave it in the primary
+    // sidebar which is also always-on-the-side.
+    try { await vscode.commands.executeCommand("workbench.action.toggleAuxiliaryBar"); } catch {}
+
+    // Focus AGT so the agent chat is the first thing the user sees.
+    try { await vscode.commands.executeCommand("workbench.view.extension.roscode-agent"); } catch {}
+  }, 700);
 }
 
 
 async function applyFirstRunDefaults(context: vscode.ExtensionContext) {
   // Version bump: force re-apply when we add new settings
-  const SETTINGS_VERSION = 3;
+  const SETTINGS_VERSION = 4;
   if (context.globalState.get("roscode.defaultsVersion", 0) >= SETTINGS_VERSION) return;
 
   const updates: Array<[string, unknown, string]> = [
@@ -230,8 +238,17 @@ async function applyFirstRunDefaults(context: vscode.ExtensionContext) {
     ["workbench.startupEditor",          "none",                 "workbench"],
     ["workbench.tips.enabled",           false,                  "workbench"],
     ["workbench.editor.empty.hint",      "hidden",               "workbench"],
+    ["workbench.welcomePage.walkthroughs.openOnInstall", false,  "workbench"],
+    // Title bar — Cursor-style: custom chrome, commandCenter as top search, no menubar
+    ["window.titleBarStyle",             "custom",               "window"],
+    ["window.commandCenter",             true,                   "window"],
+    ["window.menuBarVisibility",         "hidden",               "window"],
+    ["window.customMenuBarAltFocus",     false,                  "window"],
+    ["window.title",                     "roscode/studio${separator}${rootName}${dirty}", "window"],
+    // Telemetry / suggestions off
     ["telemetry.telemetryLevel",         "off",                  "telemetry"],
     ["extensions.ignoreRecommendations", true,                   "extensions"],
+    ["extensions.showRecommendationsOnlyOnDemand", true,         "extensions"],
     ["update.showReleaseNotes",          false,                  "update"],
     // Disable workspace trust dialog entirely
     ["security.workspace.trust.enabled", false,                  "security"],
@@ -242,6 +259,7 @@ async function applyFirstRunDefaults(context: vscode.ExtensionContext) {
     ["git.suggestSmartCommit",           false,                  "git"],
     // Suppress SCM empty state view in editor area
     ["scm.alwaysShowActions",            false,                  "scm"],
+    // Editor niceties
     ["editor.fontSize",                  13,                     "editor"],
     ["editor.lineHeight",                1.55,                   "editor"],
     ["editor.fontLigatures",             true,                   "editor"],
@@ -250,10 +268,9 @@ async function applyFirstRunDefaults(context: vscode.ExtensionContext) {
     ["editor.cursorSmoothCaretAnimation","on",                   "editor"],
     ["editor.minimap.enabled",           true,                   "editor"],
     ["editor.bracketPairColorization.enabled", true,             "editor"],
-    ["window.titleBarStyle",             "custom",               "window"],
-    ["window.commandCenter",             false,                  "window"],
-    ["window.menuBarVisibility",         "classic",              "window"],
     ["breadcrumbs.enabled",              false,                  "breadcrumbs"],
+    // Don't show the Explorer/Search/etc. views container on startup
+    ["workbench.activityBar.location",   "default",              "workbench"],
   ];
   for (const [key, value, section] of updates) {
     try {
