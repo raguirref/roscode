@@ -3,8 +3,6 @@ import sys, pathlib
 target = pathlib.Path(sys.argv[1])
 content = target.read_text(encoding="utf-8")
 
-NUCLEAR_SCRIPT = ""
-
 NUCLEAR_CSS = """
 <style id="roscode-nuclear">
 /* ═══ NUCLEAR: ocultar TODO el chrome de VS Code ═══ */
@@ -98,7 +96,7 @@ if target.suffix == ".html":
     if "roscode-nuclear" in content:
         print(f"⏭  {target.name} ya tiene CSS inyectado, saltando")
     elif "</head>" in content:
-        content = content.replace("</head>", NUCLEAR_CSS + "\n" + NUCLEAR_SCRIPT + "\n</head>", 1)
+        content = content.replace("</head>", NUCLEAR_CSS + "\n</head>", 1)
         target.write_text(content, encoding="utf-8")
         print(f"✅ CSS inyectado en {target.name}")
     else:

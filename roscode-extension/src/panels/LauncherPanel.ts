@@ -177,12 +177,14 @@ button{cursor:pointer;font-family:inherit;font-size:inherit}
 #app{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;gap:40px}
 
 /* ── WORDMARK ─── */
-.brand{display:flex;align-items:center;gap:12px}
+.brand{display:flex;flex-direction:column;align-items:center;gap:10px}
+.brand-row{display:flex;align-items:center;gap:12px}
 /* TODO: replace .logo-mark with final vector SVG from design */
-.logo-mark{width:32px;height:32px;flex-shrink:0}
-.wordmark{font-size:22px;font-weight:700;letter-spacing:-.5px;display:flex;align-items:baseline;gap:2px}
+.logo-mark{width:36px;height:36px;flex-shrink:0}
+.wordmark{font-size:24px;font-weight:700;letter-spacing:-.5px;display:flex;align-items:baseline;gap:2px}
 .wordmark .ros{color:var(--accent)}
 .wordmark .stud{color:var(--fg3);font-weight:400}
+.tagline{font-size:11.5px;color:var(--fg3);letter-spacing:.02em}
 
 /* ── ACTION CARDS ─── */
 .cards{display:flex;gap:14px}
@@ -277,15 +279,22 @@ button{cursor:pointer;font-family:inherit;font-size:inherit}
   <!-- Brand: logo + wordmark -->
   <!-- TODO: replace logo-mark SVG with final vector from design team -->
   <div class="brand">
-    <svg class="logo-mark" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="16" cy="16" r="15" stroke="#4cc9f0" stroke-width="1.5"/>
-      <circle cx="16" cy="16" r="5" fill="#4cc9f0" opacity="0.9"/>
-      <circle cx="16" cy="5"  r="2" fill="#4cc9f0" opacity="0.4"/>
-      <circle cx="16" cy="27" r="2" fill="#4cc9f0" opacity="0.4"/>
-      <circle cx="5"  cy="16" r="2" fill="#4cc9f0" opacity="0.4"/>
-      <circle cx="27" cy="16" r="2" fill="#4cc9f0" opacity="0.4"/>
-    </svg>
-    <div class="wordmark"><span class="ros">roscode</span><span class="stud">&nbsp;studio</span></div>
+    <div class="brand-row">
+      <svg class="logo-mark" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="18" cy="18" r="17" stroke="#4cc9f0" stroke-width="1.5"/>
+        <circle cx="18" cy="18" r="6"  fill="#4cc9f0" opacity="0.9"/>
+        <circle cx="18" cy="5"  r="2.5" fill="#4cc9f0" opacity="0.35"/>
+        <circle cx="18" cy="31" r="2.5" fill="#4cc9f0" opacity="0.35"/>
+        <circle cx="5"  cy="18" r="2.5" fill="#4cc9f0" opacity="0.35"/>
+        <circle cx="31" cy="18" r="2.5" fill="#4cc9f0" opacity="0.35"/>
+        <line x1="18" y1="7.5" x2="18" y2="12" stroke="#4cc9f0" stroke-width="1" opacity=".3"/>
+        <line x1="18" y1="24" x2="18" y2="28.5" stroke="#4cc9f0" stroke-width="1" opacity=".3"/>
+        <line x1="7.5" y1="18" x2="12" y2="18" stroke="#4cc9f0" stroke-width="1" opacity=".3"/>
+        <line x1="24" y1="18" x2="28.5" y2="18" stroke="#4cc9f0" stroke-width="1" opacity=".3"/>
+      </svg>
+      <div class="wordmark"><span class="ros">roscode</span><span class="stud">&nbsp;studio</span></div>
+    </div>
+    <div class="tagline">The ROS 2 IDE with a built-in AI agent</div>
   </div>
 
   <!-- Action cards -->
@@ -385,7 +394,7 @@ button{cursor:pointer;font-family:inherit;font-size:inherit}
 
 <!-- ── CLONE MODAL ────────────────────────────── -->
 <div id="modal-overlay2" style="display:none;position:fixed;inset:0;background:rgba(1,4,9,.85);align-items:center;justify-content:center;z-index:100;">
-  <div id="modal" style="background:var(--bg2);border:1px solid var(--border2);border-radius:12px;width:480px;max-width:calc(100vw - 40px);padding:28px;display:flex;flex-direction:column;gap:20px;">
+  <div id="clone-modal-box" style="background:var(--bg2);border:1px solid var(--border2);border-radius:12px;width:480px;max-width:calc(100vw - 40px);padding:28px;display:flex;flex-direction:column;gap:20px;">
     <div class="modal-title">Clone Git Repository</div>
     <input class="m-input" id="clone-url" type="text" placeholder="https://github.com/org/repo.git" onkeydown="cloneKey(event)"/>
     <div class="modal-actions">

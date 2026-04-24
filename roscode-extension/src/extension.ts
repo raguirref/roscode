@@ -210,39 +210,6 @@ export async function activate(context: vscode.ExtensionContext) {
   }, 600);
 }
 
-async function tryPinAgentToRight(): Promise<void> {
-  // Best-effort: try several undocumented commands to move the agent to the
-  // secondary (right) sidebar. If none work, show the aux bar and display a tip.
-  const candidates: Array<() => Thenable<unknown>> = [
-    () => vscode.commands.executeCommand("_workbench.action.moveViewToLocation", {
-      viewId: "roscode.agent", location: "workbench.parts.auxiliarybar",
-    }),
-    () => vscode.commands.executeCommand("workbench.action.moveView", {
-      from: "roscode.agent", to: "workbench.parts.auxiliarybar",
-    }),
-    () => vscode.commands.executeCommand("_workbench.moveViewToContainer", {
-      viewId: "roscode.agent", targetId: "workbench.panel.auxiliarybar",
-    }),
-  ];
-  let moved = false;
-  for (const c of candidates) {
-    try { await c(); moved = true; break; } catch {}
-  }
-  // Always ensure aux bar is visible so the user sees something on the right
-  try {
-    const isVisible = await vscode.commands.executeCommand("_getAuxiliaryBarVisibility");
-    if (!isVisible) await vscode.commands.executeCommand("workbench.action.toggleAuxiliaryBar");
-  } catch {
-    // Fallback: just toggle (may close if already open, but harmless for first run)
-    try { await vscode.commands.executeCommand("workbench.action.toggleAuxiliaryBar"); } catch {}
-  }
-  if (!moved) {
-    vscode.window.showInformationMessage(
-      "Pro tip: right-click the agent icon in the Activity Bar and choose 'Move Agent to Secondary Side Bar' for the Cursor-style layout.",
-      "Got it"
-    );
-  }
-}
 
 async function applyFirstRunDefaults(context: vscode.ExtensionContext) {
   // Version bump: force re-apply when we add new settings

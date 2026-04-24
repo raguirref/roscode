@@ -149,6 +149,9 @@ export class StudioPanel {
       case "jumpToLine":
         await this._jumpToLine(msg.line);
         break;
+      case "runCommand":
+        if (msg.command) vscode.commands.executeCommand(msg.command);
+        break;
     }
   }
 
@@ -454,12 +457,13 @@ button{cursor:pointer;font-family:inherit}
 
 .panel-tabs{display:flex;border-bottom:1px solid var(--border2);height:34px;flex-shrink:0;background:var(--bg1)}
 .panel-tabs button{
-  flex:1;border:none;background:transparent;color:var(--fg2);
-  font-size:11px;font-weight:500;padding:0 4px;border-bottom:2px solid transparent;
+  flex:1;border:none;background:transparent;color:var(--fg3);
+  font-size:11px;font-weight:600;padding:0 4px;border-bottom:2px solid transparent;
   display:flex;align-items:center;justify-content:center;gap:4px;
+  letter-spacing:.04em;text-transform:uppercase;
 }
-.panel-tabs button.active{color:var(--fg);border-bottom-color:var(--accent)}
-.panel-tabs button:hover:not(.active){color:var(--fg)}
+.panel-tabs button.active{color:var(--accent);border-bottom-color:var(--accent)}
+.panel-tabs button:hover:not(.active){color:var(--fg2)}
 .panel.collapsed .panel-tabs{flex-direction:column;height:auto;border-bottom:none;border-right:1px solid var(--border2)}
 .panel.collapsed .panel-tabs button{flex:none;height:36px;width:36px;border-bottom:none;border-right:2px solid transparent}
 .panel.collapsed .panel-tabs button.active{border-right-color:var(--accent)}
@@ -672,20 +676,24 @@ button{cursor:pointer;font-family:inherit}
 <div id="top">
   <div class="wordmark"><span class="ros">roscode</span><span class="stud">&nbsp;studio</span></div>
 
-  <div id="ros-pill"><span class="dot"></span><span id="ros-text">ROS: Offline</span></div>
+  <div id="ros-pill"><span class="dot"></span><span id="ros-text">Offline</span></div>
 
-  <button id="btn-start" onclick="startRuntime()">▶ Start Runtime</button>
+  <button id="btn-start" onclick="startRuntime()">&#9654; Start Runtime</button>
 
   <div id="tools-wrap">
-    <button class="btn-ghost" onclick="toggleTools()">⊞ Tools</button>
+    <button class="btn-ghost" onclick="toggleTools()">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" style="vertical-align:middle;margin-right:4px"><rect x="1" y="1" width="5" height="5" rx="1"/><rect x="8" y="1" width="5" height="5" rx="1"/><rect x="1" y="8" width="5" height="5" rx="1"/><rect x="8" y="8" width="5" height="5" rx="1"/></svg>Tools
+    </button>
     <div id="tools-menu">
-      <button onclick="launch('foxglove')"><span class="ti">🦊</span>Foxglove Studio</button>
-      <button onclick="launch('rviz')"><span class="ti">🔵</span>RViz2 (instructions)</button>
-      <button onclick="launch('terminal')"><span class="ti">🖥</span>New Terminal</button>
+      <button onclick="launch('foxglove')"><span class="ti">&#9728;</span>Foxglove Studio</button>
+      <button onclick="launch('rviz')"><span class="ti">&#9671;</span>RViz2 (docker)</button>
+      <button onclick="launch('terminal')"><span class="ti">&#9656;</span>New Terminal</button>
     </div>
   </div>
 
-  <button class="btn-ghost" onclick="toggleEditor()" title="Toggle Editor (Cmd+E)">{ }</button>
+  <button class="btn-ghost" onclick="toggleEditor()" title="Toggle Editor">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" style="vertical-align:middle"><polyline points="4,2 1,7 4,12"/><polyline points="10,2 13,7 10,12"/></svg>
+  </button>
 </div>
 
 <!-- MAIN CONTENT -->
@@ -694,8 +702,8 @@ button{cursor:pointer;font-family:inherit}
   <!-- LEFT PANEL -->
   <div class="panel" id="lpanel">
     <div class="panel-tabs">
-      <button class="active" id="lt-files" onclick="lTab('files')"><span>📁</span><span class="tab-label">Files</span></button>
-      <button id="lt-library" onclick="lTab('library')"><span>📦</span><span class="tab-label">Library</span></button>
+      <button class="active" id="lt-files" onclick="lTab('files')"><span class="tab-label">Files</span></button>
+      <button id="lt-library" onclick="lTab('library')"><span class="tab-label">Library</span></button>
       <button class="collapse-btn" onclick="collapsePanel('lpanel')" title="Collapse">‹</button>
     </div>
     <div class="panel-body">
@@ -732,10 +740,21 @@ button{cursor:pointer;font-family:inherit}
       <svg id="cy-svg" xmlns="http://www.w3.org/2000/svg"></svg>
     </div>
     <div id="graph-overlay">
-      <div class="overlay-icon">🤖</div>
+      <svg width="48" height="48" viewBox="0 0 48 48" fill="none" style="opacity:.25" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="24" cy="24" r="22" stroke="#4cc9f0" stroke-width="1.5"/>
+        <circle cx="24" cy="24" r="7" fill="#4cc9f0" opacity=".6"/>
+        <circle cx="24" cy="6"  r="3" fill="#4cc9f0" opacity=".3"/>
+        <circle cx="24" cy="42" r="3" fill="#4cc9f0" opacity=".3"/>
+        <circle cx="6"  cy="24" r="3" fill="#4cc9f0" opacity=".3"/>
+        <circle cx="42" cy="24" r="3" fill="#4cc9f0" opacity=".3"/>
+        <line x1="24" y1="9"  x2="24" y2="17" stroke="#4cc9f0" stroke-width="1" opacity=".3"/>
+        <line x1="24" y1="31" x2="24" y2="39" stroke="#4cc9f0" stroke-width="1" opacity=".3"/>
+        <line x1="9"  y1="24" x2="17" y2="24" stroke="#4cc9f0" stroke-width="1" opacity=".3"/>
+        <line x1="31" y1="24" x2="39" y2="24" stroke="#4cc9f0" stroke-width="1" opacity=".3"/>
+      </svg>
       <div class="overlay-title">Robot offline</div>
       <div class="overlay-sub">Start runtime to see the ROS graph</div>
-      <button class="overlay-btn" onclick="startRuntime()">▶ Start Runtime</button>
+      <button class="overlay-btn" onclick="startRuntime()">&#9654; Start Runtime</button>
     </div>
   </div>
 
@@ -745,9 +764,9 @@ button{cursor:pointer;font-family:inherit}
   <div class="panel right" id="rpanel">
     <div class="panel-tabs">
       <button class="collapse-btn" onclick="collapsePanel('rpanel')" style="margin-left:0;margin-right:auto;" title="Collapse">›</button>
-      <button class="active" id="rt-agent" onclick="rTab('agent')"><span>🤖</span><span class="tab-label">Agent</span></button>
-      <button id="rt-topics" onclick="rTab('topics')"><span>📡</span><span class="tab-label">Topics</span></button>
-      <button id="rt-map" onclick="rTab('map')"><span>🗺</span><span class="tab-label">Map</span></button>
+      <button class="active" id="rt-agent" onclick="rTab('agent')"><span class="tab-label">Agent</span></button>
+      <button id="rt-topics" onclick="rTab('topics')"><span class="tab-label">Topics</span></button>
+      <button id="rt-map" onclick="rTab('map')"><span class="tab-label">Map</span></button>
     </div>
     <div class="panel-body">
       <!-- AGENT -->
@@ -856,7 +875,7 @@ function handleRosStatus(m) {
   const overlay = document.getElementById('graph-overlay');
   rosOnline = m.status === 'connected';
   pill.className = rosOnline ? 'online' : (m.status === 'connecting' ? 'connecting' : '');
-  txt.textContent = rosOnline ? 'ROS: ' + (m.host || 'Online') : m.status === 'connecting' ? 'Connecting…' : 'ROS: Offline';
+  txt.textContent = rosOnline ? (m.host || 'Online') : m.status === 'connecting' ? 'Connecting…' : 'Offline';
   btn.disabled = rosOnline;
   btn.textContent = rosOnline ? '✓ Connected' : '▶ Start Runtime';
   if (overlay) overlay.classList.toggle('hidden', rosOnline);
