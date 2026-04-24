@@ -183,6 +183,33 @@ export class PlotView implements vscode.WebviewViewProvider {
 
   .hint { font-size: 9.5px; color: var(--fg-2); margin-top: 6px; line-height: 1.5; letter-spacing: 0.3px; }
   .hint code { background: var(--bg-1); padding: 1px 4px; border-radius: 2px; color: var(--accent); font-size: 10px; }
+
+  .quick-picks {
+    display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px;
+    padding: 6px 8px;
+    background: var(--bg-1); border: 1px solid var(--border);
+    border-radius: 4px;
+    align-items: center;
+  }
+  .qp-label {
+    font-size: 8px; color: var(--fg-2);
+    letter-spacing: 1.5px; text-transform: uppercase;
+    margin-right: 4px;
+  }
+  button.qp {
+    padding: 3px 7px;
+    font-size: 9.5px; letter-spacing: 0.3px;
+    text-transform: none;
+    background: transparent; color: var(--fg-1);
+    border: 1px solid var(--border-bright);
+    border-radius: 3px;
+    cursor: pointer;
+    font-family: var(--mono);
+  }
+  button.qp:hover {
+    border-color: var(--accent); color: var(--accent);
+    background: var(--accent-dim);
+  }
 </style>
 </head>
 <body>
@@ -194,6 +221,17 @@ export class PlotView implements vscode.WebviewViewProvider {
   <div class="row">
     <input id="field" placeholder="linear.x (optional)" autocomplete="off"/>
   </div>
+
+  <div class="quick-picks">
+    <span class="qp-label">// PRESETS</span>
+    <button class="qp" data-topic="/cmd_vel" data-field="linear.x">/cmd_vel · linear.x</button>
+    <button class="qp" data-topic="/cmd_vel" data-field="angular.z">/cmd_vel · angular.z</button>
+    <button class="qp" data-topic="/scan" data-field="ranges">/scan · ranges[0]</button>
+    <button class="qp" data-topic="/odom" data-field="position.x">/odom · pos.x</button>
+    <button class="qp" data-topic="/tf" data-field="z">/tf · z</button>
+    <button class="qp" data-topic="/imu" data-field="z">/imu · accel.z</button>
+  </div>
+
   <div class="row">
     <button id="start" class="primary">▶ START</button>
     <button id="stop">■ STOP</button>
@@ -350,6 +388,14 @@ export class PlotView implements vscode.WebviewViewProvider {
     ui.sMin.textContent = fmt(min);
     ui.sMax.textContent = fmt(max);
   }
+
+  document.querySelectorAll("button.qp").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      ui.topic.value = btn.getAttribute("data-topic") || "";
+      ui.field.value = btn.getAttribute("data-field") || "";
+      ui.startBtn.click();
+    });
+  });
 
   ui.startBtn.addEventListener("click", () => {
     const topic = ui.topic.value.trim();

@@ -37,6 +37,11 @@
           "icon": "media/icon-network.svg"
         },
         {
+          "id": "roscode-graph",
+          "title": "GRF · graph",
+          "icon": "media/icon-graph.svg"
+        },
+        {
           "id": "roscode-nodes",
           "title": "NOD · nodes",
           "icon": "media/icon-nodes.svg"
@@ -77,6 +82,13 @@
           "name": "network"
         }
       ],
+      "roscode-graph": [
+        {
+          "id": "roscode.graph",
+          "name": "graph",
+          "type": "webview"
+        }
+      ],
       "roscode-nodes": [
         {
           "id": "roscode.nodes",
@@ -113,17 +125,17 @@
     "viewsWelcome": [
       {
         "view": "roscode.network",
-        "contents": "No robots detected on your LAN.\n[\u21bb Scan network](command:roscode.discoverNetwork)\n\nroscode scans ports 11311 (ROS 1) and 7400-7402 (ROS 2 DDS) on your subnet.",
+        "contents": "// NO HOSTS DETECTED\n\nroscode sniffs the LAN for ROS 1 and ROS 2 daemons.\n\n\u2022 TCP 11311 (ROS 1 master)\n\u2022 UDP 7400-7402 (ROS 2 DDS discovery)\n\n[\u21bb SCAN NETWORK](command:roscode.discoverNetwork)",
         "when": "!roscode.scanning && roscode.robotCount == 0"
       },
       {
         "view": "roscode.nodes",
-        "contents": "Connect to a robot first.\n[\u21bb Refresh](command:roscode.refreshNodes)",
+        "contents": "// AWAITING LINK\n\nConnect to a robot from the NET tab to see running nodes.\n\n[\u21bb REFRESH](command:roscode.refreshNodes)",
         "when": "!roscode.connected"
       },
       {
         "view": "roscode.topics",
-        "contents": "Connect to a robot first.\n[\u21bb Refresh](command:roscode.refreshNodes)",
+        "contents": "// AWAITING LINK\n\nConnect to a robot from the NET tab to see active topics.\n\n[\u21bb REFRESH](command:roscode.refreshNodes)",
         "when": "!roscode.connected"
       }
     ],

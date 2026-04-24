@@ -265,14 +265,16 @@ body{
 
 <div id="empty" class="empty">
   <div class="mark">⬡</div>
-  <h2>roscode agent</h2>
-  <p>Ask Claude to inspect your ROS graph, fix a node, create a package, or diagnose sensors.</p>
+  <h2>agent · claude</h2>
+  <p>// ROS-aware copilot — inspect graphs, author nodes, debug transforms with full project context.</p>
   <div class="suggest">
-    <span class="sg" data-t="What topics are active?">topics?</span>
-    <span class="sg" data-t="Show me the node graph">graph</span>
-    <span class="sg" data-t="Find any issues in my nodes">find bugs</span>
-    <span class="sg" data-t="Create a basic publisher node in Python">new publisher</span>
-    <span class="sg" data-t="Build the workspace">colcon build</span>
+    <span class="sg" data-t="Show me the ROS node graph and summarize what's running">inspect graph</span>
+    <span class="sg" data-t="Why is /amcl drifting? Check the recent tf tree">/amcl drifting?</span>
+    <span class="sg" data-t="Create a publisher + subscriber pair in Python for /cmd_vel">new pub/sub</span>
+    <span class="sg" data-t="Tune the nav2 controller parameters using Ziegler-Nichols">tune nav2</span>
+    <span class="sg" data-t="Echo /tf for 3 seconds and tell me what frames exist">inspect /tf</span>
+    <span class="sg" data-t="Build the workspace with colcon">colcon build</span>
+    <span class="sg" data-t="Run relay autotune on /cmd_vel to find PID gains">relay autotune</span>
   </div>
 </div>
 

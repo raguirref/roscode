@@ -102,6 +102,7 @@
 }
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="HOM" i]::after { content: "HOM"; }
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="NET" i]::after { content: "NET"; }
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="GRF" i]::after { content: "GRF"; }
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="NOD" i]::after { content: "NOD"; }
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="TOP" i]::after { content: "TOP"; }
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="PLT" i]::after { content: "PLT"; }
@@ -110,6 +111,7 @@
 
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="HOM" i]::after,
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="NET" i]::after,
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="GRF" i]::after,
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="NOD" i]::after,
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="TOP" i]::after,
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="PLT" i]::after,
