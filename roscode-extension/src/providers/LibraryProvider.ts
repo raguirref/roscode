@@ -260,7 +260,7 @@ class MessageItem extends vscode.TreeItem {
     super(msg.name, msg.fields.length > 0 ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
     this.msg = msg;
     this.pkg = pkg;
-    this.iconPath = new vscode.ThemeIcon("symbol-struct", new vscode.ThemeColor("charts.blue"));
+    this.iconPath = new vscode.ThemeIcon("symbol-struct", new vscode.ThemeColor("charts.orange"));
     this.description = `${msg.fields.length} field${msg.fields.length === 1 ? "" : "s"}`;
     this.tooltip = new vscode.MarkdownString(
       `**${pkg.name}/${msg.name}**\n\n\`\`\`\n${msg.fields.join("\n") || "(empty)"}\n\`\`\``
@@ -280,7 +280,7 @@ class FieldItem extends vscode.TreeItem {
     const [type, name] = field.split(/\s+/, 2);
     this.label = name ? `${name}` : field;
     this.description = type;
-    this.iconPath = new vscode.ThemeIcon("symbol-field", new vscode.ThemeColor("charts.purple"));
+    this.iconPath = new vscode.ThemeIcon("symbol-field", new vscode.ThemeColor("charts.foreground"));
     this.tooltip = field;
   }
 }

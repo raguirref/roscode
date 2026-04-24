@@ -107,6 +107,7 @@
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="TOP" i]::after { content: "TOP"; }
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="PLT" i]::after { content: "PLT"; }
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="LIB" i]::after { content: "LIB"; }
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="TRM" i]::after { content: "TRM"; }
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="AGT" i]::after { content: "AGT"; }
 
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="HOM" i]::after,
@@ -116,6 +117,7 @@
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="TOP" i]::after,
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="PLT" i]::after,
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="LIB" i]::after,
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="TRM" i]::after,
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="AGT" i]::after {
   position: absolute;
   bottom: 3px;

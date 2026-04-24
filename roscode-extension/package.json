@@ -62,6 +62,11 @@
           "icon": "media/icon-library.svg"
         },
         {
+          "id": "roscode-terminal",
+          "title": "TRM · terminal",
+          "icon": "media/icon-terminal.svg"
+        },
+        {
           "id": "roscode-agent",
           "title": "AGT · agent",
           "icon": "media/icon-agent.svg"
@@ -112,6 +117,13 @@
         {
           "id": "roscode.library",
           "name": "library"
+        }
+      ],
+      "roscode-terminal": [
+        {
+          "id": "roscode.terminal",
+          "name": "terminal",
+          "type": "webview"
         }
       ],
       "roscode-agent": [

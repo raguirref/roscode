@@ -11,6 +11,7 @@ import { AgentView } from "./views/AgentView";
 import { HomeView } from "./views/HomeView";
 import { PlotView } from "./views/PlotView";
 import { GraphView } from "./views/GraphView";
+import { TerminalView } from "./views/TerminalView";
 import { NodeGraphPanel } from "./panels/NodeGraphPanel";
 import { TopicMonitorPanel } from "./panels/TopicMonitorPanel";
 import { RosConnection, RobotInfo } from "./ros/connection";
@@ -45,6 +46,7 @@ export async function activate(context: vscode.ExtensionContext) {
   const agentView = new AgentView(context, rosConnection);
   const plotView  = new PlotView(context, rosConnection);
   const graphView = new GraphView(context, rosConnection);
+  const terminalView = new TerminalView(context);
 
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider("roscode.network", networkProvider),
@@ -54,7 +56,8 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.window.registerWebviewViewProvider("roscode.home",  homeView),
     vscode.window.registerWebviewViewProvider("roscode.agent", agentView),
     vscode.window.registerWebviewViewProvider("roscode.plot",  plotView),
-    vscode.window.registerWebviewViewProvider("roscode.graph", graphView)
+    vscode.window.registerWebviewViewProvider("roscode.graph", graphView),
+    vscode.window.registerWebviewViewProvider("roscode.terminal", terminalView)
   );
 
   // Wire network → home view
