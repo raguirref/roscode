@@ -31,6 +31,7 @@
       <span class="item dim">PORT 11311</span>
     {/if}
     <span class="item dim">DOMAIN 0</span>
+    <span class="item dim">BRANCH · NAV-REWORK</span>
     <span class="item dim">ERR 0 · WRN 0</span>
   </div>
 
@@ -38,8 +39,8 @@
   <div class="right">
     <span class="item dim">PY 3.12</span>
     <span class="item dim">UTF-8 · LF</span>
-    <span class="item dim">ROS 2 HUMBLE</span>
-    <span class="item dim">LIMA VM</span>
+    <span class="item dim">ROS 2 JAZZY</span>
+    <span class="item dim">LN 42 · COL 18</span>
     {#if isReady}
       <span class="item ok">● LIVE</span>
     {:else}

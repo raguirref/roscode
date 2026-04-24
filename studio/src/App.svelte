@@ -150,28 +150,65 @@
 
     <!-- Side Panel (resizable) -->
     <SidePanel>
-      {#if $activePanel === "packages"}
+      {#if $activePanel === "home"}
+        <div class="panel-stub">
+          <div class="panel-stub-label">// WORKSPACE</div>
+          <div class="panel-stub-title">turtlebot4_nav</div>
+          <div class="panel-stub-meta">~/dev/ros2_ws · <span style="color: var(--accent);">nav-rework</span></div>
+          <ul class="panel-stub-list">
+            <li><span class="kv-k">NODES</span><span class="kv-v">12</span></li>
+            <li><span class="kv-k">TOPICS</span><span class="kv-v">34</span></li>
+            <li><span class="kv-k">PARAMS</span><span class="kv-v">127</span></li>
+            <li><span class="kv-k">BUILD</span><span class="kv-v" style="color: var(--ok);">OK</span></li>
+          </ul>
+        </div>
+      {:else if $activePanel === "packages"}
         <PackageTree on:nodeselect={handleNodeSelect} />
       {:else if $activePanel === "editor"}
         <FileTree {workspacePath} />
       {:else if $activePanel === "chat"}
         <div class="panel-hint">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5" opacity="0.5">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-          </svg>
-          <p>Chat is in the bottom panel</p>
+          <p>// AGENT · BOTTOM PANEL</p>
         </div>
       {:else if $activePanel === "graph"}
         <div class="panel-hint">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5" opacity="0.5">
-            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-          </svg>
-          <p>ROS Graph is in the bottom panel</p>
+          <p>// NETWORK · BOTTOM PANEL</p>
+        </div>
+      {:else if $activePanel === "nodes"}
+        <div class="panel-stub">
+          <div class="panel-stub-label">// NODES</div>
+          <div class="panel-stub-meta">08 RUN · 01 ERR · 03 IDLE</div>
+          <ul class="panel-stub-list">
+            <li><span class="kv-k" style="color: var(--ok);">●</span><span class="kv-v">/robot_state</span></li>
+            <li><span class="kv-k" style="color: var(--ok);">●</span><span class="kv-v">/amcl</span></li>
+            <li><span class="kv-k" style="color: var(--ok);">●</span><span class="kv-v">/nav2_bt</span></li>
+            <li><span class="kv-k" style="color: var(--err);">●</span><span class="kv-v">/camera_driver</span></li>
+          </ul>
+        </div>
+      {:else if $activePanel === "topics"}
+        <div class="panel-stub">
+          <div class="panel-stub-label">// TOPICS</div>
+          <div class="panel-stub-meta">34 TOTAL · 04 STALE</div>
+          <ul class="panel-stub-list">
+            <li><span class="kv-k">/cmd_vel</span><span class="kv-v">20 Hz</span></li>
+            <li><span class="kv-k">/scan</span><span class="kv-v">10 Hz</span></li>
+            <li><span class="kv-k">/odom</span><span class="kv-v">30 Hz</span></li>
+            <li><span class="kv-k">/tf</span><span class="kv-v">60 Hz</span></li>
+          </ul>
+        </div>
+      {:else if $activePanel === "terminal"}
+        <div class="panel-hint">
+          <p>// TERMINAL · BOTTOM PANEL</p>
         </div>
       {:else}
-        <div class="panel-hint">
-          <p>Settings — coming soon</p>
+        <div class="panel-stub">
+          <div class="panel-stub-label">// CONFIG</div>
+          <div class="panel-stub-meta">roscode/studio · v0.1.0</div>
+          <ul class="panel-stub-list">
+            <li><span class="kv-k">MODEL</span><span class="kv-v">claude-opus-4-7</span></li>
+            <li><span class="kv-k">DOMAIN</span><span class="kv-v">0</span></li>
+            <li><span class="kv-k">THEME</span><span class="kv-v" style="color: var(--accent);">blueprint ops</span></li>
+          </ul>
         </div>
       {/if}
     </SidePanel>
@@ -393,8 +430,60 @@
     justify-content: center;
     gap: 10px;
     color: var(--fg-2);
-    font-size: 12px;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    letter-spacing: 0.5px;
     padding: 20px;
     text-align: center;
+  }
+
+  /* Side panel stub (home/nodes/topics/settings placeholders) */
+  .panel-stub {
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .panel-stub-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--fg-2);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+  .panel-stub-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--fg-0);
+    letter-spacing: -0.3px;
+  }
+  .panel-stub-meta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--fg-2);
+    margin-bottom: 8px;
+  }
+  .panel-stub-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    border-top: 1px solid var(--border);
+  }
+  .panel-stub-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 9px 2px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    border-bottom: 1px solid var(--border);
+  }
+  .kv-k {
+    color: var(--fg-2);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .kv-v {
+    color: var(--fg-0);
   }
 </style>

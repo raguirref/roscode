@@ -5,38 +5,52 @@
   const dispatch = createEventDispatcher<{ select: ActivityPanel }>();
 
   function select(panel: ActivityPanel) {
-    if ($activePanel === panel) {
-      activePanel.set(panel);
-    } else {
-      activePanel.set(panel);
-    }
+    activePanel.set(panel);
     dispatch("select", panel);
   }
 
   const topIcons: { id: ActivityPanel; label: string; code: string; svg: string }[] = [
     {
-      id: "packages",
-      label: "Packages",
-      code: "LIB",
-      svg: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11a2 2 0 012 2v13H7a2 2 0 00-2 2V4z"/><path d="M5 4v16"/></svg>`,
+      id: "home",
+      label: "Home",
+      code: "HOM",
+      svg: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11L12 4l9 7"/><path d="M5 10v9a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1v-9"/></svg>`,
     },
     {
       id: "editor",
-      label: "Explorer",
+      label: "Files",
       code: "FIL",
       svg: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg>`,
-    },
-    {
-      id: "chat",
-      label: "Agent Chat",
-      code: "AGT",
-      svg: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 5.4L19 10l-5.2 1.6L12 17l-1.8-5.4L5 10l5.2-1.6z"/></svg>`,
     },
     {
       id: "graph",
       label: "ROS Graph",
       code: "NET",
       svg: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="18" r="2.2"/><circle cx="12" cy="7" r="2.2"/><circle cx="18" cy="15" r="2.2"/><path d="M7.5 16.5l3-8M13.5 8.5l3 5"/></svg>`,
+    },
+    {
+      id: "nodes",
+      label: "Nodes",
+      code: "NOD",
+      svg: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg>`,
+    },
+    {
+      id: "topics",
+      label: "Topics",
+      code: "TOP",
+      svg: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l8 4 8-4"/><path d="M4 12l8 4 8-4"/><path d="M4 17l8 4 8-4"/></svg>`,
+    },
+    {
+      id: "packages",
+      label: "Library",
+      code: "LIB",
+      svg: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11a2 2 0 012 2v13H7a2 2 0 00-2 2V4z"/><path d="M5 4v16"/></svg>`,
+    },
+    {
+      id: "terminal",
+      label: "Terminal",
+      code: "TRM",
+      svg: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10l3 2-3 2M12 15h5"/></svg>`,
     },
   ];
 </script>
@@ -91,7 +105,7 @@
   .icon-btn {
     position: relative;
     width: 100%;
-    padding: 11px 0 9px;
+    padding: 10px 0 8px;
     background: transparent;
     border: none;
     border-left: 2px solid transparent;

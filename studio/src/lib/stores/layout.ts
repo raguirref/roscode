@@ -8,7 +8,7 @@ function persist<T>(key: string, init: T) {
   return store;
 }
 
-export type ActivityPanel = "packages" | "editor" | "chat" | "graph" | "settings";
+export type ActivityPanel = "home" | "editor" | "graph" | "nodes" | "topics" | "packages" | "terminal" | "chat" | "settings";
 export type BottomTab = "terminal" | "chat" | "graph";
 
 export const sidebarWidth = persist("rs-sidebar-width", 260);

@@ -92,5 +92,11 @@ roscode-studio-build/
 
 
 # ---- Local handoff notes ----
-HANDOFF-2026-04-21.txt
-handoff-2026-04-21.txt
+HANDOFF-*.txt
+handoff-*.txt
+2026-*-local-command-caveat*.txt
+
+# ---- Design reference bundles (local only) ----
+.design-ref/
+.design-ref-b/
+

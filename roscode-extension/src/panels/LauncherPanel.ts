@@ -370,17 +370,10 @@ button{cursor:pointer;font-family:inherit;font-size:inherit;border:none;backgrou
   <!-- TODO: replace SVG with final vector logo from design -->
   <div class="brand">
     <div class="brand-row">
-      <svg class="logo-mark" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="20" cy="20" r="19" stroke="#4cc9f0" stroke-width="1.5"/>
-        <circle cx="20" cy="20" r="7"  fill="#4cc9f0" opacity="0.92"/>
-        <circle cx="20" cy="5"  r="2.8" fill="#4cc9f0" opacity="0.3"/>
-        <circle cx="20" cy="35" r="2.8" fill="#4cc9f0" opacity="0.3"/>
-        <circle cx="5"  cy="20" r="2.8" fill="#4cc9f0" opacity="0.3"/>
-        <circle cx="35" cy="20" r="2.8" fill="#4cc9f0" opacity="0.3"/>
-        <line x1="20" y1="7.8"  x2="20" y2="13" stroke="#4cc9f0" stroke-width="1.2" opacity=".3"/>
-        <line x1="20" y1="27"  x2="20" y2="32.2" stroke="#4cc9f0" stroke-width="1.2" opacity=".3"/>
-        <line x1="7.8"  y1="20" x2="13" y2="20" stroke="#4cc9f0" stroke-width="1.2" opacity=".3"/>
-        <line x1="27"  y1="20" x2="32.2" y2="20" stroke="#4cc9f0" stroke-width="1.2" opacity=".3"/>
+      <svg class="logo-mark" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="4" y="4" width="24" height="24" rx="4" stroke="#f2a83b" stroke-width="1.5"/>
+        <circle cx="16" cy="16" r="3.5" fill="#f2a83b"/>
+        <path d="M16 8v-3M16 27v-3M8 16h-3M27 16h-3" stroke="#f2a83b" stroke-width="1.5" stroke-linecap="round"/>
       </svg>
       <div class="wordmark"><span class="ros">roscode</span><span class="slash">/</span><span class="stud">studio</span></div>
     </div>

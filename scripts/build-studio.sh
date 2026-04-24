@@ -121,6 +121,45 @@ cp -r "$TMPEXT/extension/"* "$EXT_DIR/"
 rm -rf "$TMPEXT"
 ok "extension at $EXT_DIR"
 
+# ══ 4b. Bundle Python agent as sidecar (optional) ═══════════════════
+info "4b/6 Bundling Python agent sidecar …"
+SIDECAR_DIR="$RESOURCES/sidecar"
+SIDECAR_EXE_NAME="roscode-agent.exe"
+SIDECAR_BUILT="dist/sidecar/$SIDECAR_EXE_NAME"
+SIDECAR_LAUNCHER="build/sidecar/agent_launcher.py"
+
+if python -m pip show pyinstaller >/dev/null 2>&1 && [ -f "$SIDECAR_LAUNCHER" ]; then
+  # Build if not already present (hackathon: skip rebuild if exe exists)
+  if [ ! -f "$SIDECAR_BUILT" ]; then
+    info "    running PyInstaller (one-time, ~2 min) …"
+    python -m PyInstaller --onefile --name roscode-agent \
+      --distpath dist/sidecar \
+      --workpath build/sidecar/work \
+      --specpath build/sidecar \
+      --paths . \
+      --hidden-import roscode --hidden-import roscode.server \
+      --hidden-import roscode.agent --hidden-import anthropic \
+      --hidden-import websockets --hidden-import websockets.asyncio.server \
+      --hidden-import dotenv \
+      --exclude-module rclpy --exclude-module std_msgs \
+      --exclude-module geometry_msgs --exclude-module sensor_msgs \
+      --exclude-module nav_msgs --exclude-module tf2_ros \
+      --exclude-module pytest \
+      "$SIDECAR_LAUNCHER" >/dev/null 2>&1 \
+      && ok "    PyInstaller build complete" \
+      || warn "    PyInstaller build failed — skipping sidecar"
+  fi
+  if [ -f "$SIDECAR_BUILT" ]; then
+    mkdir -p "$SIDECAR_DIR"
+    cp "$SIDECAR_BUILT" "$SIDECAR_DIR/$SIDECAR_EXE_NAME"
+    SIDECAR_SIZE=$(du -h "$SIDECAR_DIR/$SIDECAR_EXE_NAME" | cut -f1)
+    ok "sidecar installed at $SIDECAR_DIR/$SIDECAR_EXE_NAME ($SIDECAR_SIZE)"
+  fi
+else
+  warn "PyInstaller not installed (pip install pyinstaller) — skipping sidecar bundle"
+  warn "    users will need Python + \`python -m roscode.server\` on PATH"
+fi
+
 # ══ 5. Rename executable ════════════════════════════════════════════
 info "5/6 Renaming executable …"
 if [ -f "$APP_ROOT/VSCodium.exe" ]; then

@@ -65,7 +65,7 @@ export async function activate(context: vscode.ExtensionContext) {
   const updateStatus = () => {
     if (rosConnection.status === "connected") {
       statusItem.text = `$(circle-filled) ROS · ${rosConnection.connectedHost}`;
-      statusItem.color = "#4cc9f0";
+      statusItem.color = "#f2a83b";
       statusItem.tooltip = "roscode: connected";
     } else if (rosConnection.status === "connecting") {
       statusItem.text = "$(loading~spin) ROS connecting…";
