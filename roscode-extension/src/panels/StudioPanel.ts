@@ -464,6 +464,7 @@ button{cursor:pointer;font-family:inherit}
   background:transparent;color:var(--fg2);font-size:12px;
 }
 .btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+.btn-action{font-size:11.5px;padding:4px 9px}
 
 /* Tools dropdown */
 #tools-wrap{position:relative}
@@ -481,40 +482,42 @@ button{cursor:pointer;font-family:inherit}
 #tools-menu button:hover{background:var(--bg3)}
 #tools-menu button .ti{font-size:14px;width:18px;text-align:center}
 
-/* ── CONTENT AREA ──────────────────────────────────────── */
+/* ── CONTENT AREA: 3-column layout ────────────────────── */
 #content{display:flex;flex:1;min-height:0}
 
-/* ── PANELS ────────────────────────────────────────────── */
-.panel{display:flex;flex-direction:column;background:var(--bg);overflow:hidden;flex-shrink:0}
-.panel.right{border-left:1px solid var(--border2)}
-#rpanel{width:320px}
-.panel.collapsed#rpanel{width:36px}
+/* ── LEFT PANEL ────────────────────────────────────────── */
+#lpanel{width:260px;flex-shrink:0;display:flex;flex-direction:column;border-right:1px solid var(--border2);background:var(--bg)}
+#lp-top{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+#lp-bot{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden;border-top:1px solid var(--border2)}
+.v-resizer{height:4px;background:transparent;cursor:row-resize;flex-shrink:0;transition:background 120ms}
+.v-resizer:hover,.v-resizer.dragging{background:var(--accent)}
+.lp-tabs{display:flex;height:32px;flex-shrink:0;background:var(--bg1);border-bottom:1px solid var(--border2)}
+.lp-tabs button{flex:1;border:none;background:transparent;color:var(--fg3);font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;border-bottom:2px solid transparent;transition:color 100ms,border-color 100ms}
+.lp-tabs button.active{color:var(--accent);border-bottom-color:var(--accent)}
+.lp-tabs button:hover:not(.active){color:var(--fg2)}
+.lp-pane{flex:1;overflow:hidden;display:none;flex-direction:column}
+.lp-pane.active{display:flex}
 
-.panel-tabs{display:flex;border-bottom:1px solid var(--border2);height:34px;flex-shrink:0;background:var(--bg1)}
-.panel-tabs button{
-  flex:1;border:none;background:transparent;color:var(--fg3);
-  font-size:10.5px;font-weight:600;padding:0 4px;border-bottom:2px solid transparent;
-  display:flex;align-items:center;justify-content:center;gap:4px;
-  letter-spacing:.05em;text-transform:uppercase;transition:color 100ms;
-}
-.panel-tabs button.active{color:var(--accent);border-bottom-color:var(--accent)}
-.panel-tabs button:hover:not(.active){color:var(--fg2)}
-.panel.collapsed .panel-tabs{flex-direction:column;height:auto;border-bottom:none}
-.panel.collapsed .panel-tabs button{flex:none;height:36px;width:36px;border-bottom:none;border-right:2px solid transparent}
-.panel.collapsed .panel-tabs button.active{border-right-color:var(--accent)}
-.panel.collapsed .panel-tabs button .tab-label{display:none}
-.panel-body{flex:1;overflow:hidden;display:flex;flex-direction:column}
-.panel.collapsed .panel-body{display:none}
+/* ── CENTER ────────────────────────────────────────────── */
+#center{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
+#search-bar{height:38px;flex-shrink:0;display:flex;align-items:center;gap:8px;padding:0 12px;background:var(--bg1);border-bottom:1px solid var(--border2)}
+#search-input{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:4px 10px;color:var(--fg);font-size:12px;font-family:inherit;outline:none;height:26px}
+#search-input:focus{border-color:var(--accent)}
+#search-input::placeholder{color:var(--fg3)}
+#search-btn{padding:3px 8px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--fg2);font-size:13px;flex-shrink:0}
+#search-btn:hover{border-color:var(--accent);color:var(--accent)}
+#search-results{position:absolute;top:38px;left:0;right:0;background:var(--bg2);border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;z-index:50;max-height:200px;overflow-y:auto}
+.sr-item{padding:7px 14px;font-size:11.5px;cursor:pointer;display:flex;align-items:center;gap:8px}
+.sr-item:hover{background:var(--bg3)}
+.sr-kind{font-size:9.5px;padding:1px 5px;border-radius:3px;background:var(--bg3);color:var(--fg3);flex-shrink:0}
+.sr-name{color:var(--accent);font-family:ui-monospace,monospace;overflow:hidden;text-overflow:ellipsis}
 
-.tab-pane{display:none;flex:1;overflow:hidden;flex-direction:column}
-.tab-pane.active{display:flex}
-
-/* Collapse toggle */
-.collapse-btn{
-  margin-left:auto;width:28px;height:28px;border:none;background:transparent;
-  color:var(--fg3);font-size:14px;display:flex;align-items:center;justify-content:center;border-radius:4px;
-}
-.collapse-btn:hover{color:var(--fg);background:var(--bg2)}
+/* ── AGENT PANEL (permanent right) ────────────────────── */
+#agent-panel{width:340px;flex-shrink:0;display:flex;flex-direction:column;border-left:1px solid var(--border2);background:var(--bg)}
+#agent-header{height:34px;flex-shrink:0;display:flex;align-items:center;padding:0 10px;gap:8px;border-bottom:1px solid var(--border2);background:var(--bg1)}
+.agent-title-lbl{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fg2)}
+#btn-agent-clear{margin-left:auto;background:transparent;border:none;color:var(--fg3);font-size:11px;padding:2px 6px;border-radius:3px;cursor:pointer}
+#btn-agent-clear:hover{color:var(--red);background:var(--red-dim)}
 
 /* ── RESIZE HANDLE ─────────────────────────────────────── */
 .resizer{width:4px;background:transparent;cursor:col-resize;flex-shrink:0;transition:background 150ms}
@@ -776,6 +779,12 @@ button{cursor:pointer;font-family:inherit}
   <div class="wordmark"><span class="ros">roscode</span><span class="stud">&thinsp;studio</span></div>
   <div class="top-divider"></div>
 
+  <button class="btn-ghost btn-action" id="btn-new-node" title="Scaffold a new ROS node">+ New Node</button>
+  <button class="btn-ghost btn-action" id="btn-quick-build" title="colcon build workspace">
+    <svg width="12" height="12" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.4" style="vertical-align:middle;margin-right:3px"><polyline points="1,3 5.5,1 10,3 10,8 5.5,10 1,8 1,3"/><line x1="5.5" y1="1" x2="5.5" y2="5.5"/><line x1="5.5" y1="5.5" x2="10" y2="3"/><line x1="5.5" y1="5.5" x2="1" y2="3"/></svg>Build
+  </button>
+  <div class="top-divider"></div>
+
   <div id="ros-pill"><span class="dot"></span><span id="ros-text">Offline</span></div>
 
   <button id="btn-start">&#9654; Start Runtime</button>
@@ -796,103 +805,35 @@ button{cursor:pointer;font-family:inherit}
   </button>
 </div>
 
-<!-- MAIN CONTENT -->
+<!-- MAIN CONTENT: LEFT tools | CENTER graph+search | RIGHT agent -->
 <div id="content">
 
-  <!-- GRAPH CENTER -->
-  <div id="graph-center">
-    <div id="cy-container">
-      <svg id="cy-svg" xmlns="http://www.w3.org/2000/svg"></svg>
-    </div>
-    <div id="graph-overlay">
-      <svg width="48" height="48" viewBox="0 0 48 48" fill="none" style="opacity:.25" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="24" cy="24" r="22" stroke="#f2a83b" stroke-width="1.5"/>
-        <circle cx="24" cy="24" r="7" fill="#f2a83b" opacity=".6"/>
-        <circle cx="24" cy="6"  r="3" fill="#f2a83b" opacity=".3"/>
-        <circle cx="24" cy="42" r="3" fill="#f2a83b" opacity=".3"/>
-        <circle cx="6"  cy="24" r="3" fill="#f2a83b" opacity=".3"/>
-        <circle cx="42" cy="24" r="3" fill="#f2a83b" opacity=".3"/>
-        <line x1="24" y1="9"  x2="24" y2="17" stroke="#f2a83b" stroke-width="1" opacity=".3"/>
-        <line x1="24" y1="31" x2="24" y2="39" stroke="#f2a83b" stroke-width="1" opacity=".3"/>
-        <line x1="9"  y1="24" x2="17" y2="24" stroke="#f2a83b" stroke-width="1" opacity=".3"/>
-        <line x1="31" y1="24" x2="39" y2="24" stroke="#f2a83b" stroke-width="1" opacity=".3"/>
-      </svg>
-      <div class="overlay-title">Robot offline</div>
-      <div class="overlay-sub">Start runtime to see the ROS graph</div>
-      <button class="overlay-btn" id="overlay-start">&#9654; Start Runtime</button>
-    </div>
-  </div>
-
-  <div class="resizer" id="rresizer"></div>
-
-  <!-- RIGHT PANEL -->
-  <div class="panel right" id="rpanel">
-    <div class="panel-tabs">
-      <button class="collapse-btn" id="btn-collapse-right" style="margin-left:0;margin-right:auto;" title="Collapse">›</button>
-      <button class="active" id="rt-agent"><span class="tab-label">Agent</span></button>
-      <button id="rt-topics"><span class="tab-label">Topics</span></button>
-      <button id="rt-params"><span class="tab-label">Params</span></button>
-      <button id="rt-lib"><span class="tab-label">Library</span></button>
-      <button id="rt-map"><span class="tab-label">Map</span></button>
-    </div>
-    <div class="panel-body">
-      <!-- AGENT -->
-      <div class="tab-pane active" id="rp-agent">
-        <div id="agent-pane">
-          <div id="agent-feed">
-            <div class="a-empty" id="a-empty">
-              <svg width="32" height="32" viewBox="0 0 40 40" fill="none" style="opacity:.55;filter:drop-shadow(0 0 8px rgba(242,168,59,.3))" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="20" cy="20" r="19" stroke="#f2a83b" stroke-width="1.5"/>
-                <circle cx="20" cy="20" r="7" fill="#f2a83b" opacity=".85"/>
-                <circle cx="20" cy="5"  r="2.8" fill="#f2a83b" opacity=".3"/>
-                <circle cx="20" cy="35" r="2.8" fill="#f2a83b" opacity=".3"/>
-                <circle cx="5"  cy="20" r="2.8" fill="#f2a83b" opacity=".3"/>
-                <circle cx="35" cy="20" r="2.8" fill="#f2a83b" opacity=".3"/>
-                <line x1="20" y1="7.8"  x2="20" y2="13" stroke="#f2a83b" stroke-width="1.2" opacity=".3"/>
-                <line x1="20" y1="27"  x2="20" y2="32.2" stroke="#f2a83b" stroke-width="1.2" opacity=".3"/>
-                <line x1="7.8" y1="20" x2="13" y2="20" stroke="#f2a83b" stroke-width="1.2" opacity=".3"/>
-                <line x1="27" y1="20" x2="32.2" y2="20" stroke="#f2a83b" stroke-width="1.2" opacity=".3"/>
-              </svg>
-              <p>Ask Claude about your ROS system &mdash; inspect topics, fix bugs, or build new nodes.</p>
-              <div class="a-sug" id="a-sug-static">
-                <span class="a-sg" data-prefill="List all active topics and their types">topics?</span>
-                <span class="a-sg" data-prefill="Show the full node graph and explain what each node does">graph</span>
-                <span class="a-sg" data-prefill="Read my source files and find any bugs or improvements">audit</span>
-                <span class="a-sg" data-prefill="Scaffold a new publisher node for this workspace">new node</span>
-                <span class="a-sg" data-prefill="What parameters can I tune to improve robot behavior?">tune params</span>
-                <span class="a-sg" data-prefill="Build the workspace and show me any errors">build</span>
-              </div>
-            </div>
-          </div>
-          <div id="agent-bar">
-            <div class="agent-wrap">
-              <textarea id="a-inp" placeholder="Ask about your ROS system…" rows="1"></textarea>
-              <button id="a-send">
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M11 6L1 1l2.5 5L1 11l10-5z"/></svg>
-              </button>
-            </div>
-          </div>
-        </div>
+  <!-- LEFT PANEL: top = TOPICS/PARAMS, bottom = LIBRARY/MAP -->
+  <div id="lpanel">
+    <div id="lp-top">
+      <div class="lp-tabs">
+        <button class="active" id="lt-topics">TOPICS</button>
+        <button id="lt-params">PARAMS</button>
       </div>
-      <!-- TOPICS -->
-      <div class="tab-pane" id="rp-topics">
-        <div id="topics-pane">
-          <div class="t-offline">Connect to a robot to see active topics.</div>
-        </div>
+      <div class="lp-pane active" id="lp-topics">
+        <div id="topics-pane"><div class="t-offline">Connect to a robot to see active topics.</div></div>
       </div>
-      <!-- PARAMS tab -->
-      <div class="tab-pane" id="rp-params">
+      <div class="lp-pane" id="lp-params">
         <div id="params-pane">
           <div id="params-search-row">
-            <input id="params-search" type="text" placeholder="Filter parameters…" oninput="filterParams()"/>
+            <input id="params-search" type="text" placeholder="Filter parameters…"/>
           </div>
-          <div id="params-list">
-            <div class="p-offline">Connect to a robot to browse ROS parameters.</div>
-          </div>
+          <div id="params-list"><div class="p-offline">Connect to a robot to browse ROS parameters.</div></div>
         </div>
       </div>
-      <!-- LIBRARY -->
-      <div class="tab-pane" id="rp-lib">
+    </div>
+    <div class="v-resizer" id="vresizer"></div>
+    <div id="lp-bot">
+      <div class="lp-tabs">
+        <button class="active" id="lb-library">LIBRARY</button>
+        <button id="lb-map">MAP</button>
+      </div>
+      <div class="lp-pane active" id="lp-library">
         <div id="lib-pane">
           <div id="ai-search-panel">
             <textarea id="ai-search-input" placeholder="Describe what you need — e.g. 'lidar SLAM for indoor mobile robot'…"></textarea>
@@ -906,8 +847,7 @@ button{cursor:pointer;font-family:inherit}
           <div id="lib-list"></div>
         </div>
       </div>
-      <!-- MAP (Fase E: claudemap) -->
-      <div class="tab-pane" id="rp-map">
+      <div class="lp-pane" id="lp-map">
         <div id="map-pane">
           <div id="map-header">
             <div id="map-file-label">active file</div>
@@ -919,7 +859,91 @@ button{cursor:pointer;font-family:inherit}
         </div>
       </div>
     </div>
-  </div>
+  </div><!-- /lpanel -->
+
+  <div class="resizer" id="lresizer"></div>
+
+  <!-- CENTER: search bar + ROS graph -->
+  <div id="center">
+    <div id="search-bar">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" style="flex-shrink:0;color:var(--fg3)"><circle cx="5.5" cy="5.5" r="4"/><line x1="9" y1="9" x2="13" y2="13"/></svg>
+      <input id="search-input" type="text" placeholder="Search topics, nodes, parameters…"/>
+      <button id="search-btn">↵</button>
+    </div>
+    <div id="graph-center">
+      <div id="cy-container">
+        <svg id="cy-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+      <div id="graph-overlay">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none" style="opacity:.25" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="24" cy="24" r="22" stroke="#f2a83b" stroke-width="1.5"/>
+          <circle cx="24" cy="24" r="7" fill="#f2a83b" opacity=".6"/>
+          <circle cx="24" cy="6"  r="3" fill="#f2a83b" opacity=".3"/>
+          <circle cx="24" cy="42" r="3" fill="#f2a83b" opacity=".3"/>
+          <circle cx="6"  cy="24" r="3" fill="#f2a83b" opacity=".3"/>
+          <circle cx="42" cy="24" r="3" fill="#f2a83b" opacity=".3"/>
+          <line x1="24" y1="9"  x2="24" y2="17" stroke="#f2a83b" stroke-width="1" opacity=".3"/>
+          <line x1="24" y1="31" x2="24" y2="39" stroke="#f2a83b" stroke-width="1" opacity=".3"/>
+          <line x1="9"  y1="24" x2="17" y2="24" stroke="#f2a83b" stroke-width="1" opacity=".3"/>
+          <line x1="31" y1="24" x2="39" y2="24" stroke="#f2a83b" stroke-width="1" opacity=".3"/>
+        </svg>
+        <div class="overlay-title">Robot offline</div>
+        <div class="overlay-sub">Start runtime to see the ROS graph</div>
+        <button class="overlay-btn" id="overlay-start">&#9654; Start Runtime</button>
+      </div>
+    </div>
+  </div><!-- /center -->
+
+  <div class="resizer" id="rresizer"></div>
+
+  <!-- RIGHT: permanent agent panel — always visible, no tabs -->
+  <div id="agent-panel">
+    <div id="agent-header">
+      <svg width="14" height="14" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;filter:drop-shadow(0 0 4px rgba(242,168,59,.4))">
+        <circle cx="20" cy="20" r="19" stroke="#f2a83b" stroke-width="1.5"/>
+        <circle cx="20" cy="20" r="7" fill="#f2a83b" opacity=".85"/>
+        <circle cx="20" cy="5" r="2.8" fill="#f2a83b" opacity=".3"/>
+        <circle cx="20" cy="35" r="2.8" fill="#f2a83b" opacity=".3"/>
+        <circle cx="5" cy="20" r="2.8" fill="#f2a83b" opacity=".3"/>
+        <circle cx="35" cy="20" r="2.8" fill="#f2a83b" opacity=".3"/>
+      </svg>
+      <span class="agent-title-lbl">AGENT</span>
+      <button id="btn-agent-clear" title="Clear conversation">Clear</button>
+    </div>
+    <div id="agent-feed">
+      <div class="a-empty" id="a-empty">
+        <svg width="32" height="32" viewBox="0 0 40 40" fill="none" style="opacity:.55;filter:drop-shadow(0 0 8px rgba(242,168,59,.3))" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="20" cy="20" r="19" stroke="#f2a83b" stroke-width="1.5"/>
+          <circle cx="20" cy="20" r="7" fill="#f2a83b" opacity=".85"/>
+          <circle cx="20" cy="5"  r="2.8" fill="#f2a83b" opacity=".3"/>
+          <circle cx="20" cy="35" r="2.8" fill="#f2a83b" opacity=".3"/>
+          <circle cx="5"  cy="20" r="2.8" fill="#f2a83b" opacity=".3"/>
+          <circle cx="35" cy="20" r="2.8" fill="#f2a83b" opacity=".3"/>
+          <line x1="20" y1="7.8"  x2="20" y2="13" stroke="#f2a83b" stroke-width="1.2" opacity=".3"/>
+          <line x1="20" y1="27"  x2="20" y2="32.2" stroke="#f2a83b" stroke-width="1.2" opacity=".3"/>
+          <line x1="7.8" y1="20" x2="13" y2="20" stroke="#f2a83b" stroke-width="1.2" opacity=".3"/>
+          <line x1="27" y1="20" x2="32.2" y2="20" stroke="#f2a83b" stroke-width="1.2" opacity=".3"/>
+        </svg>
+        <p>Ask Claude about your ROS system &mdash; inspect topics, fix bugs, or build new nodes.</p>
+        <div class="a-sug" id="a-sug-static">
+          <span class="a-sg" data-prefill="List all active topics and their types">topics?</span>
+          <span class="a-sg" data-prefill="Show the full node graph and explain what each node does">graph</span>
+          <span class="a-sg" data-prefill="Read my source files and find any bugs or improvements">audit</span>
+          <span class="a-sg" data-prefill="Scaffold a new publisher node for this workspace">new node</span>
+          <span class="a-sg" data-prefill="What parameters can I tune to improve robot behavior?">tune params</span>
+          <span class="a-sg" data-prefill="Build the workspace and show me any errors">build</span>
+        </div>
+      </div>
+    </div>
+    <div id="agent-bar">
+      <div class="agent-wrap">
+        <textarea id="a-inp" placeholder="Ask about your ROS system…" rows="1"></textarea>
+        <button id="a-send">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M11 6L1 1l2.5 5L1 11l10-5z"/></svg>
+        </button>
+      </div>
+    </div>
+  </div><!-- /agent-panel -->
 
 </div><!-- /content -->
 
@@ -1084,7 +1108,6 @@ function renderRealTopics(topics) {
 
 function echoTopicAgent(name) {
   prefill('Echo topic ' + name + ' once and show me the message');
-  rTab('agent');
 }
 
 function echoTopicInline(name) {
@@ -1205,38 +1228,70 @@ function appendLibNotice(msg) {
   if (list) list.insertAdjacentHTML('afterbegin', \`<div style="padding:8px;color:var(--yellow);font-size:11px">\${msg}</div>\`);
 }
 
-// ── Tab switching ───────────────────────────────────────
-function rTab(name) {
-  ['agent','topics','params','lib','map'].forEach(t => {
-    document.getElementById('rt-'+t)?.classList.toggle('active', t===name);
-    document.getElementById('rp-'+t)?.classList.toggle('active', t===name);
+// ── Tab switching (left panel) ──────────────────────────
+function lpTopTab(name) {
+  ['topics','params'].forEach(t => {
+    document.getElementById('lt-'+t)?.classList.toggle('active', t===name);
+    document.getElementById('lp-'+t)?.classList.toggle('active', t===name);
   });
 }
-
-// ── Panel collapse ──────────────────────────────────────
-function collapsePanel(id) {
-  const panel = document.getElementById(id);
-  if (!panel) return;
-  panel.classList.toggle('collapsed');
-  const isLeft = id==='lpanel';
-  const btn = panel.querySelector('.collapse-btn');
-  if (btn) btn.textContent = panel.classList.contains('collapsed') ? (isLeft?'›':'‹') : (isLeft?'‹':'›');
+function lpBotTab(name) {
+  ['library','map'].forEach(t => {
+    document.getElementById('lb-'+t)?.classList.toggle('active', t===name);
+    document.getElementById('lp-'+t)?.classList.toggle('active', t===name);
+  });
+}
+// rTab is a no-op — agent is always visible; just scroll to bottom
+function rTab(name) {
+  if (name === 'topics') lpTopTab('topics');
+  else if (name === 'params') lpTopTab('params');
+  else if (name === 'lib') lpBotTab('library');
+  else if (name === 'map') lpBotTab('map');
 }
 
-// ── Resize handles ──────────────────────────────────────
+// ── Horizontal resize handles ───────────────────────────
 function setupResizer(handle, target, side) {
   let startX, startW;
   handle.addEventListener('mousedown', e => {
     startX = e.clientX; startW = target.offsetWidth;
     document.body.style.userSelect = 'none';
     handle.classList.add('dragging');
-    const move = ev => { const dx = ev.clientX - startX; const w = Math.max(160, Math.min(500, startW + (side==='l'?dx:-dx))); target.style.width = w+'px'; };
+    const move = ev => { const dx = ev.clientX - startX; const w = Math.max(160, Math.min(520, startW + (side==='l'?dx:-dx))); target.style.width = w+'px'; };
     const up = () => { document.body.style.userSelect=''; handle.classList.remove('dragging'); document.removeEventListener('mousemove',move); document.removeEventListener('mouseup',up); };
     document.addEventListener('mousemove', move);
     document.addEventListener('mouseup', up);
   });
 }
-setupResizer(document.getElementById('rresizer'), document.getElementById('rpanel'), 'r');
+setupResizer(document.getElementById('lresizer'), document.getElementById('lpanel'), 'l');
+setupResizer(document.getElementById('rresizer'), document.getElementById('agent-panel'), 'r');
+
+// ── Vertical split resize (top/bottom left panels) ──────
+(function() {
+  const handle = document.getElementById('vresizer');
+  const top = document.getElementById('lp-top');
+  const bot = document.getElementById('lp-bot');
+  if (!handle || !top || !bot) return;
+  let startY, startTopH;
+  handle.addEventListener('mousedown', e => {
+    startY = e.clientY;
+    startTopH = top.offsetHeight;
+    document.body.style.userSelect = 'none';
+    handle.classList.add('dragging');
+    const parent = document.getElementById('lpanel');
+    const move = ev => {
+      const dy = ev.clientY - startY;
+      const total = parent.offsetHeight - handle.offsetHeight;
+      const h = Math.max(80, Math.min(total - 80, startTopH + dy));
+      top.style.flex = 'none';
+      top.style.height = h + 'px';
+      bot.style.flex = '1';
+      bot.style.height = '';
+    };
+    const up = () => { document.body.style.userSelect=''; handle.classList.remove('dragging'); document.removeEventListener('mousemove',move); document.removeEventListener('mouseup',up); };
+    document.addEventListener('mousemove', move);
+    document.addEventListener('mouseup', up);
+  });
+})();
 
 // ── Tools menu ──────────────────────────────────────────
 function toggleTools() {
@@ -1482,7 +1537,6 @@ function setParam(node, param) {
   if (val === undefined || val === '') return;
   vscode.postMessage({ type:'setParamReq', node, param, value: val });
   prefill(\`Set ROS parameter \${param} on \${node} to: \${val}\`);
-  rTab('agent');
 }
 
 // ── Build ────────────────────────────────────────────────
@@ -1490,8 +1544,16 @@ function requestBuild() {
   const btn = document.getElementById('btn-build');
   if (btn) btn.style.color = 'var(--yellow)';
   vscode.postMessage({ type:'buildReq' });
-  rTab('agent');
   setTimeout(() => { if(btn) btn.style.color=''; }, 2000);
+}
+
+// ── Search bar ───────────────────────────────────────────
+function runSearch(q) {
+  if (!q) return;
+  // Delegate to agent with the query pre-filled
+  prefill('Search for "' + q + '" — look in topics, nodes, params, and source files');
+  const inp = document.getElementById('search-input');
+  if (inp) inp.value = '';
 }
 
 // ── Claudemap (Fase E) ───────────────────────────────────
@@ -1537,26 +1599,41 @@ function handleMapError(err) {
 
 function jumpToLine(line) { vscode.postMessage({ type: 'jumpToLine', line }); }
 
-// ── Static button wiring (addEventListener — no inline onclick) ──────────────
+// ── Static button wiring ──────────────────────────────────────────────────────
 document.getElementById('btn-start')?.addEventListener('click', startRuntime);
 document.getElementById('overlay-start')?.addEventListener('click', startRuntime);
 document.getElementById('btn-tools')?.addEventListener('click', toggleTools);
 document.getElementById('btn-editor-toggle')?.addEventListener('click', toggleEditor);
-document.getElementById('rt-agent')?.addEventListener('click', () => rTab('agent'));
-document.getElementById('rt-topics')?.addEventListener('click', () => rTab('topics'));
-document.getElementById('rt-params')?.addEventListener('click', () => rTab('params'));
-document.getElementById('rt-lib')?.addEventListener('click', () => rTab('lib'));
-document.getElementById('rt-map')?.addEventListener('click', () => rTab('map'));
-document.getElementById('btn-collapse-right')?.addEventListener('click', () => collapsePanel('rpanel'));
+document.getElementById('btn-new-node')?.addEventListener('click', () => prefill('Scaffold a new publisher node for this workspace'));
+document.getElementById('btn-quick-build')?.addEventListener('click', requestBuild);
+// Left panel top tabs
+document.getElementById('lt-topics')?.addEventListener('click', () => lpTopTab('topics'));
+document.getElementById('lt-params')?.addEventListener('click', () => lpTopTab('params'));
+// Left panel bottom tabs
+document.getElementById('lb-library')?.addEventListener('click', () => lpBotTab('library'));
+document.getElementById('lb-map')?.addEventListener('click', () => lpBotTab('map'));
+// Library
 document.getElementById('lib-search')?.addEventListener('input', filterLib);
 document.getElementById('btn-ai-search')?.addEventListener('click', toggleAiSearch);
 document.getElementById('ai-search-go')?.addEventListener('click', runAiSearch);
+// Agent
 document.getElementById('a-inp')?.addEventListener('input', e => autoResize(e.target));
 document.getElementById('a-inp')?.addEventListener('keydown', agentKey);
 document.getElementById('a-send')?.addEventListener('click', agentSend);
+document.getElementById('btn-agent-clear')?.addEventListener('click', () => { vscode.postMessage({type:'agentClear'}); resetAgent(); });
+// Bottom bar shortcuts
 document.getElementById('btn-build')?.addEventListener('click', requestBuild);
 document.getElementById('btn-terminal')?.addEventListener('click', () => vscode.postMessage({type:'launchTool',tool:'terminal'}));
-document.getElementById('btn-library-quick')?.addEventListener('click', () => rTab('lib'));
+document.getElementById('btn-library-quick')?.addEventListener('click', () => lpBotTab('library'));
+// Search bar
+document.getElementById('search-input')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') runSearch(document.getElementById('search-input').value.trim());
+});
+document.getElementById('search-btn')?.addEventListener('click', () => {
+  runSearch(document.getElementById('search-input')?.value.trim());
+});
+// Params search
+document.getElementById('params-search')?.addEventListener('input', filterParams);
 
 // Tools menu: close on outside click
 document.addEventListener('click', e => {

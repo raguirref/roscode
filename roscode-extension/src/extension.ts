@@ -71,11 +71,10 @@ export async function activate(context: vscode.ExtensionContext) {
   // see the dedicated layout — not a cramped side panel.
   // ═══════════════════════════════════════════════════════════
   const openFullPage = async (kind: PageKind) => {
+    // Close sidebar first to prevent the flash where it briefly opens before hiding
+    vscode.commands.executeCommand("workbench.action.closeSidebar").catch(() => {});
+    await new Promise(r => setTimeout(r, 10));
     RoscodePagePanel.createOrShow(context, kind, rosConnection);
-    // small delay so reveal doesn't race with our close
-    setTimeout(() => {
-      vscode.commands.executeCommand("workbench.action.closeSidebar").catch(() => {});
-    }, 80);
   };
 
   const wireTreeViewToPage = (tv: vscode.TreeView<any>, kind: PageKind) => {
@@ -93,10 +92,8 @@ export async function activate(context: vscode.ExtensionContext) {
   plotView.onVisibilityChange?.(() => openFullPage("plot"));
   terminalView.onVisibilityChange?.(() => openFullPage("terminal"));
   homeView.onVisibilityChange?.(() => {
-    LauncherPanel.createOrShow(context);
-    setTimeout(() => {
-      vscode.commands.executeCommand("workbench.action.closeSidebar").catch(() => {});
-    }, 80);
+    vscode.commands.executeCommand("workbench.action.closeSidebar").catch(() => {});
+    setTimeout(() => LauncherPanel.createOrShow(context), 10);
   });
 
   // Register explicit open commands so users can hit Ctrl+Shift+P too.

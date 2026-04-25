@@ -664,6 +664,32 @@
   outline-offset: 1px !important;
 }
 
+/* ── Hide VS Code native Explorer chrome ────────────────────────────────────
+   The sidebar is used as a quick-access panel for roscode views.
+   We hide the "EXPLORER" label, the outline/timeline panes, and the
+   native editor breadcrumbs to keep the IDE feel clean.             */
+/* Hide the Explorer composite title bar ("EXPLORER" heading + its buttons) */
+.monaco-workbench .part.sidebar .composite.title[id*="workbench.view.explorer"],
+.monaco-workbench .part.sidebar [id="workbench.view.explorer"] .composite.title {
+  display: none !important;
+}
+/* Hide OUTLINE and TIMELINE panes inside Explorer */
+.monaco-workbench .part.sidebar .pane-header[id*="outline"],
+.monaco-workbench .part.sidebar .pane-header[id*="timeline"],
+.monaco-workbench .part.sidebar .pane-body[id*="outline"],
+.monaco-workbench .part.sidebar .pane-body[id*="timeline"] {
+  display: none !important;
+}
+/* Hide "OUTLINE" / "TIMELINE" bottom rows in the Explorer sidebar */
+.monaco-workbench .part.sidebar .pane-header .title[title="Outline"],
+.monaco-workbench .part.sidebar .pane-header .title[title="Timeline"] {
+  display: none !important;
+}
+/* Breadcrumb bar — standalone IDE feel (hide VS Code editor breadcrumbs) */
+.monaco-workbench .part.editor .breadcrumbs-control {
+  display: none !important;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    Splash mode — no workspace open = zero IDE chrome.
    Extension adds class `roscode-splash` to <body> when no workspace.
