@@ -57,35 +57,41 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 14px;
+    padding: 0 12px;
     flex-shrink: 0;
     font-family: var(--font-mono);
     font-size: 10px;
-    letter-spacing: 0.4px;
+    letter-spacing: 0.3px;
     text-transform: uppercase;
-    color: var(--fg-2);
+    color: var(--fg-3);
+    z-index: 100;
   }
-  .statusbar.ready  { background: var(--bg-1); border-top-color: rgba(139,195,74,0.25); }
-  .statusbar.error  { background: var(--bg-1); border-top-color: rgba(224,102,102,0.35); }
-  .statusbar.starting { background: var(--bg-1); border-top-color: var(--accent-line); }
+  .statusbar.ready  { border-top-color: rgba(139,195,74,0.15); }
+  .statusbar.error  { border-top-color: rgba(224,102,102,0.25); }
 
   .left, .right {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 16px;
   }
 
   .item {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 5px;
     white-space: nowrap;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: all 120ms;
+    cursor: default;
+    opacity: 0.8;
   }
-  .item.dim    { color: var(--fg-2); }
-  .item.ok     { color: var(--ok); }
-  .item.err    { color: var(--err); }
-  .item.warn   { color: var(--warn); }
-  .item.accent { color: var(--accent); }
+  .item:hover { background: rgba(255,255,255,0.03); color: var(--fg-1); opacity: 1; }
+
+  .item.ok     { color: var(--ok); opacity: 1; }
+  .item.err    { color: var(--err); opacity: 1; }
+  .item.warn   { color: var(--warn); opacity: 1; }
+  .item.accent { color: var(--accent); opacity: 1; }
 
   .spin {
     display: inline-block;

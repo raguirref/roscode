@@ -101,42 +101,43 @@
   .icon-btn {
     position: relative;
     width: 100%;
-    padding: 10px 0 8px;
+    padding: 12px 0 10px;
     background: transparent;
     border: none;
-    /* Use a left rail via box-shadow inset rather than border so we don't
-       have to transition border-color (which caused two buttons to appear
-       half-selected during the 160ms swap). */
     box-shadow: inset 2px 0 0 transparent;
     border-radius: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
-    color: var(--fg-2);
-    /* Snappy on state change — 60ms is barely perceived as a transition. */
-    transition: transform 120ms cubic-bezier(.2,.8,.2,1);
+    gap: 5px;
+    color: var(--fg-3);
+    transition: all 180ms cubic-bezier(.2,.8,.2,1);
     font-family: var(--font-mono);
     text-transform: uppercase;
     cursor: pointer;
     user-select: none;
+    opacity: 0.7;
   }
   .icon-btn:hover:not(.active) {
-    background: var(--bg-2);
+    background: rgba(255,255,255,0.02);
     color: var(--fg-1);
+    opacity: 1;
   }
-  .icon-btn:active { transform: scale(0.94); filter: brightness(.92); }
+  .icon-btn:active { transform: scale(0.92); }
   .icon-btn.active {
     color: var(--accent);
     background: var(--accent-dim);
-    box-shadow: inset 2px 0 0 var(--accent);
+    box-shadow: inset 3px 0 0 var(--accent);
+    opacity: 1;
   }
+  .icon-btn.active .ic { transform: scale(1.1); }
 
   .ic {
     display: flex;
     align-items: center;
     justify-content: center;
     width: 100%;
+    transition: transform 200ms cubic-bezier(.2,.8,.2,1);
   }
   .code {
     font-size: 9px;

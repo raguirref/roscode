@@ -417,77 +417,80 @@
     background: var(--bg-1); border-bottom: 1px solid var(--border);
     flex-shrink: 0; position: relative;
     -webkit-app-region: drag;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+    z-index: 100;
   }
   .ide-header > * { -webkit-app-region: no-drag; }
   .ide-header::after {
-    content: ""; position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
-    background: linear-gradient(90deg, var(--accent) 0%, transparent 40%); opacity: 0.35;
+    content: ""; position: absolute; bottom: -1px; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent) 50%, transparent); opacity: 0.15;
   }
 
   .brand {
     display: flex; align-items: center; flex-shrink: 0;
     color: var(--fg-0);
-    background: transparent; border: none; padding: 4px; border-radius: var(--radius-sm);
+    background: transparent; border: none; padding: 6px 8px; border-radius: 8px;
     cursor: pointer;
-    transition: background 140ms cubic-bezier(.2,.8,.2,1), transform 120ms cubic-bezier(.2,.8,.2,1);
+    transition: all 150ms cubic-bezier(.2,.8,.2,1);
   }
-  .brand:hover { background: var(--bg-2); border: none; }
-  .brand:active { transform: scale(0.94); filter: brightness(.92); }
+  .brand:hover { background: rgba(255,255,255,0.03); }
+  .brand:active { transform: scale(0.96); opacity: 0.8; }
   .brand-mark-full {
-    height: 20px; width: auto; flex-shrink: 0;
+    height: 18px; width: auto; flex-shrink: 0;
     transition: filter 240ms ease;
-    margin-left: 2px;
   }
-  .brand:hover .brand-mark-full { filter: drop-shadow(0 0 10px rgba(242,168,59,.25)); }
+  .brand:hover .brand-mark-full { filter: drop-shadow(0 0 12px rgba(242,168,59,.3)); }
 
   .ws-chip {
-    display: flex; align-items: center; gap: 5px;
-    padding: 3px 8px; border: 1px solid var(--border); border-radius: var(--radius);
-    background: transparent; cursor: pointer;
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border: 1px solid var(--border); border-radius: 8px;
+    background: rgba(255,255,255,0.02); cursor: pointer;
     font-family: var(--font-mono); font-size: 11px; color: var(--fg-2);
-    max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    transition: border-color 100ms;
+    max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    transition: all 120ms;
     flex-shrink: 0;
   }
-  .ws-chip:hover { border-color: var(--accent-line); color: var(--fg-0); }
-  .ws-change { color: var(--fg-3); font-size: 9px; margin-left: 2px; }
-  .ws-chip:hover .ws-change { color: var(--accent); }
+  .ws-chip:hover { border-color: var(--accent-line); color: var(--fg-1); background: rgba(255,255,255,0.04); }
+  .ws-change { color: var(--fg-3); font-size: 9px; opacity: 0.5; }
+  .ws-chip:hover .ws-change { color: var(--accent); opacity: 1; }
 
   /* Redesigned Search Bar - Antigravity inspired */
   .search-bar {
     flex: 1; display: flex; align-items: center; gap: 10px;
-    padding: 6px 14px;
+    padding: 6px 16px;
     background: rgba(255, 255, 255, 0.03); 
-    border: 1px solid rgba(255, 255, 255, 0.05); 
-    border-radius: 20px;
-    cursor: pointer; max-width: 480px; margin: 0 auto;
-    transition: all 160ms ease;
+    border: 1px solid rgba(255, 255, 255, 0.06); 
+    border-radius: 10px;
+    cursor: pointer; max-width: 520px; margin: 0 auto;
+    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
     color: var(--fg-2);
-    box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);
   }
   .search-bar:hover { 
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.1); 
-    color: var(--fg-0); 
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2), inset 0 1px 3px rgba(0,0,0,0.1);
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(242, 168, 59, 0.2); 
+    color: var(--fg-1); 
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2), inset 0 1px 2px rgba(0,0,0,0.2);
   }
-  .search-placeholder { flex: 1; text-align: left; font-family: var(--font-sans); font-size: 12px; color: var(--fg-2); letter-spacing: 0.1px; }
-  .search-bar:hover .search-placeholder { color: var(--fg-1); }
+  .search-bar:active { transform: scale(0.99); }
+  .search-placeholder { flex: 1; text-align: left; font-family: var(--font-sans); font-size: 13px; color: var(--fg-2); letter-spacing: 0.2px; opacity: 0.7; }
+  .search-bar:hover .search-placeholder { color: var(--fg-1); opacity: 1; }
   .kbd-hint {
-    font-family: var(--font-mono); font-size: 9px; color: var(--fg-3);
-    padding: 2px 6px; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 4px;
-    letter-spacing: .3px; background: rgba(0,0,0,0.2);
+    font-family: var(--font-mono); font-size: 10px; color: var(--fg-3);
+    padding: 2px 6px; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 4px;
+    letter-spacing: .5px; background: rgba(0,0,0,0.3);
   }
 
-  .header-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; margin-left: auto; }
+  .header-right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; margin-left: auto; }
 
   .status-pill {
-    display: flex; align-items: center; gap: 6px;
-    padding: 4px 10px; border-radius: var(--radius); border: 1px solid var(--border-bright);
-    background: transparent;
-    font-family: var(--font-mono); font-size: 10px; color: var(--fg-1); letter-spacing: 0.4px; text-transform: uppercase;
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 12px; border-radius: 8px; border: 1px solid var(--border-bright);
+    background: rgba(255,255,255,0.02);
+    font-family: var(--font-mono); font-size: 10px; color: var(--fg-1); letter-spacing: 0.6px; text-transform: uppercase;
+    transition: all 150ms;
   }
-  .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--fg-2); flex-shrink: 0; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--fg-3); flex-shrink: 0; }
   .status-pill[data-kind="ready"] { border-color: rgba(139,195,74,.38); color: var(--ok); background: rgba(139,195,74,.08); }
   .status-pill[data-kind="ready"] .dot { background: var(--ok); animation: pulse 2s ease-in-out infinite; }
   .status-pill[data-kind="starting"] { border-color: var(--accent-line); color: var(--accent); background: var(--accent-dim); }
