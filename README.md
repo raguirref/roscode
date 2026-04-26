@@ -3,7 +3,7 @@
 > An AI-native desktop IDE for ROS 2. Connect to a robot, inspect the live graph, and talk to an agent that understands your workspace.
 
 **Stack:** Tauri 2 · Svelte · Rust · Python · Claude Opus 4.7  
-**Version:** 0.1.0 · ROS 2 Jazzy
+**Version:** 0.1.0 · ROS 2 Humble
 
 ---
 

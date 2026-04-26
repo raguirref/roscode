@@ -1,93 +1,133 @@
-# roscode studio
+# roscode studio — Tauri app
 
-AI-native IDE for ROS 2. A Tauri desktop app that bundles an embedded
-Linux VM + containerized ROS 2 + the roscode agent into a single
-download — **no Docker, no ROS, no Python install required.**
+AI-native desktop IDE for ROS 2. One app, zero setup — bundles an embedded
+Linux VM, a containerized ROS 2 Humble environment, and a Claude-powered agent
+into a single `.dmg` / `.AppImage`.
 
-> **Status:** Day-1 scaffold. Runs as an empty Tauri shell. Lima integration
-> and the in-app roscode agent land over the next four days of the hackathon.
+**No Docker, no ROS, no Python install required on the host.**
 
-## Architecture
+---
+
+## What's inside
 
 ```
-┌─ Tauri app (native window) ─────────────────────────────────┐
-│                                                              │
-│  Svelte + TypeScript webview                                 │
-│    ┌─ Monaco ─┬─ chat ─┬─ Foxglove (embedded) ─┐             │
-│    └──────────┴────────┴────────────────────────┘            │
-│                          ▲                                   │
-│                     Tauri IPC                                │
-│                          ▼                                   │
-│  Rust backend (src-tauri/)                                   │
-│    ├─ lima::                 → manages the Linux VM          │
-│    ├─ container::            → pulls & runs ROS 2 Humble     │
-│    └─ commands::             → tauri::command handlers       │
-│                          ▲                                   │
-│                          ▼                                   │
-│  Embedded Lima VM (Alpine + containerd)                      │
-│    └─ osrf/ros:humble-desktop                                │
-│        ├─ user workspace (bind-mounted from host)            │
-│        ├─ roscode CLI agent (our Python package)             │
-│        └─ foxglove-bridge (port-forwarded to host)           │
-└──────────────────────────────────────────────────────────────┘
+┌─ Tauri 2 (native macOS / Linux window) ────────────────────────┐
+│                                                                  │
+│  Svelte + TypeScript webview                                     │
+│    ├─ Monaco editor  — read/write files inside the container     │
+│    ├─ Chat panel     — Claude Opus 4.7 + 37 ROS-aware tools      │
+│    ├─ Files explorer — live container filesystem tree            │
+│    ├─ Nodes / Topics — live ROS 2 graph (ros2 node/topic list)   │
+│    ├─ Terminal       — pty shell inside the ROS container        │
+│    └─ Package library — curated ROS 2 package registry          │
+│                         ▲                                        │
+│                    Tauri IPC                                     │
+│                         ▼                                        │
+│  Rust backend (src-tauri/src/)                                   │
+│    ├─ lima.rs        → limactl VM lifecycle                      │
+│    ├─ container.rs   → nerdctl container lifecycle               │
+│    └─ commands.rs    → ~20 Tauri command handlers                │
+│                         ▲                                        │
+│                         ▼                                        │
+│  Lima VM  (Ubuntu 22.04 + rootless containerd)                   │
+│    └─ ros:humble-ros-base                                        │
+│        ├─ /workspace  ← bind-mounted from host                   │
+│        ├─ /opt/roscode-src ← Python agent (editable install)     │
+│        └─ roscode.server on :9000  ← forwarded to host          │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
-## Prerequisites
+---
 
-One-time install on your Mac:
+## Run in development
 
 ```bash
-# Rust toolchain (you probably already have this)
-brew install rust
+# Prerequisites (macOS)
+brew install lima pnpm
 
-# Tauri CLI
-cargo install tauri-cli --version "^2.0"
+# 1 — install frontend deps (once)
+cd studio
+pnpm install
 
-# Lima — the Linux VM manager we embed
-brew install lima
-
-# pnpm for frontend deps
-brew install pnpm
+# 2 — dev window (hot-reload)
+pnpm tauri dev
 ```
 
-## Dev workflow
+The Lima VM (`roscode`) is created on first launch and reused on every restart.
+Port 9000 is forwarded VM → host so the webview connects to the agent instantly.
+
+---
+
+## Build a release binary
 
 ```bash
 cd studio
-pnpm install           # frontend deps — one-time
-cargo tauri dev        # starts vite + tauri, opens the window
+pnpm tauri build
+# macOS  → src-tauri/target/release/bundle/macos/roscode studio.app
+# macOS  → src-tauri/target/release/bundle/dmg/roscode studio_*.dmg
+# Linux  → src-tauri/target/release/bundle/appimage/*.AppImage
 ```
 
-First Rust build is slow (~5 min). Subsequent runs are cached.
+Open without Gatekeeper prompt (macOS):
+```bash
+xattr -cr "src-tauri/target/release/bundle/macos/roscode studio.app"
+open "src-tauri/target/release/bundle/macos/roscode studio.app"
+```
 
-## Layout
+---
+
+## Environment
+
+Create a `.env` file at the **repo root** (not inside `studio/`):
+
+```
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+The Tauri binary loads it automatically at startup via `dotenvy`.
+
+---
+
+## Project layout
 
 ```
 studio/
-├── src/                # Svelte frontend
-│   ├── App.svelte
-│   ├── main.ts
-│   └── lib/tauri.ts    # wraps Tauri invoke() calls
-├── src-tauri/          # Rust backend
-│   ├── Cargo.toml
+├── src/                    Svelte frontend
+│   ├── App.svelte           top-level IDE shell + Welcome screen
+│   ├── lib/
+│   │   ├── tauri.ts         Tauri invoke() wrappers
+│   │   ├── chat.ts          WebSocket agent client
+│   │   ├── Chat.svelte      chat panel (streaming, confirmation gate)
+│   │   ├── Terminal.svelte  xterm.js + pty bridge
+│   │   ├── editor/          Monaco editor (read/write container files)
+│   │   ├── layout/          ActivityBar, LeftToolPanel, AgentPanel, StatusBar
+│   │   ├── pages/           Files, Nodes, Topics, Network, Library, Terminal
+│   │   ├── modals/          ApiKeyModal, NewPackageModal, CommandPalette
+│   │   └── stores/layout.ts all Svelte stores (runtime state, open files, etc.)
+│   └── main.ts
+├── src-tauri/
 │   ├── src/
-│   │   ├── main.rs
-│   │   ├── lib.rs
-│   │   ├── lima.rs     # limactl wrapper
-│   │   ├── container.rs
-│   │   └── commands.rs
+│   │   ├── lib.rs           Tauri builder, PATH fix, host server auto-spawn
+│   │   ├── lima.rs          limactl VM detect / start / shell_exec
+│   │   ├── container.rs     nerdctl pull / run / exec / bootstrap_agent
+│   │   └── commands.rs      all #[tauri::command] handlers
+│   ├── capabilities/        Tauri 2 permission declarations
+│   ├── icons/               app icons (png, icns, ico)
 │   └── tauri.conf.json
 ├── package.json
 ├── vite.config.ts
-└── index.html
+└── svelte.config.js
 ```
 
-## Day-by-day
+---
 
-- ~~**Day 1** — scaffold: Tauri project structure, placeholder UI.~~ ✓
-- ~~**Day 2** — real Lima VM lifecycle, `nerdctl` container management via `limactl shell`, streaming progress events from Rust → webview.~~ ✓
-- ~~**Day 3** — roscode agent runs inside the container (`python -m roscode.server`), exposed on `ws://localhost:9000`. Chat pane streams tool calls, diffs, and confirmation prompts live.~~ ✓
-- **Day 4** — Monaco editor + Foxglove embed working. Demo recordings.
-- **Day 5** — polish + submit.
+## Key behaviours
 
-See `../CLAUDE.md` for the parent project's rules.
+| Feature | Detail |
+|---|---|
+| **Auto-detect runtime** | On startup, probes port 9000 — skips boot sequence if already live |
+| **Container filesystem** | Files panel reads/writes `/workspace` inside the container directly |
+| **Agent tools** | 37 tools: `ros_graph`, `topic_echo`, `write_source_file`, `package_scaffold`, `workspace_build`, `node_spawn`, … |
+| **Confirmation gate** | Destructive tools (write, build, spawn, kill) require user approval |
+| **E-stop** | `robot_estop` never gated — fires immediately as failsafe |
+| **Safety caps** | Max linear 0.3 m/s, angular 0.5 rad/s — cannot be overridden by prompt |
