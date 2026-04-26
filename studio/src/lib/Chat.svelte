@@ -302,7 +302,7 @@
   <div class="scroll" bind:this={scroller}>
     {#if $chatMessages.length === 0 && !thinking && $apiKeyOk !== false}
       <div class="empty-chat">
-        <img src={nameIconUrl} alt="Agent" class="empty-chat-icon" />
+        <img src={iconUrl} alt="Agent" class="empty-chat-icon" />
         <h3>How can I help you?</h3>
         <p>I can edit files, run shell commands, and interact with the ROS graph.</p>
         <div class="empty-suggestions">
@@ -488,16 +488,16 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 12px 14px;
+    padding: 10px 12px;
     border-bottom: 1px solid var(--border);
     background: var(--bg-1);
     flex-shrink: 0;
   }
   .agent-head .mark {
-    color: var(--accent);
-    width: 28px; height: 28px;
+    width: 32px; height: 32px;
     flex-shrink: 0;
-    margin: 0 4px;
+    object-fit: contain;
+    margin: 0;
   }
   .title-block { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
   .agent-head .title { color: var(--fg-0); font-size: 13px; font-weight: 600; letter-spacing: -.2px; }
@@ -540,7 +540,7 @@
     flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
     padding: 30px 20px; text-align: center; gap: 12px; height: 100%;
   }
-  .empty-chat-icon { width: auto; height: 48px; max-width: 140px; opacity: 0.8; margin-bottom: 8px; filter: drop-shadow(0 4px 12px rgba(242,168,59,.15)); }
+  .empty-chat-icon { width: auto; height: 60px; max-width: 140px; opacity: 0.8; margin-bottom: 12px; filter: drop-shadow(0 4px 12px rgba(242,168,59,.15)); }
   .empty-chat h3 { font-size: 16px; font-weight: 600; color: var(--fg-0); letter-spacing: -0.3px; margin: 0; }
   .empty-chat p { font-size: 12px; color: var(--fg-2); line-height: 1.5; margin: 0 0 8px; }
   .empty-suggestions { display: flex; flex-direction: column; gap: 8px; width: 100%; }
@@ -915,3 +915,4 @@
     color: #c9d1d9; white-space: pre; overflow-x: auto; line-height: 1.5;
   }
 </style>
+yle>

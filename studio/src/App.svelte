@@ -439,12 +439,12 @@
   .brand:hover { background: rgba(255,255,255,0.03); }
   .brand:active { transform: scale(0.96); opacity: 0.8; }
   .brand-icon {
-    height: 28px; width: auto; flex-shrink: 0;
+    height: 30px; width: 30px; flex-shrink: 0; object-fit: contain;
     transition: filter 240ms ease;
   }
   .brand-name {
-    height: 18px; width: auto; flex-shrink: 0; margin-left: 8px;
-    opacity: 0.85;
+    height: 17px; width: auto; flex-shrink: 0; margin-left: 9px;
+    opacity: 0.90;
     transition: filter 240ms ease, opacity 240ms ease;
   }
   .brand:hover .brand-icon { filter: drop-shadow(0 0 10px rgba(242,168,59,.4)); }

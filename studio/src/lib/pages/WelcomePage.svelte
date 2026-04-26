@@ -225,10 +225,10 @@
 
   .brand { display: flex; align-items: center; color: var(--fg-0); }
   .brand-icon {
-    height: 28px; width: auto;
+    height: 30px; width: 30px; object-fit: contain;
   }
   .brand-name {
-    height: 18px; margin-left: 8px; opacity: 0.9;
+    height: 17px; width: auto; margin-left: 9px; opacity: 0.90;
   }
 
   .pill {
@@ -253,10 +253,11 @@
   }
 
   /* ── Headline ── */
-  .headline-block { display: flex; align-items: center; gap: 24px; }
+  .headline-block { display: flex; align-items: center; gap: 28px; }
   .hero-icon {
-    width: auto; height: 100px; max-width: 400px;
+    width: 140px; height: 140px;
     flex-shrink: 0;
+    object-fit: contain;
     filter: drop-shadow(0 8px 32px rgba(242,168,59,.22));
     animation: pop 600ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
   }

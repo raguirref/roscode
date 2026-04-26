@@ -381,7 +381,7 @@
     text-align: center;
   }
   .welcome-logo { pointer-events: none; }
-  .empty-icon { width: auto; height: 80px; max-width: 300px; opacity: 0.15; filter: grayscale(0.6); margin-bottom: 20px; }
+  .empty-icon { width: 160px; height: 160px; object-fit: contain; opacity: 0.12; margin-bottom: 16px; }
   .welcome-sub { font-size: 13px; color: var(--fg-3); font-family: var(--font-mono); letter-spacing: 0.5px; }
   .welcome-hints {
     display: flex;
