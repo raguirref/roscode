@@ -47,7 +47,7 @@ jobs:
 
       - name: Build Tauri app
         working-directory: studio
-        run: cargo tauri build
+        run: pnpm tauri build
         env:
           TAURI_SIGNING_PRIVATE_KEY: ""
 
