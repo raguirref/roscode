@@ -2,7 +2,7 @@
   import { onMount, onDestroy, afterUpdate } from "svelte";
   import { openFiles, activeFile, updateFileContent, closeFile, markFileSaved, workspacePath, type FileTab } from "../stores/layout";
   import { fsWriteFile } from "../tauri";
-  import lockupUrl from "../brand/lockup-roscode.svg";
+  import nameIconUrl from "../brand/name-icon-white.svg";
   import * as monaco from "monaco-editor";
   import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
   import jsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker";
@@ -238,7 +238,7 @@
     <!-- Welcome screen when no file open -->
     <div class="welcome">
       <div class="welcome-logo">
-        <img src={lockupUrl} alt="roscode studio" class="empty-lockup" />
+        <img src={nameIconUrl} alt="roscode" class="empty-icon" />
       </div>
       <p class="welcome-sub">Open a file from the Explorer to start editing</p>
       <div class="welcome-hints">
@@ -380,8 +380,8 @@
     padding: 40px;
     text-align: center;
   }
-  .welcome-logo { opacity: 0.08; mix-blend-mode: overlay; pointer-events: none; }
-  .empty-lockup { width: 380px; height: auto; margin-bottom: 8px; filter: grayscale(1) contrast(0.8); }
+  .welcome-logo { pointer-events: none; }
+  .empty-icon { width: auto; height: 80px; max-width: 300px; opacity: 0.15; filter: grayscale(0.6); margin-bottom: 20px; }
   .welcome-sub { font-size: 13px; color: var(--fg-3); font-family: var(--font-mono); letter-spacing: 0.5px; }
   .welcome-hints {
     display: flex;

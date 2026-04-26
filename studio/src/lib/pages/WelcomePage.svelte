@@ -2,8 +2,9 @@
   import { createEventDispatcher } from "svelte";
   import { recentWorkspaces, addRecentWorkspace } from "../stores/layout";
   import { pickWorkspaceFolder } from "../tauri";
-  import lockupUrl from "../brand/lockup-roscode.svg";
-  import nameUrl from "../brand/name-roscode-studio.svg";
+  import iconUrl from "../brand/icon-dark.svg";
+  import nameIconUrl from "../brand/name-icon-white.svg";
+  import studioNameUrl from "../brand/name-studio-white.svg";
 
   const dispatch = createEventDispatcher<{ open: string }>();
 
@@ -73,7 +74,8 @@
   <!-- ── Header strip ── -->
   <header class="w-header">
     <div class="brand">
-      <img src={nameUrl} alt="roscode studio" class="brand-wordmark" />
+      <img src={iconUrl} alt="roscode" class="brand-icon" />
+      <img src={studioNameUrl} alt="roscode studio" class="brand-name" />
     </div>
     <div style="flex:1"></div>
     <div class="pill ok-pill">SYS READY</div>
@@ -85,9 +87,9 @@
   <div class="w-body">
     <!-- ── Left: main content ── -->
     <div class="w-main">
-      <!-- headline with hero lockup -->
+      <!-- headline with hero icon -->
       <div class="headline-block">
-        <img src={lockupUrl} alt="" class="hero-lockup" />
+        <img src={nameIconUrl} alt="" class="hero-icon" />
         <div class="headline-text">
           <div class="headline-date">// {dateStr} — {timeStr}</div>
           <h1 class="headline">what are we building today?</h1>
@@ -222,9 +224,11 @@
   .w-header > * { -webkit-app-region: no-drag; }
 
   .brand { display: flex; align-items: center; color: var(--fg-0); }
-  .brand-wordmark {
-    height: 18px; width: auto;
-    filter: invert(0.95);
+  .brand-icon {
+    height: 28px; width: auto;
+  }
+  .brand-name {
+    height: 18px; margin-left: 8px; opacity: 0.9;
   }
 
   .pill {
@@ -250,10 +254,10 @@
 
   /* ── Headline ── */
   .headline-block { display: flex; align-items: center; gap: 24px; }
-  .hero-lockup {
-    width: 240px; height: auto;
+  .hero-icon {
+    width: auto; height: 100px; max-width: 400px;
     flex-shrink: 0;
-    filter: drop-shadow(0 8px 32px rgba(242,168,59,.18));
+    filter: drop-shadow(0 8px 32px rgba(242,168,59,.22));
     animation: pop 600ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
   }
   @keyframes pop {

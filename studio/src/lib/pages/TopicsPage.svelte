@@ -19,6 +19,9 @@
   let echoLines: string[] = [];
   let echoLoading = false;
   let pollInterval: ReturnType<typeof setInterval> | null = null;
+  let plotPoints = "";
+  let plotLoading = false;
+  let plotField = "";
 
   $: filteredTopics = topics.filter((t) => {
     if (activeFilter === "live" && t.stale) return false;
@@ -84,13 +87,41 @@
     echoLoading = false;
   }
 
-  // ── Sparkline helpers ───────────────────────────────────────────────────────
-  function sparkPts(amp: number, phase: number): string {
-    return Array.from({ length: 40 }, (_, i) => {
-      const x = (i / 39) * 300;
-      const y = 65 + Math.sin(i * 0.4 + phase) * amp * 0.6 + Math.cos(i * 0.9 + phase) * amp * 0.3;
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    }).join(" ");
+  // ── Plot helpers ─────────────────────────────────────────────────────────────
+  async function loadPlotData(topic: Topic) {
+    if (!$isRuntimeReady) return;
+    plotLoading = true;
+    plotPoints = "";
+    plotField = "";
+    try {
+      const raw = await rosCallTool("topic_sample", { topic: topic.name, duration_sec: 4.0 });
+      const nums: number[] = [];
+      let foundField = "";
+      for (const line of raw.split("\n")) {
+        const m = line.match(/^(\s*)(\w+):\s*(-?[\d.]+(?:e[+-]?\d+)?)\s*$/);
+        if (m && !m[2].includes("sec") && !m[2].includes("nanosec") && !m[2].includes("stamp")) {
+          const v = parseFloat(m[3]);
+          if (isFinite(v)) {
+            nums.push(v);
+            if (!foundField) foundField = m[2];
+          }
+        }
+      }
+      if (nums.length >= 2) {
+        plotField = foundField;
+        const min = Math.min(...nums);
+        const max = Math.max(...nums);
+        const range = max - min || 1;
+        plotPoints = nums.map((v, i) => {
+          const x = ((i / (nums.length - 1)) * 290 + 5).toFixed(1);
+          const y = (115 - ((v - min) / range) * 100).toFixed(1);
+          return `${x},${y}`;
+        }).join(" ");
+      }
+    } catch (e) {
+      console.error("topic_sample failed:", e);
+    }
+    plotLoading = false;
   }
 
   // ── Lifecycle ───────────────────────────────────────────────────────────────
@@ -145,7 +176,7 @@
           <button
             class="topic-row"
             class:sel={selected === t}
-            on:click={() => { selected = t; loadHz(t); }}
+            on:click={() => { selected = t; loadHz(t); loadPlotData(t); }}
           >
             <div class="dot {t.stale ? 'warn' : 'ok'}"></div>
             <div class="topic-info">
@@ -185,20 +216,30 @@
         <button class="btn-sm" on:click={() => { if (selected) loadHz(selected); }}>↻ hz</button>
       </div>
 
-      <!-- live plot (animated, decorative) -->
+      <!-- live plot (real data via topic_sample) -->
       <div class="panel plot-panel">
         <div class="panel-header">
-          <span class="mono-label">PLOT · 10s</span>
-          <div style="display:flex;gap:10px">
-            <span class="legend"><span class="leg-line amber"></span>field.x</span>
-            <span class="legend"><span class="leg-line teal dashed"></span>field.z</span>
-          </div>
+          <span class="mono-label">LIVE PLOT</span>
+          {#if plotField}
+            <span class="legend"><span class="leg-line amber"></span>{plotField}</span>
+          {/if}
+          <div style="flex:1"></div>
+          <button class="btn-sm" on:click={() => { if (selected) loadPlotData(selected); }} disabled={plotLoading}>
+            {plotLoading ? "sampling…" : "↻ sample"}
+          </button>
         </div>
-        <div class="plot-area">
-          <svg viewBox="0 0 300 130" width="100%" height="100%" preserveAspectRatio="none">
-            <polyline points={sparkPts(34, 0)} fill="none" stroke="#f2a83b" stroke-width="1.5"/>
-            <polyline points={sparkPts(22, 1.2)} fill="none" stroke="#6dd3c8" stroke-width="1.2" stroke-dasharray="3 2"/>
-          </svg>
+        <div class="plot-area" style="position:relative">
+          {#if !$isRuntimeReady}
+            <div class="plot-overlay">No ROS connection</div>
+          {:else if plotLoading}
+            <div class="plot-overlay">Sampling 4s of data…</div>
+          {:else if !plotPoints}
+            <div class="plot-overlay">Click ↻ sample to load live data</div>
+          {:else}
+            <svg viewBox="0 0 300 130" width="100%" height="100%" preserveAspectRatio="none">
+              <polyline points={plotPoints} fill="none" stroke="#f2a83b" stroke-width="1.5"/>
+            </svg>
+          {/if}
         </div>
       </div>
 
@@ -235,16 +276,15 @@
             </div>
           </div>
           <div class="panel">
-            <div class="panel-header"><span class="mono-label">RATE · 60s</span></div>
+            <div class="panel-header"><span class="mono-label">PUBLISH RATE</span></div>
             <div class="rate-area">
-              <svg viewBox="0 0 300 60" width="100%" height="60" preserveAspectRatio="none">
-                <path d="M 0 30 L 30 25 L 60 28 L 90 15 L 120 20 L 150 10 L 180 25 L 210 18 L 240 22 L 270 12 L 300 18"
-                  fill="none" stroke="#f2a83b" stroke-width="1.2"/>
-              </svg>
-              {#if selected.hz !== null}
-                <div class="rate-pills">
-                  <span class="pill">AVG {selected.hz.toFixed(1)}</span>
-                </div>
+              {#if selected.hz === null}
+                <div class="rate-hint">Click ↻ hz to measure</div>
+              {:else if selected.hz === 0}
+                <div class="rate-hint warn">No publishers detected</div>
+              {:else}
+                <div class="rate-big">{selected.hz.toFixed(1)}<span class="rate-unit">Hz</span></div>
+                <div class="rate-hint">avg publish rate</div>
               {/if}
             </div>
           </div>
@@ -334,7 +374,11 @@
   .crumb-current { font-family:var(--font-mono); font-size:16px; color:var(--fg-0); }
 
   .plot-panel { flex-shrink:0; }
-  .plot-area { height:128px; position:relative; overflow:hidden; }
+  .plot-area { height:128px; overflow:hidden; }
+  .plot-overlay {
+    height:100%; display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-mono); font-size:11px; color:var(--fg-3); letter-spacing:.5px;
+  }
   .legend { display:inline-flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:10px; color:var(--fg-1); }
   .leg-line { width:10px; height:2px; flex-shrink:0; }
   .leg-line.amber { background:#f2a83b; }
@@ -352,8 +396,11 @@
   .pubsub-area { padding:8px 14px; font-family:var(--font-mono); font-size:11px; }
   .ps-label { font-size:9px; color:var(--fg-2); letter-spacing:1px; text-transform:uppercase; }
   .ps-item { padding:2px 0; color:var(--fg-0); }
-  .rate-area { padding:10px 14px; }
-  .rate-pills { display:flex; gap:5px; margin-top:6px; }
+  .rate-area { padding:14px 16px; display:flex; flex-direction:column; gap:6px; align-items:center; justify-content:center; height:calc(100% - 38px); }
+  .rate-big { font-size:28px; font-weight:700; color:var(--accent); font-family:var(--font-mono); line-height:1; }
+  .rate-unit { font-size:13px; font-weight:400; margin-left:4px; color:var(--fg-2); }
+  .rate-hint { font-family:var(--font-mono); font-size:10px; color:var(--fg-3); }
+  .rate-hint.warn { color:var(--warn); }
 
   .btn-sm { padding:5px 10px; font-size:10px; letter-spacing:.4px; text-transform:uppercase; border-radius:var(--radius-sm); }
 </style>

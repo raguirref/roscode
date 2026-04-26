@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { chatMessages, chatSessionActive } from "../stores/layout";
+  import { chatMessages, chatSessionActive, runtimeStatus } from "../stores/layout";
   import { rightPanelOpen } from "../stores/layout";
+  import { containerExec } from "../tauri";
 
   interface Pkg {
     id: string;
@@ -43,6 +44,10 @@
   let activeCategory: Cat = "all";
   let selected: Pkg = registry[0];
   let installToast = "";
+  let installToastKind: "ok" | "err" | "info" = "info";
+  let installing = "";   // pkg id currently installing
+
+  $: isRuntimeReady = $runtimeStatus.kind === "ready";
 
   $: filtered = registry.filter((p) => {
     const matchCat = activeCategory === "all" || p.category === activeCategory;
@@ -59,16 +64,43 @@
 
   $: if (filtered.length && !filtered.includes(selected)) selected = filtered[0];
 
-  function install(pkg: Pkg) {
+  function toast(msg: string, kind: "ok" | "err" | "info" = "info", ms = 4000) {
+    installToast = msg;
+    installToastKind = kind;
+    if (ms > 0) setTimeout(() => (installToast = ""), ms);
+  }
+
+  async function install(pkg: Pkg) {
+    if (!isRuntimeReady) {
+      toast("Start the ROS runtime first (▶ START ROS)", "err");
+      return;
+    }
+    if (!pkg.apt) {
+      // Source install — too complex for a one-liner, delegate to agent
+      askAgent(pkg);
+      return;
+    }
+
+    installing = pkg.id;
+    toast(`Installing ${pkg.name}…`, "info", 0);
+    try {
+      await containerExec(`apt-get update -qq && apt-get install -y ${pkg.apt}`);
+      toast(`✓ ${pkg.name} installed successfully`, "ok");
+    } catch (e) {
+      toast(`✗ Install failed: ${String(e).slice(0, 120)}`, "err");
+    } finally {
+      installing = "";
+    }
+  }
+
+  function askAgent(pkg: Pkg) {
     const prompt = pkg.apt
       ? `Install the ROS 2 package ${pkg.name} (apt: ${pkg.apt}) in the ROS container and verify it installed correctly.`
       : `Install the ROS 2 package ${pkg.name} from source (repo: ${pkg.repo}) in the container workspace.`;
-
     chatMessages.update((ms) => [...ms, { kind: "user", text: prompt }]);
     chatSessionActive.set(false);
     rightPanelOpen.set(true);
-    installToast = `Queued install of ${pkg.name} — see Agent panel →`;
-    setTimeout(() => (installToast = ""), 3000);
+    toast(`Sent to agent — see Agent panel →`, "info");
   }
 
   function catCount(cat: string) {
@@ -156,21 +188,30 @@
           </div>
         </div>
         <div class="pkg-actions">
-          <button class="install-btn" on:click={() => install(selected)}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16l-6-6h4V4h4v6h4l-6 6z"/><rect x="4" y="18" width="16" height="2" rx="1"/></svg>
-            INSTALL
+          <button
+            class="install-btn"
+            class:busy={installing === selected.id}
+            disabled={installing === selected.id}
+            on:click={() => install(selected)}
+          >
+            {#if installing === selected.id}
+              <span class="spin"></span> INSTALLING…
+            {:else}
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16l-6-6h4V4h4v6h4l-6 6z"/><rect x="4" y="18" width="16" height="2" rx="1"/></svg>
+              {selected.apt ? "INSTALL" : "INSTALL (SOURCE)"}
+            {/if}
           </button>
           {#if selected.apt}
             <div class="apt-label">apt: {selected.apt}</div>
           {:else}
-            <div class="apt-label src">source install</div>
+            <div class="apt-label src">source install — via agent</div>
           {/if}
         </div>
       </div>
 
       <!-- toast -->
       {#if installToast}
-        <div class="toast">{installToast}</div>
+        <div class="toast" data-kind={installToastKind}>{installToast}</div>
       {/if}
 
       <!-- description -->
@@ -221,7 +262,7 @@
       <div class="agent-cta">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5"><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="var(--accent)"/></svg>
         <span class="cta-text">Let the agent install and configure <strong>{selected.name}</strong> for your workspace</span>
-        <button class="cta-btn" on:click={() => install(selected)}>Ask Agent →</button>
+        <button class="cta-btn" on:click={() => askAgent(selected)}>Ask Agent →</button>
       </div>
     {/if}
   </div>
@@ -313,18 +354,30 @@
     padding:7px 14px; background:var(--accent); color:#1a1408;
     border:1px solid var(--accent); border-radius:var(--radius);
     font-family:var(--font-mono); font-size:10px; font-weight:600; letter-spacing:.5px;
-    cursor:pointer; white-space:nowrap;
+    cursor:pointer; white-space:nowrap; transition: opacity 150ms;
   }
-  .install-btn:hover { opacity:.9; }
+  .install-btn:hover:not(:disabled) { opacity:.9; }
+  .install-btn:disabled { opacity:.5; cursor:default; }
+  .install-btn.busy { background: var(--bg-3); color: var(--accent); border-color: var(--accent-line); }
   .apt-label { font-family:var(--font-mono); font-size:9px; color:var(--fg-3); text-align:right; }
   .apt-label.src { color:var(--warn); }
 
-  .toast {
-    background:rgba(139,195,74,.12); border:1px solid rgba(139,195,74,.3);
-    border-radius:var(--radius); padding:8px 14px;
-    font-family:var(--font-mono); font-size:11px; color:var(--ok);
-    animation:fadein .15s ease;
+  .spin {
+    display:inline-block; width:10px; height:10px;
+    border:2px solid rgba(76,201,240,.3); border-top-color:var(--accent);
+    border-radius:50%; animation:spin .7s linear infinite;
   }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .toast {
+    border-radius:var(--radius); padding:8px 14px;
+    font-family:var(--font-mono); font-size:11px;
+    animation:fadein .15s ease;
+    background:rgba(139,195,74,.1); border:1px solid rgba(139,195,74,.25); color:var(--ok);
+  }
+  .toast[data-kind="ok"]   { background:rgba(139,195,74,.1);  border-color:rgba(139,195,74,.3);  color:var(--ok);   }
+  .toast[data-kind="err"]  { background:rgba(224,102,102,.1); border-color:rgba(224,102,102,.3); color:var(--err);  }
+  .toast[data-kind="info"] { background:rgba(76,201,240,.08); border-color:rgba(76,201,240,.2);  color:var(--accent);}
   @keyframes fadein { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }
 
   .panel { background:var(--bg-2); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }

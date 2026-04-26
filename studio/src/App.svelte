@@ -19,6 +19,7 @@
     leftPanelWidth,
     rightPanelWidth,
     bottomPanelHeight,
+    activeBottomTab,
   } from "./lib/stores/layout";
 
   import Splash from "./lib/Splash.svelte";
@@ -46,7 +47,8 @@
   import ApiKeyModal from "./lib/modals/ApiKeyModal.svelte";
   import { showApiKeyModal, apiKeyOk } from "./lib/modals/apiKeyState";
   import { apiKeyStatus } from "./lib/tauri";
-  import lockupUrl from "./lib/brand/lockup-roscode.svg";
+  import iconUrl from "./lib/brand/icon-dark.svg";
+  import studioNameUrl from "./lib/brand/name-studio-white.svg";
 
   // ── State ──────────────────────────────────────────────────────────────────
   let splashDone = false;
@@ -161,9 +163,10 @@
 
     <!-- ════ HEADER ════ -->
     <header class="ide-header">
-      <!-- brand (wordmark) -->
+      <!-- brand: icon + studio name -->
       <button class="brand" on:click={() => activePage.set("home")} title="Home">
-        <img src={lockupUrl} alt="roscode studio" class="brand-mark-full" />
+        <img src={iconUrl} alt="roscode" class="brand-icon" />
+        <img src={studioNameUrl} alt="roscode studio" class="brand-name" />
       </button>
 
       {#if localWorkspacePath}
@@ -413,7 +416,7 @@
   .ide-header {
     height: var(--header-height);
     display: flex; align-items: center; gap: 10px;
-    padding: 0 14px;
+    padding: 0 14px 0 2px;
     background: var(--bg-1); border-bottom: 1px solid var(--border);
     flex-shrink: 0; position: relative;
     -webkit-app-region: drag;
@@ -435,11 +438,17 @@
   }
   .brand:hover { background: rgba(255,255,255,0.03); }
   .brand:active { transform: scale(0.96); opacity: 0.8; }
-  .brand-mark-full {
-    height: 18px; width: auto; flex-shrink: 0;
+  .brand-icon {
+    height: 28px; width: auto; flex-shrink: 0;
     transition: filter 240ms ease;
   }
-  .brand:hover .brand-mark-full { filter: drop-shadow(0 0 12px rgba(242,168,59,.3)); }
+  .brand-name {
+    height: 18px; width: auto; flex-shrink: 0; margin-left: 8px;
+    opacity: 0.85;
+    transition: filter 240ms ease, opacity 240ms ease;
+  }
+  .brand:hover .brand-icon { filter: drop-shadow(0 0 10px rgba(242,168,59,.4)); }
+  .brand:hover .brand-name { opacity: 1; filter: drop-shadow(0 0 8px rgba(242,168,59,.2)); }
 
   .ws-chip {
     display: flex; align-items: center; gap: 6px;

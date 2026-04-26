@@ -21,6 +21,7 @@ setup(
         'console_scripts': [
             'odometry_node = simple_odometry.odometry_node:main',
             'fake_imu = simple_odometry.fake_imu:main',
+            'cmd_vel_listener = simple_odometry.cmd_vel_listener:main',
         ],
     },
 )

@@ -124,6 +124,8 @@ export type ChatMessage =
   | { kind: "tool_result"; name: string; result: string; isError: boolean }
   | { kind: "agent"; text: string }
   | { kind: "error"; text: string }
+  | { kind: "session_complete"; durationSec: number }
+  | { kind: "files_summary"; files: Array<{ path: string; name: string; added: number; removed: number }> }
   | {
       kind: "confirm";
       id: string;

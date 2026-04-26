@@ -39,3 +39,5 @@ builds, spawns, and verifies `/obstacle_detected`.
 Both demos are **scaffolded only** at this stage. The workspaces and
 setup scripts are placeholders — Task 8 of the project brief fleshes
 them out with real ROS 2 packages and launch files.
+
+-------

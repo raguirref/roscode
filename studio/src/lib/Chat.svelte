@@ -9,8 +9,10 @@
     type ChatMessage,
   } from "./stores/layout";
   import { apiKeyOk, showApiKeyModal } from "./modals/apiKeyState";
-  import { apiKeyStatus } from "./tauri";
-  import iconUrl from "./brand/icon.svg";
+  import { apiKeyStatus, fsWriteFile, fsReadFile } from "./tauri";
+  import { openFile, activePage } from "./stores/layout";
+  import iconUrl from "./brand/icon-dark.svg";
+  import nameIconUrl from "./brand/name-icon-white.svg";
 
   export let port: number;
   export let workspace: string;
@@ -29,6 +31,12 @@
   let thinking = false;
   let scroller: HTMLDivElement;
   let reasoningExpanded: Record<number, boolean> = {};
+  let sessionStartTime: number | null = null;
+  let reasoningCollector: string[] = [];
+
+  const shellTools = new Set([
+    "workspace_build", "node_spawn", "node_kill", "package_scaffold", "relay_autotune",
+  ]);
 
   let client: AgentClient;
 
@@ -86,6 +94,7 @@
         break;
       case "reasoning":
         chatMessages.update((ms) => [...ms, { kind: "reasoning", text: ev.text }]);
+        reasoningCollector.push(ev.text);
         break;
       case "tool_call":
         chatMessages.update((ms) => [...ms, { kind: "tool_call", name: ev.name, args: ev.args }]);
@@ -112,14 +121,42 @@
       case "agent_message":
         chatMessages.update((ms) => [...ms, { kind: "agent", text: ev.text }]);
         break;
-      case "session_end":
+      case "session_end": {
         chatSessionActive.set(false);
         thinking = false;
+        const durationSec = sessionStartTime ? Math.round((Date.now() - sessionStartTime) / 1000) : 0;
+        sessionStartTime = null;
+        chatMessages.update((ms) => [...ms, { kind: "session_complete", durationSec }]);
+        // Files modified summary
+        chatMessages.update((ms) => {
+          const confirmed = ms.filter(
+            (m): m is Extract<ChatMessage, { kind: "confirm" }> =>
+              m.kind === "confirm" && m.name === "write_source_file" && m.resolved === "approved"
+          );
+          if (confirmed.length === 0) return ms;
+          const files = confirmed.map((m) => {
+            const lines = (m.diffPreview ?? "").split("\n");
+            const added = lines.filter((l) => l.startsWith("+") && !l.startsWith("+++")).length;
+            const removed = lines.filter((l) => l.startsWith("-") && !l.startsWith("---")).length;
+            const path = String(m.args?.file_path ?? m.args?.path ?? "");
+            return { path, name: path.split("/").pop() ?? path, added, removed };
+          });
+          return [...ms, { kind: "files_summary", files }];
+        });
+        // Auto-save reasoning
+        if (reasoningCollector.length > 0 && workspace) {
+          const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+          const md = `# Agent Reasoning Log\nDate: ${new Date().toLocaleString()}\nDuration: ${durationSec}s\n\n---\n\n${reasoningCollector.join("\n\n---\n\n")}`;
+          fsWriteFile(`${workspace}/.roscode-thoughts-${ts}.md`, md).catch(() => {});
+          reasoningCollector = [];
+        }
         break;
+      }
       case "error":
         chatMessages.update((ms) => [...ms, { kind: "error", text: ev.message }]);
         chatSessionActive.set(false);
         thinking = false;
+        sessionStartTime = null;
         break;
     }
     tick().then(() => scroller?.scrollTo({ top: scroller.scrollHeight }));
@@ -131,6 +168,8 @@
     chatMessages.update((ms) => [...ms, { kind: "user", text }]);
     input = "";
     chatSessionActive.set(true);
+    sessionStartTime = Date.now();
+    reasoningCollector = [];
     client.sendPrompt({ text, workspace });
   }
 
@@ -175,6 +214,40 @@
       return `<${value.length} chars, ${n} lines> "${preview}"`;
     }
     return JSON.stringify(value);
+  }
+
+  async function openFileFromChat(path: string) {
+    if (!path) return;
+    try {
+      const content = await fsReadFile(path);
+      const name = path.split("/").pop() ?? path;
+      const ext = name.split(".").pop() ?? "";
+      const langMap: Record<string, string> = {
+        py: "python", cpp: "cpp", h: "cpp", hpp: "cpp",
+        xml: "xml", yaml: "yaml", yml: "yaml", json: "json",
+      };
+      openFile({ path, name, content, language: langMap[ext] ?? "plaintext", dirty: false });
+      activePage.set("files");
+    } catch (e) {
+      console.error("openFileFromChat failed:", e);
+    }
+  }
+
+  function renderMarkdown(text: string): string {
+    let out = text
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    // Fenced code blocks
+    out = out.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+      const label = lang ? `<span class="code-lang">${lang}</span>` : "";
+      return `<div class="code-fence">${label}<pre class="code-pre">${code.trim()}</pre></div>`;
+    });
+    // Inline formatting
+    out = out
+      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+      .replace(/\*(.+?)\*/g, "<em>$1</em>")
+      .replace(/`([^`]+)`/g, "<code>$1</code>")
+      .replace(/\n/g, "<br>");
+    return out;
   }
 
   function parseDiffLine(line: string): "add" | "remove" | "hunk" | "meta" | "normal" {
@@ -229,7 +302,7 @@
   <div class="scroll" bind:this={scroller}>
     {#if $chatMessages.length === 0 && !thinking && $apiKeyOk !== false}
       <div class="empty-chat">
-        <img src={iconUrl} alt="Agent" class="empty-chat-icon" />
+        <img src={nameIconUrl} alt="Agent" class="empty-chat-icon" />
         <h3>How can I help you?</h3>
         <p>I can edit files, run shell commands, and interact with the ROS graph.</p>
         <div class="empty-suggestions">
@@ -277,15 +350,26 @@
         </div>
 
       {:else if m.kind === "tool_result"}
-        <pre class="msg tool-result" class:error={m.isError}>
+        {#if shellTools.has(m.name)}
+          <div class="msg tool-terminal" class:t-error={m.isError}>
+            <div class="tt-header">
+              <span class="tt-prompt">$</span>
+              <span class="tt-cmd">{m.name.replace(/_/g, " ")}</span>
+              {#if m.isError}<span class="tt-badge tt-err">ERROR</span>{:else}<span class="tt-badge tt-ok">OK</span>{/if}
+            </div>
+            <pre class="tt-output">{m.result.length > 2000 ? m.result.slice(0, 2000) + "\n…(truncated)" : m.result}</pre>
+          </div>
+        {:else}
+          <pre class="msg tool-result" class:error={m.isError}>
 {m.isError ? "✗ " : "✓ "}{m.name}
 
 {m.result.length > 1200 ? m.result.slice(0, 1200) + "\n…(truncated)" : m.result}</pre>
+        {/if}
 
       {:else if m.kind === "agent"}
         <div class="msg agent">
           <span class="who">&gt; AGENT</span>
-          <span class="text-bubble">{m.text}</span>
+          <span class="text-bubble">{@html renderMarkdown(m.text)}</span>
         </div>
 
       {:else if m.kind === "confirm"}
@@ -324,6 +408,31 @@
           {/if}
         </div>
 
+      {:else if m.kind === "session_complete"}
+        <div class="msg session-complete">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Worked for {m.durationSec}s
+        </div>
+
+      {:else if m.kind === "files_summary"}
+        <div class="msg files-summary">
+          <div class="fs-header">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <span class="fs-label">Files Modified · {m.files.length}</span>
+          </div>
+          {#each m.files as f}
+            <button class="fs-row" on:click={() => openFileFromChat(f.path)} title="Open {f.path}">
+              <span class="fs-badge">M+</span>
+              <span class="fs-name">{f.name}</span>
+              <span class="fs-path">{workspace ? f.path.replace(workspace, "…") : f.path}</span>
+              <span class="fs-stats">
+                {#if f.added > 0}<span class="fs-add">+{f.added}</span>{/if}
+                {#if f.removed > 0}<span class="fs-rem">-{f.removed}</span>{/if}
+              </span>
+            </button>
+          {/each}
+        </div>
+
       {:else if m.kind === "error"}
         <div class="msg error">⚠ {m.text}</div>
       {/if}
@@ -341,10 +450,7 @@
         <option>Plan Mode</option>
         <option>Chat Only</option>
       </select>
-      <select class="model-select" title="Model">
-        <option>Claude Opus 4.7</option>
-        <option>Claude 3.7 Sonnet</option>
-      </select>
+      <span class="model-badge" title="Model">CLAUDE OPUS 4.7</span>
     </div>
     <div class="input-wrap">
       <span class="prompt">❯</span>
@@ -389,9 +495,9 @@
   }
   .agent-head .mark {
     color: var(--accent);
-    width: 24px; height: 24px;
+    width: 28px; height: 28px;
     flex-shrink: 0;
-    margin-left: -2px;
+    margin: 0 4px;
   }
   .title-block { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
   .agent-head .title { color: var(--fg-0); font-size: 13px; font-weight: 600; letter-spacing: -.2px; }
@@ -434,7 +540,7 @@
     flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
     padding: 30px 20px; text-align: center; gap: 12px; height: 100%;
   }
-  .empty-chat-icon { width: 48px; height: 48px; opacity: 0.8; margin-bottom: 8px; filter: drop-shadow(0 4px 12px rgba(242,168,59,.15)); }
+  .empty-chat-icon { width: auto; height: 48px; max-width: 140px; opacity: 0.8; margin-bottom: 8px; filter: drop-shadow(0 4px 12px rgba(242,168,59,.15)); }
   .empty-chat h3 { font-size: 16px; font-weight: 600; color: var(--fg-0); letter-spacing: -0.3px; margin: 0; }
   .empty-chat p { font-size: 12px; color: var(--fg-2); line-height: 1.5; margin: 0 0 8px; }
   .empty-suggestions { display: flex; flex-direction: column; gap: 8px; width: 100%; }
@@ -492,14 +598,40 @@
     padding: 0;
   }
   .msg.agent .who { color: var(--fg-2); }
-  .msg.agent .text-bubble { 
-    color: var(--fg-1); 
-    font-family: var(--font-sans); 
+  .msg.agent .text-bubble {
+    color: var(--fg-1);
+    font-family: var(--font-sans);
     display: block;
     background: rgba(255,255,255,0.02);
     border: 1px solid rgba(255,255,255,0.03);
     padding: 12px 16px;
     border-radius: 12px;
+    line-height: 1.65;
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+  .msg.agent .text-bubble :global(strong) { font-weight: 700; color: var(--fg-0); }
+  .msg.agent .text-bubble :global(em) { font-style: italic; color: var(--fg-1); }
+  .msg.agent .text-bubble :global(code) {
+    font-family: var(--font-mono); font-size: 11.5px;
+    background: var(--bg-3); border: 1px solid var(--border);
+    padding: 1px 5px; border-radius: 4px; color: var(--accent);
+    word-break: break-all;
+  }
+  .msg.agent .text-bubble :global(.code-fence) {
+    margin: 10px 0; border-radius: 6px; overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .msg.agent .text-bubble :global(.code-lang) {
+    display: block; font-family: var(--font-mono); font-size: 9px;
+    color: var(--fg-2); padding: 4px 12px; background: var(--bg-3);
+    text-transform: uppercase; letter-spacing: 1px;
+    border-bottom: 1px solid var(--border);
+  }
+  .msg.agent .text-bubble :global(.code-pre) {
+    display: block; margin: 0; padding: 10px 12px;
+    background: #050706; font-family: var(--font-mono); font-size: 11.5px;
+    color: #c9d1d9; white-space: pre; overflow-x: auto; line-height: 1.5;
   }
 
   .msg.status { color: var(--fg-3); font-size: 11px; font-family: var(--font-mono); opacity: 0.8; }
@@ -667,6 +799,12 @@
     outline: none; transition: all 150ms;
   }
   .composer-top select:hover { border-color: var(--accent-line); color: var(--fg-0); background: var(--bg-3); }
+  .model-badge {
+    font-family: var(--font-mono); font-size: 9px; text-transform: uppercase;
+    letter-spacing: 0.8px; color: var(--accent); padding: 4px 10px;
+    border: 1px solid var(--accent-line); border-radius: 6px;
+    background: var(--accent-dim); user-select: none;
+  }
   .input-wrap { 
     display: flex; gap: 10px; align-items: flex-end; 
     background: var(--bg-0); border: 1px solid var(--border-bright);
@@ -682,7 +820,8 @@
     flex: 1; resize: none; min-height: 24px; max-height: 160px;
     font-family: var(--font-sans); font-size: 13px; background: transparent;
     color: var(--fg-0); border: none; padding: 4px 0;
-    outline: none; line-height: 1.5;
+    outline: none; box-shadow: none; -webkit-appearance: none; appearance: none;
+    line-height: 1.5;
   }
   .input-wrap textarea:disabled { opacity: 0.5; }
   .input-wrap button { 
@@ -695,4 +834,84 @@
   }
   .input-wrap button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
   .input-wrap button:disabled { opacity: 0.3; filter: grayscale(1); cursor: default; }
+
+  /* ── Session complete ── */
+  .msg.session-complete {
+    align-self: flex-end; display: flex; align-items: center; gap: 5px;
+    font-family: var(--font-mono); font-size: 10px; color: var(--fg-3);
+    letter-spacing: 0.3px; padding: 4px 0;
+  }
+
+  /* ── Files summary ── */
+  .msg.files-summary {
+    align-self: stretch;
+    background: var(--bg-2); border: 1px solid var(--border);
+    border-radius: 10px; overflow: hidden;
+  }
+  .fs-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 14px; border-bottom: 1px solid var(--border);
+  }
+  .fs-label {
+    font-family: var(--font-mono); font-size: 10px; color: var(--fg-2);
+    letter-spacing: 1px; text-transform: uppercase;
+  }
+  .fs-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 14px; border-bottom: 1px solid var(--border);
+    background: transparent; border-left: 2px solid transparent;
+    cursor: pointer; width: 100%; text-align: left; border-radius: 0;
+    transition: background 80ms;
+  }
+  .fs-row:last-child { border-bottom: none; }
+  .fs-row:hover { background: var(--bg-3); border-left-color: var(--accent); border-color: var(--border); }
+  .fs-badge {
+    font-family: var(--font-mono); font-size: 9px; font-weight: 700;
+    padding: 2px 5px; background: rgba(242,168,59,.12); color: var(--accent);
+    border: 1px solid var(--accent-line); border-radius: 3px; flex-shrink: 0;
+  }
+  .fs-name { font-family: var(--font-mono); font-size: 12px; color: var(--fg-0); flex-shrink: 0; font-weight: 500; }
+  .fs-path { font-family: var(--font-mono); font-size: 10px; color: var(--fg-3); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fs-stats { display: flex; gap: 6px; flex-shrink: 0; }
+  .fs-add { font-family: var(--font-mono); font-size: 11px; color: var(--ok); }
+  .fs-rem { font-family: var(--font-mono); font-size: 11px; color: var(--err); }
+
+  /* ── Terminal tool result ── */
+  .msg.tool-terminal {
+    background: #050706; border: 1px solid var(--border);
+    border-left: 3px solid var(--ok); border-radius: 8px; overflow: hidden;
+  }
+  .msg.tool-terminal.t-error { border-left-color: var(--err); }
+  .tt-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 12px; border-bottom: 1px solid rgba(255,255,255,0.04);
+    background: rgba(255,255,255,0.015);
+  }
+  .tt-prompt { font-family: var(--font-mono); font-size: 13px; color: var(--ok); }
+  .tt-cmd { font-family: var(--font-mono); font-size: 11px; color: var(--fg-1); flex: 1; letter-spacing: 0.3px; }
+  .tt-badge { font-family: var(--font-mono); font-size: 9px; padding: 2px 6px; border-radius: 3px; }
+  .tt-ok { color: var(--ok); border: 1px solid rgba(139,195,74,.3); }
+  .tt-err { color: var(--err); border: 1px solid rgba(224,102,102,.3); }
+  .tt-output {
+    margin: 0; padding: 10px 14px; font-family: var(--font-mono); font-size: 11px;
+    color: var(--fg-2); white-space: pre-wrap; max-height: 320px; overflow: auto;
+    line-height: 1.55;
+  }
+
+  /* ── Markdown code fences inside agent bubbles ── */
+  .msg.agent .text-bubble :global(.code-fence) {
+    margin: 10px 0; border-radius: 6px; overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .msg.agent .text-bubble :global(.code-lang) {
+    display: block; font-family: var(--font-mono); font-size: 9px;
+    color: var(--fg-2); padding: 4px 12px; background: var(--bg-3);
+    text-transform: uppercase; letter-spacing: 1px;
+    border-bottom: 1px solid var(--border);
+  }
+  .msg.agent .text-bubble :global(.code-pre) {
+    display: block; margin: 0; padding: 10px 12px;
+    background: #050706; font-family: var(--font-mono); font-size: 11.5px;
+    color: #c9d1d9; white-space: pre; overflow-x: auto; line-height: 1.5;
+  }
 </style>

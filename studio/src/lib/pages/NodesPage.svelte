@@ -165,7 +165,7 @@
               <div class="conn-side">
                 <div class="side-label">// SUBS · {String(subs.length).padStart(2, "0")}</div>
                 {#if subs.length === 0 && !detailLoading}
-                  <div class="conn-empty">none</div>
+                  <div class="conn-empty">no subscribers</div>
                 {:else}
                   {#each subs as s}
                     <div class="conn-box">
@@ -209,7 +209,7 @@
               <div class="conn-side">
                 <div class="side-label teal">// PUBS · {String(pubs.length).padStart(2, "0")}</div>
                 {#if pubs.length === 0 && !detailLoading}
-                  <div class="conn-empty">none</div>
+                  <div class="conn-empty">no publishers</div>
                 {:else}
                   {#each pubs as p}
                     <div class="conn-box">
