@@ -1,7 +1,7 @@
 {
   "name": "roscode",
   "displayName": "roscode studio",
-  "description": "AI-native IDE for ROS 2 \u2014 Claude Opus 4.7 + network discovery + live node graph",
+  "description": "AI-native IDE for ROS 2 — Claude Opus 4.7 + network discovery + live node graph",
   "version": "0.1.0",
   "publisher": "roscode",
   "license": "MIT",
@@ -27,47 +27,22 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "roscode-home",
-          "title": "HOM · home",
-          "icon": "media/icon-home.svg"
-        },
-        {
-          "id": "roscode-network",
-          "title": "NET · network",
-          "icon": "media/icon-network.svg"
-        },
-        {
-          "id": "roscode-graph",
-          "title": "GRF · graph",
-          "icon": "media/icon-graph.svg"
-        },
-        {
-          "id": "roscode-nodes",
-          "title": "NOD · nodes",
+          "id": "roscode-inspector",
+          "title": "ROS Inspector — nodes + topics",
           "icon": "media/icon-nodes.svg"
         },
         {
-          "id": "roscode-topics",
-          "title": "TOP · topics",
-          "icon": "media/icon-topics.svg"
-        },
-        {
-          "id": "roscode-plot",
-          "title": "PLT · plot",
-          "icon": "media/icon-plot.svg"
+          "id": "roscode-network",
+          "title": "Network — robot discovery",
+          "icon": "media/icon-network.svg"
         },
         {
           "id": "roscode-library",
-          "title": "LIB · library",
+          "title": "Library — ROS packages",
           "icon": "media/icon-library.svg"
-        },
-        {
-          "id": "roscode-terminal",
-          "title": "TRM · terminal",
-          "icon": "media/icon-terminal.svg"
         }
       ],
-      "panel": [
+      "auxiliarybar": [
         {
           "id": "roscode-agent",
           "title": "AGENT · CLAUDE",
@@ -76,56 +51,28 @@
       ]
     },
     "views": {
-      "roscode-home": [
+      "roscode-inspector": [
         {
-          "id": "roscode.home",
-          "name": "home",
-          "type": "webview"
+          "id": "roscode.nodes",
+          "name": "NODES",
+          "order": 1
+        },
+        {
+          "id": "roscode.topics",
+          "name": "TOPICS",
+          "order": 2
         }
       ],
       "roscode-network": [
         {
           "id": "roscode.network",
-          "name": "network"
-        }
-      ],
-      "roscode-graph": [
-        {
-          "id": "roscode.graph",
-          "name": "graph",
-          "type": "webview"
-        }
-      ],
-      "roscode-nodes": [
-        {
-          "id": "roscode.nodes",
-          "name": "nodes"
-        }
-      ],
-      "roscode-topics": [
-        {
-          "id": "roscode.topics",
-          "name": "topics"
-        }
-      ],
-      "roscode-plot": [
-        {
-          "id": "roscode.plot",
-          "name": "plot",
-          "type": "webview"
+          "name": "NETWORK"
         }
       ],
       "roscode-library": [
         {
           "id": "roscode.library",
-          "name": "library"
-        }
-      ],
-      "roscode-terminal": [
-        {
-          "id": "roscode.terminal",
-          "name": "terminal",
-          "type": "webview"
+          "name": "LIBRARY"
         }
       ],
       "roscode-agent": [
@@ -139,17 +86,17 @@
     "viewsWelcome": [
       {
         "view": "roscode.network",
-        "contents": "// NO HOSTS DETECTED\n\nroscode sniffs the LAN for ROS 1 and ROS 2 daemons.\n\n\u2022 TCP 11311 (ROS 1 master)\n\u2022 UDP 7400-7402 (ROS 2 DDS discovery)\n\n[\u21bb SCAN NETWORK](command:roscode.discoverNetwork)",
+        "contents": "// NO HOSTS DETECTED\n\nroscode sniffs the LAN for ROS 1 and ROS 2 daemons.\n\n• TCP 11311 (ROS 1 master)\n• UDP 7400-7402 (ROS 2 DDS discovery)\n\n[↻ SCAN NETWORK](command:roscode.discoverNetwork)",
         "when": "!roscode.scanning && roscode.robotCount == 0"
       },
       {
         "view": "roscode.nodes",
-        "contents": "// AWAITING LINK\n\nConnect to a robot from the NET tab to see running nodes.\n\n[\u21bb REFRESH](command:roscode.refreshNodes)",
+        "contents": "// AWAITING LINK\n\nConnect to a robot from the NET panel to see running nodes.\n\n[↻ REFRESH](command:roscode.refreshNodes)",
         "when": "!roscode.connected"
       },
       {
         "view": "roscode.topics",
-        "contents": "// AWAITING LINK\n\nConnect to a robot from the NET tab to see active topics.\n\n[\u21bb REFRESH](command:roscode.refreshNodes)",
+        "contents": "// AWAITING LINK\n\nConnect to a robot from the NET panel to see active topics.\n\n[↻ REFRESH](command:roscode.refreshNodes)",
         "when": "!roscode.connected"
       }
     ],
@@ -224,7 +171,7 @@
       },
       {
         "command": "roscode.inlineAsk",
-        "title": "roscode: Inline agent (\u2318K)",
+        "title": "roscode: Inline agent (⌘K)",
         "icon": "$(sparkle)"
       },
       {
@@ -243,7 +190,7 @@
       },
       {
         "command": "roscode.aiSearchLibrary",
-        "title": "\u2728 AI Search",
+        "title": "✨ AI Search",
         "category": "roscode",
         "icon": "$(sparkle)"
       },
@@ -347,7 +294,7 @@
       {
         "id": "roscode.gettingStarted",
         "title": "Welcome to roscode studio",
-        "description": "AI-native IDE for ROS 2 \u00b7 powered by Claude Opus 4.7",
+        "description": "AI-native IDE for ROS 2 · powered by Claude Opus 4.7",
         "steps": [
           {
             "id": "roscode.step.apiKey",
@@ -363,7 +310,7 @@
           {
             "id": "roscode.step.discover",
             "title": "Discover robots on your network",
-            "description": "roscode auto-scans your LAN for running ROS 1 / ROS 2 nodes. One click to connect \u2014 no env vars to set manually.\n[Scan network](command:roscode.discoverNetwork)",
+            "description": "roscode auto-scans your LAN for running ROS 1 / ROS 2 nodes. One click to connect — no env vars to set manually.\n[Scan network](command:roscode.discoverNetwork)",
             "media": {
               "markdown": "media/walkthrough/discover.md"
             },
@@ -374,7 +321,7 @@
           {
             "id": "roscode.step.agent",
             "title": "Meet your agent",
-            "description": "Press **\u2318\u21e7A** to focus the agent. Ask it to read topics, fix nodes, or build packages \u2014 it can see your workspace and your running ROS graph.\n[Open agent](command:roscode.focusAgent)",
+            "description": "Press **⌘⇧A** to focus the agent. Ask it to read topics, fix nodes, or build packages — it can see your workspace and your running ROS graph.\n[Open agent](command:roscode.focusAgent)",
             "media": {
               "markdown": "media/walkthrough/agent.md"
             },
@@ -385,7 +332,7 @@
           {
             "id": "roscode.step.graph",
             "title": "Live node graph",
-            "description": "Press **\u2318\u21e7G** for an interactive graph of every running node and topic. Updates in real time.\n[Open graph](command:roscode.openNodeGraph)",
+            "description": "Press **⌘⇧G** for an interactive graph of every running node and topic. Updates in real time.\n[Open graph](command:roscode.openNodeGraph)",
             "media": {
               "markdown": "media/walkthrough/graph.md"
             },

@@ -12,6 +12,30 @@ use tauri::State;
 
 use crate::{container, lima, RuntimeState};
 
+// ── File-system helpers ───────────────────────────────────────────────────────
+
+/// Expand `~/…` using $HOME. Returns an absolute PathBuf.
+fn expand_home(path: &str) -> std::path::PathBuf {
+    if let Some(rest) = path.strip_prefix("~/") {
+        if let Ok(home) = std::env::var("HOME") {
+            return std::path::Path::new(&home).join(rest);
+        }
+    }
+    std::path::PathBuf::from(path)
+}
+
+/// Encode bytes as lowercase hex (avoids all shell-quoting issues).
+fn hex_encode(s: &str) -> String {
+    s.bytes().map(|b| format!("{b:02x}")).collect()
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct FsNode {
+    pub name: String,
+    pub path: String,
+    pub is_dir: bool,
+}
+
 /// Absolute path to the roscode Python package source tree on the host.
 /// Resolved at compile time relative to this crate's manifest — the crate
 /// lives at `<repo>/studio/src-tauri/`, so `../..` points at the repo root.
@@ -157,6 +181,273 @@ pub async fn send_chat_message(
     _state: State<'_, Arc<RuntimeState>>,
 ) -> Result<String, String> {
     Ok(format!("(echo) {prompt}"))
+}
+
+// ── Workspace picker ─────────────────────────────────────────────────────────
+
+/// Open the macOS native folder-picker dialog and return the chosen path.
+/// Returns `null` if the user cancelled.
+///
+/// We call `choose folder` directly (NOT via "System Events") so the dialog
+/// runs in osascript's own process and doesn't need Accessibility permission.
+#[tauri::command]
+pub async fn pick_workspace_folder() -> Option<String> {
+    let out = tokio::process::Command::new("osascript")
+        .args([
+            "-e",
+            "POSIX path of (choose folder with prompt \"Select your ROS 2 workspace\")",
+        ])
+        .output()
+        .await
+        .ok()?;
+
+    if out.status.success() {
+        let path = String::from_utf8_lossy(&out.stdout)
+            .trim()
+            .trim_end_matches('/')
+            .to_string();
+        if path.is_empty() { None } else { Some(path) }
+    } else {
+        None // user cancelled or osascript failed
+    }
+}
+
+// ── File-system commands ──────────────────────────────────────────────────────
+
+/// List one directory level. Returns entries sorted dirs-first, alphabetically.
+/// Hidden entries (starting with `.`) are omitted.
+#[tauri::command]
+pub async fn fs_read_dir(path: String) -> Result<Vec<FsNode>, String> {
+    let full = expand_home(&path);
+    let rd = std::fs::read_dir(&full)
+        .map_err(|e| format!("fs_read_dir({path}): {e}"))?;
+    let mut nodes: Vec<FsNode> = rd
+        .filter_map(|e| e.ok())
+        .filter_map(|e| {
+            let meta = e.metadata().ok()?;
+            let name = e.file_name().to_string_lossy().to_string();
+            if name.starts_with('.') {
+                return None;
+            }
+            Some(FsNode {
+                name,
+                path: e.path().to_string_lossy().to_string(),
+                is_dir: meta.is_dir(),
+            })
+        })
+        .collect();
+    nodes.sort_by(|a, b| b.is_dir.cmp(&a.is_dir).then(a.name.cmp(&b.name)));
+    Ok(nodes)
+}
+
+/// Read a UTF-8 text file from the host filesystem.
+#[tauri::command]
+pub async fn fs_read_file(path: String) -> Result<String, String> {
+    let full = expand_home(&path);
+    std::fs::read_to_string(&full)
+        .map_err(|e| format!("fs_read_file({path}): {e}"))
+}
+
+/// Write UTF-8 content to a file on the host filesystem.
+#[tauri::command]
+pub async fn fs_write_file(path: String, content: String) -> Result<(), String> {
+    let full = expand_home(&path);
+    std::fs::write(&full, content)
+        .map_err(|e| format!("fs_write_file({path}): {e}"))
+}
+
+// ── ROS tool execution ────────────────────────────────────────────────────────
+
+// ── API key management ────────────────────────────────────────────────────────
+
+/// Returns true if ANTHROPIC_API_KEY is set (and looks like a valid prefix).
+#[tauri::command]
+pub async fn api_key_status() -> bool {
+    match std::env::var("ANTHROPIC_API_KEY") {
+        Ok(v) => v.starts_with("sk-ant-") && v.len() > 20,
+        Err(_) => false,
+    }
+}
+
+/// Persist the API key to the repo's .env file (creating it if needed) and
+/// inject it into the current process env so subsequent container starts pick
+/// it up. Returns the absolute path of the .env file written.
+#[tauri::command]
+pub async fn api_key_save(key: String) -> Result<String, String> {
+    let key = key.trim().to_string();
+    if !key.starts_with("sk-ant-") || key.len() < 20 {
+        return Err("That doesn't look like an Anthropic API key (expected sk-ant-…).".into());
+    }
+
+    let env_path = std::path::PathBuf::from(REPO_ROOT).join(".env");
+    let existing = std::fs::read_to_string(&env_path).unwrap_or_default();
+
+    // Replace or append the line.
+    let mut found = false;
+    let mut out_lines: Vec<String> = Vec::new();
+    for line in existing.lines() {
+        if line.trim_start().starts_with("ANTHROPIC_API_KEY=") {
+            out_lines.push(format!("ANTHROPIC_API_KEY={key}"));
+            found = true;
+        } else {
+            out_lines.push(line.to_string());
+        }
+    }
+    if !found {
+        if !out_lines.is_empty() && !out_lines.last().map(|s| s.is_empty()).unwrap_or(true) {
+            out_lines.push(String::new());
+        }
+        out_lines.push(format!("ANTHROPIC_API_KEY={key}"));
+    }
+    let mut body = out_lines.join("\n");
+    if !body.ends_with('\n') { body.push('\n'); }
+
+    std::fs::write(&env_path, body).map_err(|e| format!("write {}: {e}", env_path.display()))?;
+
+    // Also update the running process so a fresh container start sees it.
+    unsafe { std::env::set_var("ANTHROPIC_API_KEY", &key); }
+
+    Ok(env_path.to_string_lossy().into_owned())
+}
+
+// ── LAN scan ──────────────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize)]
+pub struct LanHost {
+    pub ip: String,
+    pub mac: String,
+    pub iface: String,
+}
+
+/// Run `arp -a` on the host and parse the ARP cache into a list of LAN hosts.
+/// This is best-effort: it shows hosts that have recently exchanged ARP traffic
+/// with this machine. It is NOT a full subnet scan — but it surfaces real
+/// neighbors without needing root or any extra dependency.
+#[tauri::command]
+pub async fn lan_scan() -> Result<Vec<LanHost>, String> {
+    let out = tokio::process::Command::new("arp")
+        .arg("-a")
+        .output()
+        .await
+        .map_err(|e| format!("arp failed: {e}"))?;
+
+    if !out.status.success() {
+        return Err(format!(
+            "arp returned {:?}: {}",
+            out.status.code(),
+            String::from_utf8_lossy(&out.stderr)
+        ));
+    }
+
+    let text = String::from_utf8_lossy(&out.stdout);
+    let mut hosts: Vec<LanHost> = Vec::new();
+    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+
+    // Lines look like:
+    //   ? (192.168.2.30) at 94:2b:68:8:3a:6 on en0 ifscope [ethernet]
+    //   hostname.local (192.168.2.10) at 6e:a:ed:dd:fc:e0 on en1 ...
+    for line in text.lines() {
+        let ip_start = match line.find('(') { Some(i) => i + 1, None => continue };
+        let ip_end = match line[ip_start..].find(')') { Some(i) => ip_start + i, None => continue };
+        let ip = line[ip_start..ip_end].to_string();
+
+        let after_at = match line.find(" at ") { Some(i) => i + 4, None => continue };
+        let mac_end = line[after_at..].find(' ').map(|i| after_at + i).unwrap_or(line.len());
+        let mac = line[after_at..mac_end].to_string();
+
+        if mac == "(incomplete)" { continue; }
+
+        let iface = if let Some(on_idx) = line.find(" on ") {
+            let s = on_idx + 4;
+            let e = line[s..].find(' ').map(|i| s + i).unwrap_or(line.len());
+            line[s..e].to_string()
+        } else {
+            String::new()
+        };
+
+        let key = format!("{ip}-{mac}");
+        if seen.insert(key) {
+            hosts.push(LanHost { ip, mac, iface });
+        }
+    }
+
+    Ok(hosts)
+}
+
+/// Run an arbitrary shell command inside the container and return stdout.
+/// Used by the terminal page and any UI that needs raw shell access.
+/// Hex-encoded for shell-quoting safety.
+#[tauri::command]
+pub async fn container_exec(
+    cmd: String,
+    state: State<'_, Arc<RuntimeState>>,
+) -> Result<String, String> {
+    let container_state = state.container.read().await;
+    if !container_state.running {
+        return Err("runtime not ready".to_string());
+    }
+    drop(container_state);
+
+    let cmd_hex = hex_encode(&cmd);
+    // Decode hex inside bash via printf so any special chars survive shell parsing
+    let wrapped = format!(
+        "eval \"$(printf '%s' '{cmd_hex}' | xxd -r -p)\""
+    );
+    container::exec(&wrapped).await.map_err(|e| e.to_string())
+}
+
+/// Run `ros2 node info <node>` inside the container and return the stdout.
+#[tauri::command]
+pub async fn ros_node_info(
+    node: String,
+    state: State<'_, Arc<RuntimeState>>,
+) -> Result<String, String> {
+    let container_state = state.container.read().await;
+    if !container_state.running {
+        return Err("runtime not ready".to_string());
+    }
+    drop(container_state);
+
+    let node_hex = hex_encode(&node);
+    let cmd = format!(
+        "ros2 node info \"$(python3 -c \"print(bytes.fromhex('{node_hex}').decode())\")\""
+    );
+    container::exec(&cmd).await.map_err(|e| e.to_string())
+}
+
+/// Run a roscode Python tool inside the container and return its stdout.
+/// `tool` is the function name (e.g. `"ros_graph"`), `args_json` is a JSON
+/// object of keyword arguments (e.g. `"{}"`).
+///
+/// Both strings are hex-encoded before embedding in the shell command so
+/// that shell-quoting is never an issue regardless of content.
+#[tauri::command]
+pub async fn ros_call_tool(
+    tool: String,
+    args_json: String,
+    state: State<'_, Arc<RuntimeState>>,
+) -> Result<String, String> {
+    let container_state = state.container.read().await;
+    if !container_state.running {
+        return Err("runtime not ready".to_string());
+    }
+    drop(container_state);
+
+    let tool_hex = hex_encode(&tool);
+    let args_hex = hex_encode(&args_json);
+
+    // Hex-decode inside Python to avoid ALL shell-quoting edge-cases.
+    // Single quotes inside bash double-quoted strings are literals — safe.
+    let cmd = format!(
+        "python3 -c \"\
+import json; \
+from roscode.tools import TOOL_MAP; \
+tool=bytes.fromhex('{tool_hex}').decode(); \
+args=json.loads(bytes.fromhex('{args_hex}').decode()); \
+print(TOOL_MAP[tool](**args))\""
+    );
+
+    container::exec(&cmd).await.map_err(|e| e.to_string())
 }
 
 fn stage(channel: &Channel<StartupEvent>, label: &str, percent: f32) {

@@ -1,9 +1,21 @@
 <script lang="ts">
   import { onDestroy, onMount, tick } from "svelte";
   import { AgentClient, type AgentEvent, type AgentClientState } from "./chat";
+  import {
+    chatMessages,
+    chatSessionActive,
+    clearChatHistory,
+    rightPanelOpen,
+    type ChatMessage,
+  } from "./stores/layout";
+  import { apiKeyOk, showApiKeyModal } from "./modals/apiKeyState";
+  import { apiKeyStatus } from "./tauri";
+  import iconUrl from "./brand/icon.svg";
 
   export let port: number;
   export let workspace: string;
+
+  const TOOL_COUNT = 37; // matches roscode.tools.TOOL_DEFINITIONS
 
   let textarea: HTMLTextAreaElement;
 
@@ -12,38 +24,27 @@
     tick().then(() => textarea?.focus());
   }
 
-  type Message =
-    | { kind: "user"; text: string }
-    | { kind: "status"; text: string }
-    | { kind: "step"; n: number; total: number }
-    | { kind: "reasoning"; text: string }
-    | { kind: "tool_call"; name: string; args: Record<string, unknown> }
-    | { kind: "tool_result"; name: string; result: string; isError: boolean }
-    | { kind: "agent"; text: string }
-    | { kind: "error"; text: string }
-    | {
-        kind: "confirm";
-        id: string;
-        name: string;
-        args: Record<string, unknown>;
-        diffPreview?: string;
-        resolved: "pending" | "approved" | "denied";
-      };
-
-  let messages: Message[] = [];
   let input = "";
   let connState: AgentClientState = "closed";
   let thinking = false;
-  let sessionActive = false;
   let scroller: HTMLDivElement;
+  let reasoningExpanded: Record<number, boolean> = {};
 
   let client: AgentClient;
 
+  async function refreshApiKey() {
+    try {
+      const ok = await apiKeyStatus();
+      apiKeyOk.set(ok);
+    } catch {
+      apiKeyOk.set(false);
+    }
+  }
+
   onMount(async () => {
+    refreshApiKey();
     client = new AgentClient(handleEvent, (s) => (connState = s));
-    // Retry the WebSocket connection a few times: the server spawn is
-    // detached and may still be binding when we mount. 8 × 750ms = 6s
-    // of patience before giving up.
+    tick().then(() => scroller?.scrollTo({ top: scroller.scrollHeight }));
     const attempts = 8;
     for (let i = 1; i <= attempts; i++) {
       try {
@@ -51,13 +52,13 @@
         return;
       } catch (e) {
         if (i === attempts) {
-          messages = [
-            ...messages,
+          chatMessages.update((ms) => [
+            ...ms,
             {
               kind: "error",
               text: `could not connect to ws://127.0.0.1:${port} after ${attempts} tries: ${e}`,
             },
-          ];
+          ]);
         } else {
           await new Promise((r) => setTimeout(r, 750));
         }
@@ -70,13 +71,12 @@
   function handleEvent(ev: AgentEvent) {
     switch (ev.type) {
       case "banner":
-        // Header renders this — skip duplication in the chat log.
         break;
       case "status":
-        messages = [...messages, { kind: "status", text: ev.text }];
+        chatMessages.update((ms) => [...ms, { kind: "status", text: ev.text }]);
         break;
       case "step":
-        messages = [...messages, { kind: "step", n: ev.n, total: ev.total }];
+        chatMessages.update((ms) => [...ms, { kind: "step", n: ev.n, total: ev.total }]);
         break;
       case "thinking_start":
         thinking = true;
@@ -85,25 +85,20 @@
         thinking = false;
         break;
       case "reasoning":
-        messages = [...messages, { kind: "reasoning", text: ev.text }];
+        chatMessages.update((ms) => [...ms, { kind: "reasoning", text: ev.text }]);
         break;
       case "tool_call":
-        messages = [...messages, { kind: "tool_call", name: ev.name, args: ev.args }];
+        chatMessages.update((ms) => [...ms, { kind: "tool_call", name: ev.name, args: ev.args }]);
         break;
       case "tool_result":
-        messages = [
-          ...messages,
-          {
-            kind: "tool_result",
-            name: ev.name,
-            result: ev.result,
-            isError: ev.is_error,
-          },
-        ];
+        chatMessages.update((ms) => [
+          ...ms,
+          { kind: "tool_result", name: ev.name, result: ev.result, isError: ev.is_error },
+        ]);
         break;
       case "confirm_request":
-        messages = [
-          ...messages,
+        chatMessages.update((ms) => [
+          ...ms,
           {
             kind: "confirm",
             id: ev.id,
@@ -112,18 +107,18 @@
             diffPreview: ev.diff_preview,
             resolved: "pending",
           },
-        ];
+        ]);
         break;
       case "agent_message":
-        messages = [...messages, { kind: "agent", text: ev.text }];
+        chatMessages.update((ms) => [...ms, { kind: "agent", text: ev.text }]);
         break;
       case "session_end":
-        sessionActive = false;
+        chatSessionActive.set(false);
         thinking = false;
         break;
       case "error":
-        messages = [...messages, { kind: "error", text: ev.message }];
-        sessionActive = false;
+        chatMessages.update((ms) => [...ms, { kind: "error", text: ev.message }]);
+        chatSessionActive.set(false);
         thinking = false;
         break;
     }
@@ -132,17 +127,32 @@
 
   function submit() {
     const text = input.trim();
-    if (!text || sessionActive || connState !== "open") return;
-    messages = [...messages, { kind: "user", text }];
+    if (!text || $chatSessionActive || connState !== "open") return;
+    chatMessages.update((ms) => [...ms, { kind: "user", text }]);
     input = "";
-    sessionActive = true;
+    chatSessionActive.set(true);
     client.sendPrompt({ text, workspace });
   }
 
-  function respondConfirm(msg: Message & { kind: "confirm" }, approved: boolean) {
+  async function resetSession() {
+    // Force-close the WebSocket and reconnect. Useful when the agent gets
+    // wedged on a Python error mid-loop and the session_active flag stays true.
+    chatSessionActive.set(false);
+    thinking = false;
+    try { client?.disconnect(); } catch {}
+    await new Promise((r) => setTimeout(r, 200));
+    try {
+      client = new AgentClient(handleEvent, (s) => (connState = s));
+      await client.connect(port);
+    } catch (e) {
+      chatMessages.update((ms) => [...ms, { kind: "error", text: `reconnect failed: ${e}` }]);
+    }
+  }
+
+  function respondConfirm(msg: ChatMessage & { kind: "confirm" }, approved: boolean) {
     client.respondToConfirm(msg.id, approved);
-    messages = messages.map((m) =>
-      m === msg ? { ...msg, resolved: approved ? "approved" : "denied" } : m,
+    chatMessages.update((ms) =>
+      ms.map((m) => (m === msg ? { ...msg, resolved: approved ? "approved" : "denied" } : m))
     );
   }
 
@@ -155,6 +165,8 @@
     "package_scaffold",
   ]);
 
+  const fileOps = new Set(["write_source_file"]);
+
   function fmtArg(value: unknown): string {
     if (typeof value === "string" && (value.includes("\n") || value.length > 80)) {
       const firstLine = value.split("\n")[0];
@@ -164,31 +176,93 @@
     }
     return JSON.stringify(value);
   }
+
+  function parseDiffLine(line: string): "add" | "remove" | "hunk" | "meta" | "normal" {
+    if (line.startsWith("+") && !line.startsWith("+++")) return "add";
+    if (line.startsWith("-") && !line.startsWith("---")) return "remove";
+    if (line.startsWith("@@")) return "hunk";
+    if (line.startsWith("+++") || line.startsWith("---") || line.startsWith("diff ") || line.startsWith("index ")) return "meta";
+    return "normal";
+  }
+
+  function toggleReasoning(idx: number) {
+    reasoningExpanded = { ...reasoningExpanded, [idx]: !reasoningExpanded[idx] };
+  }
 </script>
 
 <div class="chat">
   <div class="agent-head">
-    <span class="mark">✦</span>
-    <span class="title">AGENT · CLAUDE</span>
+    <img src={iconUrl} alt="" class="mark" />
+    <div class="title-block">
+      <span class="title">Agent · Claude</span>
+      <span class="subtitle">{TOOL_COUNT} tools loaded</span>
+    </div>
     <span class="flex"></span>
+    <button class="icon-btn" on:click={resetSession} title="Reset agent session (reconnect)" disabled={$chatSessionActive}>
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 4v4h-4"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16M3 20v-4h4"/></svg>
+    </button>
+    <button class="icon-btn" title="Chat History">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    </button>
     <span class="pill" class:live={connState === "open"}>
-      <span class="d"></span>{connState === "open" ? "READY" : "OFFLINE"}
+      <span class="d"></span>{connState === "open" ? "ready" : "offline"}
     </span>
+    <button class="hide-btn" on:click={() => rightPanelOpen.set(false)} title="Hide Agent Panel" aria-label="Hide panel">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="16" rx="1.5"/><line x1="15" y1="4" x2="15" y2="20"/></svg>
+    </button>
   </div>
 
+  <!-- API key warning banner -->
+  {#if $apiKeyOk === false}
+    <button class="key-banner" on:click={() => showApiKeyModal.set(true)}>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+        <circle cx="7.5" cy="15.5" r="3.5"/>
+        <line x1="10" y1="13" x2="20" y2="3"/>
+        <line x1="17" y1="6" x2="20" y2="9"/>
+        <line x1="14" y1="9" x2="17" y2="12"/>
+      </svg>
+      <span>Add your Anthropic API key to use the agent</span>
+      <span class="key-cta">Set key →</span>
+    </button>
+  {/if}
+
   <div class="scroll" bind:this={scroller}>
-    {#each messages as m (m)}
+    {#if $chatMessages.length === 0 && !thinking && $apiKeyOk !== false}
+      <div class="empty-chat">
+        <img src={iconUrl} alt="Agent" class="empty-chat-icon" />
+        <h3>How can I help you?</h3>
+        <p>I can edit files, run shell commands, and interact with the ROS graph.</p>
+        <div class="empty-suggestions">
+          <button on:click={() => fill('write a node that subscribes to /cmd_vel')}>write a node that subscribes to /cmd_vel</button>
+          <button on:click={() => fill('why is the robot drifting left?')}>why is the robot drifting left?</button>
+          <button on:click={() => fill('add a launch file for this package')}>add a launch file for this package</button>
+        </div>
+      </div>
+    {/if}
+    {#each $chatMessages as m, idx (idx)}
       {#if m.kind === "user"}
         <div class="msg user">
           <span class="who">&gt; USER</span>
           <span class="text">{m.text}</span>
         </div>
+
       {:else if m.kind === "status"}
         <div class="msg status">▸ {m.text}</div>
+
       {:else if m.kind === "step"}
         <div class="msg step">─── STEP {m.n}/{m.total} ───</div>
+
       {:else if m.kind === "reasoning"}
-        <div class="msg reasoning">// {m.text}</div>
+        <div class="msg reasoning-wrap">
+          <button class="reasoning-toggle" on:click={() => toggleReasoning(idx)}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transform:{reasoningExpanded[idx] ? 'rotate(90deg)' : 'none'};transition:transform 150ms"><polyline points="9 18 15 12 9 6"/></svg>
+            <span class="reasoning-label">// thinking</span>
+          </button>
+          {#if reasoningExpanded[idx]}
+            <div class="reasoning-body">{m.text}</div>
+          {/if}
+        </div>
+
       {:else if m.kind === "tool_call"}
         <div class="msg tool-call" class:destructive={destructive.has(m.name)}>
           <span class="head">
@@ -201,64 +275,97 @@
             {/each}
           </div>
         </div>
+
       {:else if m.kind === "tool_result"}
         <pre class="msg tool-result" class:error={m.isError}>
 {m.isError ? "✗ " : "✓ "}{m.name}
 
 {m.result.length > 1200 ? m.result.slice(0, 1200) + "\n…(truncated)" : m.result}</pre>
+
       {:else if m.kind === "agent"}
         <div class="msg agent">
           <span class="who">&gt; AGENT</span>
           <span class="text">{m.text}</span>
         </div>
+
       {:else if m.kind === "confirm"}
         <div class="msg confirm" data-resolved={m.resolved}>
-          <div class="head">⚠ CONFIRM · {m.name}</div>
+          <div class="head">
+            {fileOps.has(m.name) ? "✎ FILE CHANGE" : "⚠ CONFIRM"} · {m.name}
+          </div>
           {#if m.diffPreview}
-            <pre class="diff">{m.diffPreview}</pre>
+            <div class="diff-view">
+              {#each m.diffPreview.split("\n") as line}
+                {@const kind = parseDiffLine(line)}
+                <div class="diff-line diff-{kind}">{line}</div>
+              {/each}
+            </div>
           {/if}
           <div class="args">
             {#each Object.entries(m.args) as [k, v]}
-              <div><span class="k">{k}</span>: {fmtArg(v)}</div>
+              {#if k !== "content"}
+                <div><span class="k">{k}</span>: {fmtArg(v)}</div>
+              {/if}
             {/each}
           </div>
           {#if m.resolved === "pending"}
             <div class="actions">
-              <button on:click={() => respondConfirm(m, true)}>APPROVE</button>
-              <button class="danger" on:click={() => respondConfirm(m, false)}>DENY</button>
+              <button class="keep-btn" on:click={() => respondConfirm(m, true)}>
+                {fileOps.has(m.name) ? "KEEP" : "APPROVE"}
+              </button>
+              <button class="discard-btn" on:click={() => respondConfirm(m, false)}>
+                {fileOps.has(m.name) ? "DISCARD" : "DENY"}
+              </button>
             </div>
           {:else}
-            <div class="resolution">{m.resolved.toUpperCase()}</div>
+            <div class="resolution" data-r={m.resolved}>
+              {m.resolved === "approved" ? "✓ KEPT" : "✗ DISCARDED"}
+            </div>
           {/if}
         </div>
+
       {:else if m.kind === "error"}
         <div class="msg error">⚠ {m.text}</div>
       {/if}
     {/each}
+
     {#if thinking}
       <div class="msg thinking">// thinking…</div>
     {/if}
   </div>
 
   <form class="composer" on:submit|preventDefault={submit}>
-    <span class="prompt">❯</span>
-    <textarea
-      bind:this={textarea}
-      bind:value={input}
-      placeholder={connState === "open"
-        ? "ask agent — describe the bug, the feature, whatever"
-        : `connecting to ws://127.0.0.1:${port}…`}
-      disabled={connState !== "open" || sessionActive}
-      on:keydown={(e) => {
-        if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-          e.preventDefault();
-          submit();
-        }
-      }}
-    />
-    <button type="submit" disabled={connState !== "open" || sessionActive || !input.trim()}>
-      {sessionActive ? "WORKING…" : "SEND"}
-    </button>
+    <div class="composer-top">
+      <select class="mode-select" title="Execution Mode">
+        <option>Agentic Mode</option>
+        <option>Plan Mode</option>
+        <option>Chat Only</option>
+      </select>
+      <select class="model-select" title="Model">
+        <option>Claude Opus 4.7</option>
+        <option>Claude 3.7 Sonnet</option>
+      </select>
+    </div>
+    <div class="input-wrap">
+      <span class="prompt">❯</span>
+      <textarea
+        bind:this={textarea}
+        bind:value={input}
+        placeholder={connState === "open"
+          ? "ask agent — describe the bug, the feature, whatever"
+          : `connecting to ws://127.0.0.1:${port}…`}
+        disabled={connState !== "open" || $chatSessionActive}
+        on:keydown={(e) => {
+          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault();
+            submit();
+          }
+        }}
+      />
+      <button type="submit" disabled={connState !== "open" || $chatSessionActive || !input.trim()}>
+        {$chatSessionActive ? "WORKING…" : "SEND"}
+      </button>
+    </div>
   </form>
 </div>
 
@@ -274,167 +381,62 @@
   .agent-head {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 10px 14px;
-    border-bottom: 1px solid var(--border);
-    font-family: var(--font-mono);
-    font-size: 10px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    background: var(--bg-1);
-  }
-  .agent-head .mark { color: var(--accent); font-size: 13px; }
-  .agent-head .title { color: var(--fg-0); }
-  .agent-head .flex { flex: 1; }
-  .agent-head .pill {
-    display: inline-flex; align-items: center; gap: 5px;
-    padding: 3px 8px; border-radius: var(--radius);
-    border: 1px solid var(--border-bright); color: var(--fg-2);
-    font-size: 9px; letter-spacing: 0.6px;
-  }
-  .agent-head .pill .d { width: 5px; height: 5px; border-radius: 50%; background: var(--fg-2); }
-  .agent-head .pill.live { color: var(--ok); border-color: rgba(139,195,74,0.35); background: rgba(139,195,74,0.08); }
-  .agent-head .pill.live .d { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
-
-  .scroll {
-    flex: 1;
-    overflow: auto;
-    padding: 12px 14px;
-    display: flex;
-    flex-direction: column;
     gap: 10px;
-    font-size: 12.5px;
-  }
-
-  .msg {
-    line-height: 1.5;
-    word-wrap: break-word;
-    font-family: var(--font-mono);
-  }
-
-  .msg .who {
-    display: inline-block;
-    min-width: 60px;
-    margin-right: 8px;
-    font-size: 10px;
-    letter-spacing: 1px;
-    color: var(--fg-2);
-  }
-
-  .msg.user {
-    align-self: flex-end;
-    max-width: 88%;
-    background: var(--bg-2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 8px 12px;
-  }
-  .msg.user .who { color: var(--fg-2); display: block; margin-bottom: 4px; }
-  .msg.user .text { color: var(--fg-0); font-family: "Geist", "Inter", system-ui, sans-serif; }
-
-  .msg.status { color: var(--fg-2); font-size: 11px; letter-spacing: 0.5px; }
-  .msg.step { color: var(--fg-2); font-size: 10px; text-align: center; letter-spacing: 2px; }
-  .msg.reasoning { color: var(--fg-1); font-size: 11px; }
-
-  .msg.tool-call {
-    background: var(--bg-2);
-    border: 1px solid var(--border);
-    border-left: 2px solid var(--accent);
-    padding: 8px 10px;
-    border-radius: var(--radius);
-  }
-  .msg.tool-call.destructive { border-left-color: var(--warn); }
-  .msg.tool-call .head { font-weight: 600; font-size: 11px; letter-spacing: 0.4px; color: var(--accent); text-transform: uppercase; }
-  .msg.tool-call.destructive .head { color: var(--warn); }
-  .msg.tool-call .args { color: var(--fg-1); font-size: 11px; margin-top: 6px; line-height: 1.6; }
-  .msg.tool-call .args .k { color: var(--fg-2); }
-
-  pre.msg.tool-result {
-    margin: 0;
-    padding: 8px 10px;
-    background: #0a0d0c;
-    border: 1px solid var(--border);
-    border-left-width: 2px;
-    border-left-color: var(--ok);
-    border-radius: var(--radius);
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--fg-1);
-    white-space: pre-wrap;
-    max-height: 240px;
-    overflow: auto;
-  }
-  pre.msg.tool-result.error { border-left-color: var(--err); color: var(--err); }
-
-  .msg.agent {
-    padding: 2px 2px;
-  }
-  .msg.agent .who { color: var(--accent); display: block; margin-bottom: 4px; }
-  .msg.agent .text { color: var(--fg-0); font-family: "Geist", "Inter", system-ui, sans-serif; }
-
-  .msg.confirm {
-    background: rgba(242, 200, 75, 0.06);
-    border: 1px solid rgba(242, 200, 75, 0.28);
-    border-left: 2px solid var(--warn);
-    padding: 10px 12px;
-    border-radius: var(--radius);
-  }
-  .msg.confirm .head { font-weight: 600; color: var(--warn); font-size: 11px; letter-spacing: 0.5px; }
-  .msg.confirm .diff {
-    margin: 8px 0;
-    padding: 8px 10px;
-    background: #0a0d0c;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    font-family: var(--font-mono);
-    font-size: 10.5px;
-    max-height: 220px;
-    overflow: auto;
-    white-space: pre;
-  }
-  .msg.confirm .actions { display: flex; gap: 6px; margin-top: 8px; }
-  .msg.confirm .resolution { margin-top: 6px; font-size: 10px; color: var(--fg-2); letter-spacing: 1px; }
-  .msg.confirm[data-resolved="denied"] { opacity: 0.55; }
-
-  .msg.error { color: var(--err); }
-
-  .msg.thinking { color: var(--fg-2); animation: pulse 1.5s ease-in-out infinite; }
-  @keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
-
-  .composer {
-    display: flex;
-    gap: 8px;
-    padding: 10px 12px;
-    border-top: 1px solid var(--border);
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
     background: var(--bg-1);
-    align-items: stretch;
+    flex-shrink: 0;
   }
-  .composer .prompt {
+  .agent-head .mark {
     color: var(--accent);
-    font-family: var(--font-mono);
-    font-size: 14px;
-    align-self: center;
+    width: 24px; height: 24px;
+    flex-shrink: 0;
+    margin-left: -2px; /* Fix offset to align with edge */
   }
-  .composer textarea {
-    flex: 1;
-    resize: none;
-    min-height: 36px;
-    max-height: 120px;
-    font-family: var(--font-mono);
-    font-size: 12px;
-    background: var(--bg-0);
-    color: var(--fg-0);
-    border: 1px solid var(--border-bright);
-    border-radius: var(--radius);
-    padding: 7px 10px;
-  }
-  .composer textarea:disabled { opacity: 0.6; }
-  .composer button { align-self: stretch; }
 
-  .msg.confirm .actions button { background: transparent; border-color: var(--border-bright); }
-  .msg.confirm .actions button:last-child {
-    background: var(--err);
-    color: #1a0a0a;
-    border-color: var(--err);
+  .hide-btn {
+    width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
+    background: transparent; border: none; color: var(--fg-2); cursor: pointer;
+    border-radius: 6px; padding: 0; transition: all 150ms;
+    margin-left: 2px;
   }
+  .hide-btn:hover { background: var(--bg-2); color: var(--fg-0); }
+
+  /* Empty state */
+  .empty-chat {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 30px 20px; text-align: center; gap: 12px; height: 100%;
+  }
+  .empty-chat-icon { width: 48px; height: 48px; opacity: 0.8; margin-bottom: 8px; filter: drop-shadow(0 4px 12px rgba(242,168,59,.15)); }
+  .empty-chat h3 { font-size: 16px; font-weight: 600; color: var(--fg-0); letter-spacing: -0.3px; margin: 0; }
+  .empty-chat p { font-size: 12px; color: var(--fg-2); line-height: 1.5; margin: 0 0 8px; }
+  .empty-suggestions { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+  .empty-suggestions button {
+    background: var(--bg-2); border: 1px solid var(--border); padding: 10px 14px;
+    border-radius: var(--radius); color: var(--fg-1); font-family: var(--font-sans); font-size: 12px;
+    cursor: pointer; transition: all 150ms ease; text-align: left;
+  }
+  .empty-suggestions button:hover { background: var(--bg-3); border-color: var(--accent-line); color: var(--fg-0); transform: translateY(-1px); }
+
+  /* Composer */
+  .composer {
+    display: flex; flex-direction: column; gap: 8px; padding: 12px;
+    border-top: 1px solid var(--border); background: var(--bg-1);
+  }
+  .composer-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .composer-top select {
+    background: transparent; border: none; color: var(--fg-2);
+    font-family: var(--font-mono); font-size: 10px; text-transform: uppercase;
+    letter-spacing: 0.5px; cursor: pointer; padding: 2px 4px; outline: none;
+  }
+  .composer-top select:hover { color: var(--fg-0); }
+  .input-wrap { display: flex; gap: 8px; align-items: stretch; }
+  .input-wrap .prompt { color: var(--accent); font-family: var(--font-mono); font-size: 14px; align-self: center; }
+  .input-wrap textarea {
+    flex: 1; resize: none; min-height: 36px; max-height: 120px;
+    font-family: var(--font-mono); font-size: 12px; background: var(--bg-0);
+    color: var(--fg-0); border: 1px solid var(--border-bright); border-radius: var(--radius); padding: 7px 10px;
+  }
+  .input-wrap textarea:disabled { opacity: 0.6; }
+  .input-wrap button { align-self: stretch; }
 </style>

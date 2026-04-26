@@ -5,14 +5,13 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ZIP="$REPO_ROOT/vscodium-build/VSCodium.zip"
 WORK="$REPO_ROOT/vscodium-build/work"
 OUT="$REPO_ROOT/roscode-studio-build/roscode studio.app"
-EXT_SRC="$REPO_ROOT/roscode-extension"
 
-echo "🔧 roscode studio — patch pipeline"
+echo "🔧 roscode studio — standalone IDE build"
 echo "   zip:  $ZIP"
 echo "   out:  $OUT"
 echo ""
 
-# ── 1. Unzip fresco ────────────────────────────────────────────────────────
+# ── 1. Unzip fresh VSCodium ────────────────────────────────────────────────
 echo "📦 Unzipping VSCodium..."
 rm -rf "$WORK" && mkdir -p "$WORK"
 unzip -q "$ZIP" -d "$WORK"
@@ -25,56 +24,73 @@ fi
 RESOURCES="$APP/Contents/Resources/app"
 echo "   app: $APP"
 
-# ── 2. Patch product.json ──────────────────────────────────────────────────
+# ── 2. Patch product.json — branding ──────────────────────────────────────
 echo "🏷  Patching product.json..."
 python3 "$REPO_ROOT/scripts/patch-product.py" "$RESOURCES/product.json"
 
-# ── 3. Inject CSS nuclear ─────────────────────────────────────────────────
-echo "💉 Injecting nuclear CSS..."
+# ── 3. Inject roscode design system into workbench HTML ───────────────────
+echo "💉 Injecting roscode workbench (CSS + agent panel HTML + JS)..."
 
-# Primary target — electron-browser workbench
+# Primary target
 python3 "$REPO_ROOT/scripts/inject-css.py" \
   "$RESOURCES/out/vs/code/electron-browser/workbench/workbench.html" 2>/dev/null || true
 
-# Fallback targets (electron-sandbox variants in newer builds)
+# Fallback targets (electron-sandbox variants in newer VSCodium builds)
 for html in \
   "$RESOURCES/out/vs/code/electron-sandbox/workbench/workbench.html" \
-  "$RESOURCES/out/vs/workbench/workbench.html" \
-  "$APP/Contents/Resources/app/out/vs/workbench/workbench.html"; do
+  "$RESOURCES/out/vs/workbench/workbench.html"; do
   [ -f "$html" ] && python3 "$REPO_ROOT/scripts/inject-css.py" "$html"
 done
 
-# web.main.nls.js is a JS file — inject-css.py will skip it (not HTML)
-# Keeping the call for parity with PLAN.md; the warning is expected
-python3 "$REPO_ROOT/scripts/inject-css.py" \
-  "$RESOURCES/out/vs/workbench/workbench.web.main.nls.js" 2>/dev/null || true
-
-# ── 4. Copiar ícono custom ─────────────────────────────────────────────────
+# ── 4. Custom icon ─────────────────────────────────────────────────────────
 ICNS="$REPO_ROOT/roscode-studio-build/roscode-studio.icns"
 if [ -f "$ICNS" ]; then
   echo "🎨 Installing custom icon..."
   cp "$ICNS" "$APP/Contents/Resources/VSCodium.icns"
 else
-  echo "⚠️  No roscode-studio.icns found at $ICNS — keeping original icon"
+  echo "⚠️  No roscode-studio.icns found — keeping original icon"
 fi
 
-# ── 5. Build extensión ────────────────────────────────────────────────────
-echo "🔨 Building roscode extension..."
-cd "$EXT_SRC"
-pnpm run package --silent 2>/dev/null || pnpm run package
-cd "$REPO_ROOT"
+# ── 5. Patch workbench.desktop.main.js — layout defaults ──────────────────
+echo "🩺 Patching workbench defaults..."
+python3 - "$RESOURCES/out/vs/workbench/workbench.desktop.main.js" << 'PYEOF'
+import sys, os, re
+path = sys.argv[1]
+if not os.path.exists(path):
+    print(f"  skip: {path} not found"); sys.exit(0)
+content = open(path).read()
+patches = [
+    # 1. Keep activity bar visible (we style it ourselves, not hide it)
+    #    default was already "default"; make sure it's not hidden
+    ('"workbench.activityBar.location":{type:"string",enum:["default","top","bottom","hidden"],default:"hidden"',
+     '"workbench.activityBar.location":{type:"string",enum:["default","top","bottom","hidden"],default:"default"'),
+    # 2. Show auxiliary bar (right agent panel) by default
+    ('default:"visibleInWorkspace",description:d(4767,null)',
+     'default:"visible",description:d(4767,null)'),
+    # 3. Don't auto-open Explorer sidebar on startup — clean slate
+    ('},0,{isDefault:!0})',
+     '},0,{isDefault:!1})'),
+    # 4. Remove "Restricted Mode" welcome banner
+    ('"security.workspace.trust.banner":"untilDismissed"',
+     '"security.workspace.trust.banner":"never"'),
+    # 5. Disable update notifications
+    ('"update.mode":"default"',
+     '"update.mode":"none"'),
+]
+applied = 0
+for old, new in patches:
+    if content.count(old) == 1:
+        content = content.replace(old, new, 1)
+        applied += 1
+        print(f"  ✓ patched: {old[:65]}...")
+    elif content.count(old) == 0:
+        print(f"  - skip (not found): {old[:65]}...")
+    else:
+        print(f"  ⚠ skip ({content.count(old)} matches): {old[:65]}...")
+open(path, 'w').write(content)
+print(f"  applied {applied}/{len(patches)} patches")
+PYEOF
 
-# ── 6. Instalar extensión como built-in ──────────────────────────────────
-echo "🔌 Installing extension as built-in..."
-BUILTIN="$RESOURCES/extensions/roscode"
-rm -rf "$BUILTIN" && mkdir -p "$BUILTIN"
-# .vsix es un zip renombrado
-unzip -q "$EXT_SRC/roscode-0.1.0.vsix" -d "$BUILTIN/tmp"
-cp -r "$BUILTIN/tmp/extension/." "$BUILTIN/"
-rm -rf "$BUILTIN/tmp"
-echo "   installed: $BUILTIN"
-
-# ── 7. Copiar al destino final ────────────────────────────────────────────
 echo "📁 Copying to output..."
 rm -rf "$OUT"
 cp -r "$APP" "$OUT"

@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount, onDestroy, afterUpdate } from "svelte";
-  import { openFiles, activeFile, updateFileContent, closeFile, type FileTab } from "../stores/layout";
+  import { openFiles, activeFile, updateFileContent, closeFile, markFileSaved, workspacePath, type FileTab } from "../stores/layout";
+  import { fsWriteFile } from "../tauri";
+  import lockupUrl from "../brand/lockup-roscode.svg";
   import * as monaco from "monaco-editor";
   import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
   import jsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker";
@@ -23,6 +25,8 @@
   let editor: monaco.editor.IStandaloneCodeEditor | null = null;
   let currentPath: string | null = null;
   let models: Map<string, monaco.editor.ITextModel> = new Map();
+  let saving = false;
+  let saveError = "";
 
   // VS Code dark+ theme colours
   const ROSCODE_THEME: monaco.editor.IStandaloneThemeData = {
@@ -58,8 +62,31 @@
     },
   };
 
+  async function saveCurrentFile() {
+    if (!$activeFile || !editor || saving) return;
+    saving = true;
+    saveError = "";
+    try {
+      await fsWriteFile($activeFile, editor.getValue());
+      markFileSaved($activeFile);
+    } catch (e) {
+      saveError = String(e);
+      setTimeout(() => (saveError = ""), 4000);
+    } finally {
+      saving = false;
+    }
+  }
+
   onMount(() => {
     monaco.editor.defineTheme("roscode-dark", ROSCODE_THEME);
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
+        e.preventDefault();
+        saveCurrentFile();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
 
     editor = monaco.editor.create(container, {
       theme: "roscode-dark",
@@ -93,6 +120,7 @@
     });
 
     return () => {
+      window.removeEventListener("keydown", handleKeyDown);
       models.forEach((m) => m.dispose());
       editor?.dispose();
     };
@@ -184,29 +212,34 @@
       {/each}
     </div>
 
-    <!-- Breadcrumb -->
+    <!-- Breadcrumb + save status -->
     {#if $activeFile}
-      {@const parts = $activeFile.replace(/^\//, "").split("/")}
+      {@const wsName = $workspacePath ? $workspacePath.split("/").pop() : "workspace"}
+      {@const relPath = $workspacePath ? $activeFile.replace($workspacePath, "") : $activeFile}
+      {@const parts = relPath.replace(/^\//, "").split("/")}
       <div class="breadcrumb">
+        <span class="crumb ws-crumb">{wsName}</span>
+        <span class="crumb-sep">›</span>
         {#each parts as part, i}
           <span class="crumb">{part}</span>
           {#if i < parts.length - 1}<span class="crumb-sep">›</span>{/if}
         {/each}
+        <div style="flex:1"></div>
+        {#if saving}
+          <span class="save-status saving">saving…</span>
+        {:else if saveError}
+          <span class="save-status error">{saveError}</span>
+        {:else}
+          <span class="save-hint">⌘S to save</span>
+        {/if}
       </div>
     {/if}
   {:else}
     <!-- Welcome screen when no file open -->
     <div class="welcome">
       <div class="welcome-logo">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.2">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-          <polyline points="14 2 14 8 20 8"/>
-          <line x1="16" y1="13" x2="8" y2="13"/>
-          <line x1="16" y1="17" x2="8" y2="17"/>
-          <polyline points="10 9 9 9 8 9"/>
-        </svg>
+        <img src={lockupUrl} alt="roscode studio" class="empty-lockup" />
       </div>
-      <p class="welcome-title">roscode <span>studio</span></p>
       <p class="welcome-sub">Open a file from the Explorer to start editing</p>
       <div class="welcome-hints">
         <div class="hint">
@@ -222,10 +255,11 @@
     </div>
   {/if}
 
-  <div class="monaco-container" bind:this={container}></div>
+  <div class="monaco-container" bind:this={container} class:hidden={$openFiles.length === 0}></div>
 </div>
 
 <style>
+  .monaco-container.hidden { display: none; }
   .editor-wrap {
     display: flex;
     flex-direction: column;
@@ -320,7 +354,12 @@
     overflow: hidden;
   }
   .crumb:last-child { color: var(--fg-0); }
+  .ws-crumb { font-weight: 600; color: var(--fg-1); }
   .crumb-sep { color: var(--fg-2); opacity: 0.5; }
+  .save-hint { font-family: var(--font-mono); font-size: 10px; color: var(--fg-3); }
+  .save-status { font-family: var(--font-mono); font-size: 10px; }
+  .save-status.saving { color: var(--accent); }
+  .save-status.error { color: var(--err); }
 
   /* Monaco container */
   .monaco-container {
@@ -330,26 +369,20 @@
 
   /* Welcome screen */
   .welcome {
-    position: absolute;
-    inset: 0;
+    flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 12px;
-    pointer-events: none;
+    background: var(--bg-0);
     z-index: 1;
+    padding: 40px;
+    text-align: center;
   }
-  .welcome-logo { opacity: 0.3; }
-  .welcome-title {
-    font-size: 22px;
-    font-weight: 600;
-    color: var(--fg-0);
-    letter-spacing: -0.5px;
-    opacity: 0.5;
-  }
-  .welcome-title span { color: var(--accent); opacity: 1; }
-  .welcome-sub { font-size: 12px; color: var(--fg-2); }
+  .welcome-logo { opacity: 0.08; mix-blend-mode: overlay; pointer-events: none; }
+  .empty-lockup { width: 380px; height: auto; margin-bottom: 8px; filter: grayscale(1) contrast(0.8); }
+  .welcome-sub { font-size: 13px; color: var(--fg-3); font-family: var(--font-mono); letter-spacing: 0.5px; }
   .welcome-hints {
     display: flex;
     gap: 16px;

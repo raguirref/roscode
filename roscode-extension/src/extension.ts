@@ -65,34 +65,17 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   // ═══════════════════════════════════════════════════════════
-  // Activity bar → full-page router.
-  // When any of the sidebar containers becomes visible, pop the
-  // corresponding full-editor page and close the sidebar so users
-  // see the dedicated layout — not a cramped side panel.
+  // Activity bar → Native Sidebar TreeViews
+  // We let the TreeViews live in the Native Sidebar so users can 
+  // drag and drop tools alongside them. Full pages are only opened 
+  // via commands or WebviewView providers.
   // ═══════════════════════════════════════════════════════════
   const openFullPage = async (kind: PageKind) => {
-    // Close sidebar first to prevent the flash where it briefly opens before hiding
-    vscode.commands.executeCommand("workbench.action.closeSidebar").catch(() => {});
-    await new Promise(r => setTimeout(r, 10));
     RoscodePagePanel.createOrShow(context, kind, rosConnection);
   };
 
-  const wireTreeViewToPage = (tv: vscode.TreeView<any>, kind: PageKind) => {
-    tv.onDidChangeVisibility((e) => {
-      if (e.visible) openFullPage(kind);
-    });
-  };
-  wireTreeViewToPage(networkTree, "network");
-  wireTreeViewToPage(nodeTree,    "nodes");
-  wireTreeViewToPage(topicTree,   "topics");
-  wireTreeViewToPage(libraryTree, "library");
-
-  // Webview views also route to full page on visibility.
-  graphView.onVisibilityChange?.(() => openFullPage("graph"));
-  plotView.onVisibilityChange?.(() => openFullPage("plot"));
-  terminalView.onVisibilityChange?.(() => openFullPage("terminal"));
+  // Webview views logic
   homeView.onVisibilityChange?.(() => {
-    vscode.commands.executeCommand("workbench.action.closeSidebar").catch(() => {});
     setTimeout(() => LauncherPanel.createOrShow(context), 10);
   });
 
@@ -245,10 +228,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // On startup: splash mode if no workspace (only launcher visible, zero IDE
   // chrome). Full IDE activates the moment a workspace folder is opened.
-  setTimeout(async () => {
-    try { await vscode.commands.executeCommand("workbench.action.closeAllEditors"); } catch {}
-    await applyChromeForWorkspaceState(context);
-  }, 500);
+  vscode.commands.executeCommand("workbench.action.closeAllEditors").then(() => {
+    applyChromeForWorkspaceState(context);
+  });
 
   // Watch for workspace changes — exit splash as soon as a folder opens.
   vscode.workspace.onDidChangeWorkspaceFolders(
@@ -266,40 +248,33 @@ async function applyChromeForWorkspaceState(context: vscode.ExtensionContext) {
   const hasWorkspace = (vscode.workspace.workspaceFolders?.length ?? 0) > 0;
 
   if (!hasWorkspace) {
-    // Splash: hide sidebar, aux, status bar, activity bar via commands.
+    // Splash: hide sidebar, aux bar, status bar, panel for a clean launcher view.
     try { await vscode.commands.executeCommand("workbench.action.closeSidebar"); } catch {}
     try { await vscode.commands.executeCommand("workbench.action.closeAuxiliaryBar"); } catch {}
     try { await vscode.commands.executeCommand("workbench.action.closePanel"); } catch {}
 
-    // Status bar: toggle if currently visible
     const cfg = vscode.workspace.getConfiguration();
     if (cfg.get<boolean>("workbench.statusBar.visible", true) !== false) {
       try { await cfg.update("workbench.statusBar.visible", false, vscode.ConfigurationTarget.Global); } catch {}
-    }
-    // Activity bar: hide
-    if (cfg.get<string>("workbench.activityBar.location", "default") !== "hidden") {
-      try { await cfg.update("workbench.activityBar.location", "hidden", vscode.ConfigurationTarget.Global); } catch {}
     }
 
     // Show the launcher full-bleed
     LauncherPanel.createOrShow(context);
   } else {
-    // IDE mode: restore chrome, close launcher, dock agent right.
+    // IDE mode: restore status bar and chrome, dock agent to RIGHT auxiliary bar.
     LauncherPanel.hide();
 
     const cfg = vscode.workspace.getConfiguration();
     if (cfg.get<boolean>("workbench.statusBar.visible", true) === false) {
       try { await cfg.update("workbench.statusBar.visible", true, vscode.ConfigurationTarget.Global); } catch {}
     }
-    if (cfg.get<string>("workbench.activityBar.location", "default") === "hidden") {
-      try { await cfg.update("workbench.activityBar.location", "default", vscode.ConfigurationTarget.Global); } catch {}
-    }
 
     await checkForRoscodeProjectGlobal();
 
-    // Pin the bottom panel to the right so the agent is always a sidekick
-    try { await vscode.commands.executeCommand("workbench.action.positionPanelRight"); } catch {}
-    try { await vscode.commands.executeCommand("workbench.action.focusPanel"); } catch {}
+    // Open the ROS Inspector in the left sidebar (shows NODES + TOPICS split)
+    try { await vscode.commands.executeCommand("workbench.view.extension.roscode-inspector"); } catch {}
+
+    // Open agent in the RIGHT auxiliary bar
     try { await vscode.commands.executeCommand("workbench.view.extension.roscode-agent"); } catch {}
     try { await vscode.commands.executeCommand("roscode.agent.focus"); } catch {}
   }
@@ -317,7 +292,7 @@ async function checkForRoscodeProjectGlobal() {
 
 async function applyFirstRunDefaults(context: vscode.ExtensionContext) {
   // Version bump: force re-apply when we add new settings
-  const SETTINGS_VERSION = 5;
+  const SETTINGS_VERSION = 7;
   if (context.globalState.get("roscode.defaultsVersion", 0) >= SETTINGS_VERSION) return;
 
   const updates: Array<[string, unknown, string]> = [
@@ -331,9 +306,8 @@ async function applyFirstRunDefaults(context: vscode.ExtensionContext) {
     ["window.commandCenter",             true,                   "window"],
     ["window.menuBarVisibility",         "classic",              "window"],
     ["window.title",                     "roscode/studio${separator}${rootName}${dirty}", "window"],
-    // Dock the bottom panel (where AGT lives) to the RIGHT so the agent is
-    // always visible as a side companion, Cursor-style.
-    ["workbench.panel.defaultLocation",  "right",                "workbench"],
+    // Keep bottom panel at bottom, use auxiliary bar for agent
+    ["workbench.panel.defaultLocation",  "bottom",               "workbench"],
     ["workbench.panel.opensMaximized",   "never",                "workbench"],
     ["workbench.secondarySideBar.defaultVisibility", "visible",  "workbench"],
     // Telemetry / suggestions off
@@ -360,8 +334,12 @@ async function applyFirstRunDefaults(context: vscode.ExtensionContext) {
     ["editor.minimap.enabled",           true,                   "editor"],
     ["editor.bracketPairColorization.enabled", true,             "editor"],
     ["breadcrumbs.enabled",              false,                  "breadcrumbs"],
-    // Don't show the Explorer/Search/etc. views container on startup
+    // Activity bar: default position (roscode icons only — VS Code defaults hidden via CSS)
     ["workbench.activityBar.location",   "default",              "workbench"],
+    // Show the secondary sidebar (agent) by default always
+    ["workbench.secondarySideBar.defaultVisibility", "visible",  "workbench"],
+    // Command center search bar always visible in title bar
+    ["window.commandCenter",             true,                   "window"],
   ];
   for (const [key, value, section] of updates) {
     try {

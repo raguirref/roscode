@@ -1,61 +1,128 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import type { SvelteComponent } from "svelte";
   import {
     getRuntimeStatus,
     startRuntime,
     type RuntimeStatus,
     type StartupEvent,
   } from "./lib/tauri";
-  import { activePanel, activeBottomTab } from "./lib/stores/layout";
+  import {
+    activePage,
+    runtimeStatus,
+    workspacePath,
+    addRecentWorkspace,
+    showNewPackageModal,
+    showCommandPalette,
+    bottomPanelOpen,
+    leftPanelOpen,
+    rightPanelOpen,
+    leftPanelWidth,
+    rightPanelWidth,
+    bottomPanelHeight,
+  } from "./lib/stores/layout";
 
   import Splash from "./lib/Splash.svelte";
+  import WelcomePage from "./lib/pages/WelcomePage.svelte";
 
-  // Layout components
+  // Layout
   import ActivityBar from "./lib/layout/ActivityBar.svelte";
-  import SidePanel from "./lib/layout/SidePanel.svelte";
-  import PackageTree from "./lib/layout/PackageTree.svelte";
-  import FileTree from "./lib/layout/FileTree.svelte";
-  import BottomPanel from "./lib/layout/BottomPanel.svelte";
+  import LeftToolPanel from "./lib/layout/LeftToolPanel.svelte";
+  import AgentPanel from "./lib/layout/AgentPanel.svelte";
   import StatusBar from "./lib/layout/StatusBar.svelte";
+  import Resizer from "./lib/layout/Resizer.svelte";
 
-  // Editor
-  import MonacoEditor from "./lib/editor/MonacoEditor.svelte";
+  // Pages
+  import HomePage from "./lib/pages/HomePage.svelte";
+  import FilesPage from "./lib/pages/FilesPage.svelte";
+  import NetworkPage from "./lib/pages/NetworkPage.svelte";
+  import NodesPage from "./lib/pages/NodesPage.svelte";
+  import TopicsPage from "./lib/pages/TopicsPage.svelte";
+  import LibraryPage from "./lib/pages/LibraryPage.svelte";
+  import TerminalPage from "./lib/pages/TerminalPage.svelte";
 
-  // ── Runtime state ──
+  // Modals & overlays
+  import NewPackageModal from "./lib/modals/NewPackageModal.svelte";
+  import CommandPalette from "./lib/modals/CommandPalette.svelte";
+  import ApiKeyModal from "./lib/modals/ApiKeyModal.svelte";
+  import { showApiKeyModal, apiKeyOk } from "./lib/modals/apiKeyState";
+  import { apiKeyStatus } from "./lib/tauri";
+  import lockupUrl from "./lib/brand/lockup-roscode.svg";
+
+  // ── State ──────────────────────────────────────────────────────────────────
+  let splashDone = false;
+  let ideOpen = false;         // true = show IDE shell; false = WelcomePage
+  let localWorkspacePath = ""; // mirrors workspacePath store for non-reactive use
+
   let status: RuntimeStatus = { kind: "uninitialized" };
   let booting = false;
   let stageLabel = "";
   let stagePercent = 0;
-  let logLines: string[] = [];
-  let workspacePath = "";
-  let splashDone = false;
 
-  // Forwarded from BottomPanel so Packages can fill chat
-  let chatRef: (SvelteComponent & { fill: (text: string) => void }) | undefined;
-
-  onMount(async () => {
-    workspacePath = `${
-      (window as any).__ROSCODE_HOME__ ?? "/Users/rickyaguirre"
-    }/development/roscode/demos/demo_drift/workspace`;
-    // Hold splash for at least 1.6s so the animation completes nicely
-    const [s] = await Promise.all([
-      getRuntimeStatus().catch(() => ({ kind: "uninitialized" }) as RuntimeStatus),
-      new Promise((r) => setTimeout(r, 1600)),
-    ]);
-    status = s as RuntimeStatus;
-    splashDone = true;
+  // ── Boot ───────────────────────────────────────────────────────────────────
+  onMount(() => {
+    window.addEventListener("keydown", handleGlobalKey);
+    (async () => {
+      const [s] = await Promise.all([
+        getRuntimeStatus().catch(() => ({ kind: "uninitialized" }) as RuntimeStatus),
+        new Promise<void>((r) => setTimeout(r, 1400)),
+      ]);
+      status = s as RuntimeStatus;
+      runtimeStatus.set(status);
+      splashDone = true;
+      // Poll the API-key status — refreshed when user saves a new key.
+      apiKeyStatus().then((ok) => apiKeyOk.set(ok)).catch(() => apiKeyOk.set(false));
+    })();
+    return () => window.removeEventListener("keydown", handleGlobalKey);
   });
 
+  // ── Welcome → IDE transition ───────────────────────────────────────────────
+  function handleOpen(e: CustomEvent<string>) {
+    const path = e.detail;
+    localWorkspacePath = path;
+    workspacePath.set(path);
+    if (path) addRecentWorkspace(path);
+    ideOpen = true;
+    // If user hit "New Project" (empty path), open the modal to scaffold one
+    if (!path) {
+      activePage.set("home");
+      showNewPackageModal.set(true);
+    }
+  }
+
+  // Auto-close bottom terminal if main terminal page is opened
+  $: if ($activePage === "terminal" && $bottomPanelOpen && $activeBottomTab === "terminal") {
+    bottomPanelOpen.set(false);
+  }
+
+  // ── Global keyboard shortcuts ─────────────────────────────────────────────
+  function handleGlobalKey(e: KeyboardEvent) {
+    if (!ideOpen) return;
+    // ⌘K / Ctrl+K → command palette
+    if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+      e.preventDefault();
+      showCommandPalette.update((v) => !v);
+      return;
+    }
+    // Ctrl+` → toggle bottom panel
+    if (e.ctrlKey && e.key === "`") {
+      e.preventDefault();
+      bottomPanelOpen.update((v) => !v);
+      return;
+    }
+  }
+
+  // ── Runtime startup ────────────────────────────────────────────────────────
   async function boot() {
+    if (!localWorkspacePath) return;
     booting = true;
-    logLines = [];
     stageLabel = "";
     stagePercent = 0;
     try {
-      status = await startRuntime(workspacePath, handleEvent);
+      status = await startRuntime(localWorkspacePath, handleEvent);
+      runtimeStatus.set(status);
     } catch (e) {
       status = { kind: "error", message: String(e) };
+      runtimeStatus.set(status);
     } finally {
       booting = false;
     }
@@ -64,426 +131,520 @@
   function handleEvent(ev: StartupEvent) {
     switch (ev.event) {
       case "stage":  stageLabel = ev.label; stagePercent = ev.percent; break;
-      case "log":    logLines = [...logLines, ev.line].slice(-30); break;
-      case "done":   status = ev.status; break;
-      case "failed": status = { kind: "error", message: ev.message }; break;
+      case "log":    break; // discard; could show in a log panel later
+      case "done":   status = ev.status; runtimeStatus.set(status); break;
+      case "failed": status = { kind: "error", message: ev.message }; runtimeStatus.set(status); break;
     }
   }
 
-  function handleNodeSelect(e: CustomEvent) {
-    activeBottomTab.set("chat");
-    chatRef?.fill(e.detail.prompt);
-  }
+  $: statusImage = status.kind === "ready" ? (status as any).image ?? "" : "";
 
-  $: statusImage = status.kind === "ready" ? status.image : "";
+  // ── Go back to welcome ─────────────────────────────────────────────────────
+  function backToWelcome() {
+    ideOpen = false;
+    workspacePath.set("");
+    localWorkspacePath = "";
+  }
 </script>
 
+<!-- ── Splash ── -->
 <Splash done={splashDone} />
 
-<div class="ide-root">
-  <!-- ══ HEADER ══ -->
-  <header class="ide-header">
-    <div class="brand">
-      <svg class="brand-mark" width="22" height="22" viewBox="0 0 32 32" fill="none">
-        <rect x="4" y="4" width="24" height="24" rx="4" stroke="#f2a83b" stroke-width="1.5"/>
-        <circle cx="16" cy="16" r="3.5" fill="#f2a83b"/>
-        <path d="M16 8v-3M16 27v-3M8 16h-3M27 16h-3" stroke="#f2a83b" stroke-width="1.5" stroke-linecap="round"/>
-      </svg>
-      <span class="brand-name">ROSCODE<span class="brand-sep">/</span>STUDIO</span>
-    </div>
+<!-- ── Welcome screen ── -->
+{#if splashDone && !ideOpen}
+  <WelcomePage on:open={handleOpen} />
+{/if}
 
-    <button class="cmd-btn" title="Command Palette (⌘K)">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <rect x="4" y="5" width="16" height="14" rx="2"/>
-        <line x1="8" y1="10" x2="16" y2="10"/>
-        <line x1="8" y1="14" x2="12" y2="14"/>
-      </svg>
-      <span>⌘K</span>
-    </button>
+<!-- ── IDE Shell ── -->
+{#if ideOpen}
+  <div class="ide-root">
 
-    <div class="status-pill" data-kind={status.kind}>
-      <span class="dot"></span>
-      <span class="status-label">
-        {#if status.kind === "uninitialized"}RUNTIME · OFFLINE
-        {:else if status.kind === "starting"}STARTING…
-        {:else if status.kind === "ready"}{(statusImage || "READY").toUpperCase()}
-        {:else if status.kind === "error"}ERROR
-        {/if}
-      </span>
-    </div>
-
-    <!-- spacer so the start button floats right -->
-    <div class="header-spacer"></div>
-
-    {#if status.kind !== "ready"}
-      <button class="start-btn" on:click={boot} disabled={booting || !workspacePath}>
-        {#if booting}
-          <span class="spinner"></span> STARTING…
-        {:else}
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-          START
-        {/if}
+    <!-- ════ HEADER ════ -->
+    <header class="ide-header">
+      <!-- brand (wordmark) -->
+      <button class="brand" on:click={() => activePage.set("home")} title="Home">
+        <img src={lockupUrl} alt="roscode studio" class="brand-mark-full" />
       </button>
-    {:else}
-      <span class="ready-badge">■ LIVE</span>
-    {/if}
-  </header>
 
-  <!-- ══ BOOT PROGRESS ══ -->
-  {#if booting || status.kind === "starting"}
-    <div class="progress-wrap">
-      <div class="progress-fill" style="width:{Math.round(stagePercent * 100)}%"></div>
-    </div>
-    <div class="progress-info">
-      <span>{stageLabel || "initializing…"}</span>
-      <span class="pct">{Math.round(stagePercent * 100)}%</span>
-    </div>
-    {#if logLines.length}
-      <pre class="boot-log">{logLines.join("\n")}</pre>
-    {/if}
-  {/if}
-
-  <!-- ══ IDE SHELL ══ -->
-  <div class="ide-shell">
-    <!-- Activity Bar (far left icon strip) -->
-    <ActivityBar />
-
-    <!-- Side Panel (resizable) -->
-    <SidePanel>
-      {#if $activePanel === "home"}
-        <div class="panel-stub">
-          <div class="panel-stub-label">// WORKSPACE</div>
-          <div class="panel-stub-title">turtlebot4_nav</div>
-          <div class="panel-stub-meta">~/dev/ros2_ws · <span style="color: var(--accent);">nav-rework</span></div>
-          <ul class="panel-stub-list">
-            <li><span class="kv-k">NODES</span><span class="kv-v">12</span></li>
-            <li><span class="kv-k">TOPICS</span><span class="kv-v">34</span></li>
-            <li><span class="kv-k">PARAMS</span><span class="kv-v">127</span></li>
-            <li><span class="kv-k">BUILD</span><span class="kv-v" style="color: var(--ok);">OK</span></li>
-          </ul>
-        </div>
-      {:else if $activePanel === "packages"}
-        <PackageTree on:nodeselect={handleNodeSelect} />
-      {:else if $activePanel === "editor"}
-        <FileTree {workspacePath} />
-      {:else if $activePanel === "chat"}
-        <div class="panel-hint">
-          <p>// AGENT · BOTTOM PANEL</p>
-        </div>
-      {:else if $activePanel === "graph"}
-        <div class="panel-hint">
-          <p>// NETWORK · BOTTOM PANEL</p>
-        </div>
-      {:else if $activePanel === "nodes"}
-        <div class="panel-stub">
-          <div class="panel-stub-label">// NODES</div>
-          <div class="panel-stub-meta">08 RUN · 01 ERR · 03 IDLE</div>
-          <ul class="panel-stub-list">
-            <li><span class="kv-k" style="color: var(--ok);">●</span><span class="kv-v">/robot_state</span></li>
-            <li><span class="kv-k" style="color: var(--ok);">●</span><span class="kv-v">/amcl</span></li>
-            <li><span class="kv-k" style="color: var(--ok);">●</span><span class="kv-v">/nav2_bt</span></li>
-            <li><span class="kv-k" style="color: var(--err);">●</span><span class="kv-v">/camera_driver</span></li>
-          </ul>
-        </div>
-      {:else if $activePanel === "topics"}
-        <div class="panel-stub">
-          <div class="panel-stub-label">// TOPICS</div>
-          <div class="panel-stub-meta">34 TOTAL · 04 STALE</div>
-          <ul class="panel-stub-list">
-            <li><span class="kv-k">/cmd_vel</span><span class="kv-v">20 Hz</span></li>
-            <li><span class="kv-k">/scan</span><span class="kv-v">10 Hz</span></li>
-            <li><span class="kv-k">/odom</span><span class="kv-v">30 Hz</span></li>
-            <li><span class="kv-k">/tf</span><span class="kv-v">60 Hz</span></li>
-          </ul>
-        </div>
-      {:else if $activePanel === "terminal"}
-        <div class="panel-hint">
-          <p>// TERMINAL · BOTTOM PANEL</p>
-        </div>
-      {:else}
-        <div class="panel-stub">
-          <div class="panel-stub-label">// CONFIG</div>
-          <div class="panel-stub-meta">roscode/studio · v0.1.0</div>
-          <ul class="panel-stub-list">
-            <li><span class="kv-k">MODEL</span><span class="kv-v">claude-opus-4-7</span></li>
-            <li><span class="kv-k">DOMAIN</span><span class="kv-v">0</span></li>
-            <li><span class="kv-k">THEME</span><span class="kv-v" style="color: var(--accent);">blueprint ops</span></li>
-          </ul>
-        </div>
+      {#if localWorkspacePath}
+        <button class="ws-chip" on:click={backToWelcome} title="Change workspace">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" opacity=".6">
+            <path d="M3 7a2 2 0 012-2h4l2 2h9a2 2 0 012 2v7a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
+          </svg>
+          {localWorkspacePath.split("/").pop() ?? localWorkspacePath}
+          <span class="ws-change">change</span>
+        </button>
       {/if}
-    </SidePanel>
 
-    <!-- Main area: Editor top + Bottom panel -->
-    <div class="main-area">
-      <div class="editor-area">
-        <MonacoEditor />
+      <!-- search bar — Antigravity style -->
+      <button class="search-bar" on:click={() => showCommandPalette.set(true)}>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <span class="search-placeholder">Search commands, nodes, files…</span>
+        <span class="kbd-hint">⌘K</span>
+      </button>
+
+      <!-- ── Panel toggles (VSCode-style) ── -->
+      <div class="panel-toggles">
+        <button
+          class="ptg"
+          class:on={$leftPanelOpen}
+          title="Toggle Primary Sidebar"
+          on:click={() => leftPanelOpen.update((v) => !v)}
+          aria-label="Toggle primary sidebar"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="4" width="18" height="16" rx="1.5"/>
+            <line x1="9" y1="4" x2="9" y2="20"/>
+            <rect x="3" y="4" width="6" height="16" fill="currentColor" opacity={$leftPanelOpen ? 0.35 : 0}/>
+          </svg>
+        </button>
+
+        <button
+          class="ptg"
+          class:on={$bottomPanelOpen}
+          title="Toggle Panel (Ctrl+`)"
+          on:click={() => bottomPanelOpen.update((v) => !v)}
+          aria-label="Toggle bottom panel"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="4" width="18" height="16" rx="1.5"/>
+            <line x1="3" y1="14" x2="21" y2="14"/>
+            <rect x="3" y="14" width="18" height="6" fill="currentColor" opacity={$bottomPanelOpen ? 0.35 : 0}/>
+          </svg>
+        </button>
+
+        <button
+          class="ptg"
+          class:on={$rightPanelOpen}
+          title="Toggle Secondary Sidebar (Agent)"
+          on:click={() => rightPanelOpen.update((v) => !v)}
+          aria-label="Toggle agent sidebar"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="4" width="18" height="16" rx="1.5"/>
+            <line x1="15" y1="4" x2="15" y2="20"/>
+            <rect x="15" y="4" width="6" height="16" fill="currentColor" opacity={$rightPanelOpen ? 0.35 : 0}/>
+          </svg>
+        </button>
+
+        <button
+          class="ptg"
+          title="Customize Layout"
+          on:click={() => showCommandPalette.set(true)}
+          aria-label="Customize layout"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M4 6h16M4 12h10M4 18h16"/>
+            <circle cx="18" cy="12" r="2" fill="currentColor"/>
+          </svg>
+        </button>
       </div>
-      <BottomPanel {status} {workspacePath} bind:chatRef />
+
+      <div class="header-right">
+        <div class="status-pill" data-kind={status.kind}>
+          <span class="dot"></span>
+          <span>
+            {#if status.kind === "uninitialized"}OFFLINE
+            {:else if status.kind === "starting"}{stageLabel || "STARTING…"}
+            {:else if status.kind === "ready"}{(statusImage || "LIVE").toUpperCase()}
+            {:else if status.kind === "error"}ERROR
+            {/if}
+          </span>
+        </div>
+
+        {#if status.kind !== "ready"}
+          <button class="start-btn" on:click={boot} disabled={booting}>
+            {#if booting}
+              <span class="spinner"></span> {stageLabel || "STARTING…"}
+            {:else}
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              START ROS
+            {/if}
+          </button>
+        {:else}
+          <button class="stop-btn" on:click={() => { status = { kind: "uninitialized" }; runtimeStatus.set(status); }}>
+            <span class="dot-live"></span> STOP ROS
+          </button>
+        {/if}
+      </div>
+    </header>
+
+    <!-- ════ BOOT PROGRESS ════ -->
+    {#if booting || status.kind === "starting"}
+      <div class="progress-wrap">
+        <div class="progress-fill" style="width:{Math.round(stagePercent * 100)}%"></div>
+      </div>
+    {/if}
+
+    <!-- ════ IDE SHELL — 4 columns ════ -->
+    <div class="ide-shell">
+      <!-- Col 1: Activity bar -->
+      <ActivityBar />
+
+      <!-- Col 2: Left tool panel (collapsible + resizable) -->
+      <LeftToolPanel />
+      {#if $leftPanelOpen}
+        <Resizer store={leftPanelWidth} side="left" min={160} max={500} />
+      {/if}
+
+      <!-- Col 3: Main page -->
+      <main class="main-page">
+        {#key $activePage}
+        <div class="page-shell fade-in">
+        {#if $activePage === "home"}       <HomePage />
+        {:else if $activePage === "files"} <FilesPage />
+        {:else if $activePage === "network"} <NetworkPage />
+        {:else if $activePage === "nodes"} <NodesPage />
+        {:else if $activePage === "topics"} <TopicsPage />
+        {:else if $activePage === "library"} <LibraryPage />
+        {:else if $activePage === "terminal"} <TerminalPage />
+        {:else if $activePage === "settings"}
+          <div class="settings-stub">
+            <div>
+              <div class="stub-label">// settings</div>
+              <h1 class="settings-title">configure your studio</h1>
+            </div>
+
+            <!-- API Key card -->
+            <div class="settings-card">
+              <div class="card-head">
+                <div>
+                  <div class="card-title">Anthropic API Key</div>
+                  <div class="card-sub">Required for the agent. Stored in this repo's <code>.env</code> file.</div>
+                </div>
+                <div class="key-status" data-ok={$apiKeyOk}>
+                  {#if $apiKeyOk === true}
+                    <span class="dot ok"></span> Configured
+                  {:else if $apiKeyOk === false}
+                    <span class="dot warn"></span> Missing
+                  {:else}
+                    <span class="dot idle"></span> Checking…
+                  {/if}
+                </div>
+              </div>
+              <div class="card-actions">
+                <button class="btn primary" on:click={() => showApiKeyModal.set(true)}>
+                  {$apiKeyOk ? "Update key" : "Add key"}
+                </button>
+                <a class="btn ghost" href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer">
+                  Get a key →
+                </a>
+              </div>
+            </div>
+
+            <!-- Workspace info -->
+            <div class="settings-card">
+              <div class="card-head">
+                <div>
+                  <div class="card-title">Workspace</div>
+                  <div class="card-sub">{localWorkspacePath || "No workspace open"}</div>
+                </div>
+                {#if localWorkspacePath}
+                  <button class="btn ghost" on:click={backToWelcome}>Change</button>
+                {/if}
+              </div>
+            </div>
+
+            <!-- Read-only env -->
+            <div class="settings-card">
+              <div class="card-title" style="margin-bottom:8px">Runtime</div>
+              <div class="stub-grid">
+                {#each [
+                  ["MODEL","claude-opus-4-7"],
+                  ["ROS DISTRO","humble"],
+                  ["DOMAIN ID","0"],
+                  ["RUNTIME","lima + containerd"],
+                  ["AGENT WS","ws://localhost:9000"],
+                ] as [k,v]}
+                  <div class="stub-row">
+                    <span class="stub-k">{k}</span>
+                    <span class="stub-v">{v}</span>
+                  </div>
+                {/each}
+              </div>
+            </div>
+          </div>
+        {/if}
+        </div>
+        {/key}
+      </main>
+
+      <!-- Col 4: Agent panel (resizable + collapsible) -->
+      {#if $rightPanelOpen}
+        <Resizer store={rightPanelWidth} side="right" min={220} max={640} />
+        <AgentPanel port={9000} workspacePath={localWorkspacePath} />
+      {/if}
     </div>
+
+    <!-- ════ BOTTOM PANEL (pinned terminal) ════ -->
+    {#if $bottomPanelOpen}
+      <Resizer store={bottomPanelHeight} direction="vertical" side="top" min={140} max={700} />
+      <div class="bottom-pin" style="height: {$bottomPanelHeight}px">
+        <div class="bottom-pin-header">
+          <span class="bp-label">▌ TERMINAL — pinned</span>
+          <div style="flex:1"></div>
+          <button class="bp-close" on:click={() => bottomPanelOpen.set(false)} title="Close (Ctrl+`)">×</button>
+        </div>
+        <div class="bottom-pin-body">
+          <TerminalPage />
+        </div>
+      </div>
+    {/if}
+
+    <!-- ════ STATUS BAR ════ -->
+    <StatusBar {status} />
   </div>
 
-  <!-- ══ STATUS BAR ══ -->
-  <StatusBar {status} />
-</div>
+  <!-- ════ MODALS / OVERLAYS ════ -->
+  <NewPackageModal />
+  <CommandPalette />
+  <ApiKeyModal />
+{/if}
 
 <style>
+  /* ── IDE shell ── */
   .ide-root {
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    width: 100vw;
-    overflow: hidden;
-    background: var(--bg-0);
+    display: flex; flex-direction: column;
+    height: 100vh; width: 100vw;
+    overflow: hidden; background: var(--bg-0);
   }
 
   /* ── Header ── */
   .ide-header {
     height: var(--header-height);
-    display: flex;
-    align-items: center;
-    gap: 10px;
+    display: flex; align-items: center; gap: 10px;
     padding: 0 14px;
-    background: var(--bg-1);
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-    position: relative;
+    background: var(--bg-1); border-bottom: 1px solid var(--border);
+    flex-shrink: 0; position: relative;
     -webkit-app-region: drag;
   }
   .ide-header > * { -webkit-app-region: no-drag; }
-
   .ide-header::after {
-    content: "";
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, var(--accent) 0%, transparent 35%);
-    opacity: 0.35;
+    content: ""; position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, var(--accent) 0%, transparent 40%); opacity: 0.35;
   }
 
-  .brand { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-  .brand-mark { flex-shrink: 0; }
-  .brand-name {
-    font-family: var(--font-mono);
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 0.4px;
+  .brand {
+    display: flex; align-items: center; flex-shrink: 0;
     color: var(--fg-0);
-    text-transform: uppercase;
-  }
-  .brand-sep { color: var(--accent); }
-
-  .cmd-btn {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 4px 10px;
-    background: transparent;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    color: var(--fg-2);
-    font-family: var(--font-mono);
-    font-size: 10px;
-    letter-spacing: 0.4px;
-    text-transform: uppercase;
+    background: transparent; border: none; padding: 4px; border-radius: var(--radius-sm);
     cursor: pointer;
-    transition: border-color 120ms, color 120ms;
+    transition: background 140ms cubic-bezier(.2,.8,.2,1), transform 120ms cubic-bezier(.2,.8,.2,1);
   }
-  .cmd-btn:hover { border-color: var(--accent); color: var(--fg-0); }
+  .brand:hover { background: var(--bg-2); border: none; }
+  .brand:active { transform: scale(0.94); filter: brightness(.92); }
+  .brand-mark-full {
+    height: 20px; width: auto; flex-shrink: 0;
+    transition: filter 240ms ease;
+    margin-left: 2px;
+  }
+  .brand:hover .brand-mark-full { filter: drop-shadow(0 0 10px rgba(242,168,59,.25)); }
 
-  .status-pill {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
-    border-radius: var(--radius);
-    border: 1px solid var(--border-bright);
-    background: transparent;
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--fg-1);
-    letter-spacing: 0.4px;
-    text-transform: uppercase;
-  }
-  .dot {
-    width: 5px; height: 5px;
-    border-radius: 50%;
-    background: var(--fg-2);
+  .ws-chip {
+    display: flex; align-items: center; gap: 5px;
+    padding: 3px 8px; border: 1px solid var(--border); border-radius: var(--radius);
+    background: transparent; cursor: pointer;
+    font-family: var(--font-mono); font-size: 11px; color: var(--fg-2);
+    max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    transition: border-color 100ms;
     flex-shrink: 0;
   }
-  .status-pill[data-kind="ready"]    { border-color: rgba(139,195,74,0.38); color: var(--ok); background: rgba(139,195,74,0.08); }
-  .status-pill[data-kind="ready"] .dot    { background: var(--ok); box-shadow: 0 0 6px var(--ok); animation: pulse 2s ease-in-out infinite; }
+  .ws-chip:hover { border-color: var(--accent-line); color: var(--fg-0); }
+  .ws-change { color: var(--fg-3); font-size: 9px; margin-left: 2px; }
+  .ws-chip:hover .ws-change { color: var(--accent); }
+
+  /* Redesigned Search Bar - Antigravity inspired */
+  .search-bar {
+    flex: 1; display: flex; align-items: center; gap: 10px;
+    padding: 6px 14px;
+    background: rgba(255, 255, 255, 0.03); 
+    border: 1px solid rgba(255, 255, 255, 0.05); 
+    border-radius: 20px;
+    cursor: pointer; max-width: 480px; margin: 0 auto;
+    transition: all 160ms ease;
+    color: var(--fg-2);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+  }
+  .search-bar:hover { 
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.1); 
+    color: var(--fg-0); 
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2), inset 0 1px 3px rgba(0,0,0,0.1);
+  }
+  .search-placeholder { flex: 1; text-align: left; font-family: var(--font-sans); font-size: 12px; color: var(--fg-2); letter-spacing: 0.1px; }
+  .search-bar:hover .search-placeholder { color: var(--fg-1); }
+  .kbd-hint {
+    font-family: var(--font-mono); font-size: 9px; color: var(--fg-3);
+    padding: 2px 6px; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 4px;
+    letter-spacing: .3px; background: rgba(0,0,0,0.2);
+  }
+
+  .header-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; margin-left: auto; }
+
+  .status-pill {
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: var(--radius); border: 1px solid var(--border-bright);
+    background: transparent;
+    font-family: var(--font-mono); font-size: 10px; color: var(--fg-1); letter-spacing: 0.4px; text-transform: uppercase;
+  }
+  .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--fg-2); flex-shrink: 0; }
+  .status-pill[data-kind="ready"] { border-color: rgba(139,195,74,.38); color: var(--ok); background: rgba(139,195,74,.08); }
+  .status-pill[data-kind="ready"] .dot { background: var(--ok); animation: pulse 2s ease-in-out infinite; }
   .status-pill[data-kind="starting"] { border-color: var(--accent-line); color: var(--accent); background: var(--accent-dim); }
   .status-pill[data-kind="starting"] .dot { background: var(--accent); animation: pulse 1s ease-in-out infinite; }
-  .status-pill[data-kind="error"]    { border-color: rgba(224,102,102,0.35); color: var(--err); background: rgba(224,102,102,0.08); }
-  .status-pill[data-kind="error"] .dot    { background: var(--err); }
+  .status-pill[data-kind="error"] { border-color: rgba(224,102,102,.35); color: var(--err); background: rgba(224,102,102,.08); }
+  .status-pill[data-kind="error"] .dot { background: var(--err); }
   .status-pill[data-kind="uninitialized"] .dot { background: var(--warn); }
-
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
-  .header-spacer { flex: 1; }
-
   .start-btn {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 7px 16px;
-    background: var(--accent);
-    color: #1a1408;
-    border: 1px solid var(--accent);
-    border-radius: var(--radius);
-    font-family: var(--font-mono);
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: opacity 120ms, transform 120ms;
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 14px;
+    background: var(--accent); color: #1a1408;
+    border: 1px solid var(--accent); border-radius: var(--radius);
+    font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+    letter-spacing: 0.5px; text-transform: uppercase; cursor: pointer;
+    white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis;
+    transition: opacity 120ms;
   }
-  .start-btn:hover { opacity: 0.9; transform: translateY(-1px); background: var(--accent); color: #1a1408; border: 1px solid var(--accent); }
-  .start-btn:disabled { opacity: 0.35; cursor: default; transform: none; pointer-events: none; }
+  .start-btn:hover { opacity: 0.9; color: #1a1408; background: var(--accent); border-color: var(--accent); }
+  .start-btn:disabled { opacity: 0.35; cursor: default; pointer-events: none; }
 
-  .ready-badge {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--ok);
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    font-weight: 600;
+  .stop-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 14px;
+    background: transparent; color: var(--fg-1);
+    border: 1px solid var(--border-bright); border-radius: var(--radius);
+    font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+    letter-spacing: 0.5px; text-transform: uppercase; cursor: pointer;
+    white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis;
+    transition: all 120ms;
+  }
+  .stop-btn:hover { background: rgba(224,102,102,.1); color: var(--err); border-color: rgba(224,102,102,.3); }
+  .dot-live {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--err);
+    box-shadow: 0 0 6px var(--err);
   }
 
   .spinner {
-    display: inline-block;
-    width: 10px; height: 10px;
-    border: 2px solid rgba(8,11,15,0.4);
-    border-top-color: var(--bg-0);
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
+    display: inline-block; width: 10px; height: 10px;
+    border: 2px solid rgba(26,20,8,.4); border-top-color: #1a1408;
+    border-radius: 50%; animation: spin 0.7s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* Boot progress */
-  .progress-wrap {
-    height: 2px;
-    background: var(--bg-2);
-    flex-shrink: 0;
-    overflow: hidden;
-  }
-  .progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--accent), var(--purple));
-    transition: width 300ms ease;
-  }
-  .progress-info {
-    display: flex;
-    justify-content: space-between;
-    padding: 4px 14px;
-    font-size: 11px;
-    color: var(--fg-2);
-    background: var(--bg-1);
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-  .pct { color: var(--accent); font-weight: 600; }
-  .boot-log {
-    max-height: 120px;
-    overflow-y: auto;
-    padding: 6px 14px;
-    font-family: 'JetBrains Mono', 'Fira Code', Menlo, monospace;
-    font-size: 11px;
-    color: var(--fg-1);
-    background: var(--bg-0);
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-    line-height: 1.5;
-  }
+  .progress-wrap { height: 2px; background: var(--bg-2); flex-shrink: 0; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--purple, #8b5cf6)); transition: width 300ms ease; }
 
-  /* IDE Shell */
-  .ide-shell {
-    display: flex;
-    flex: 1;
-    overflow: hidden;
-    min-height: 0;
-  }
+  /* IDE body */
+  .ide-shell { display: flex; flex: 1; overflow: hidden; min-height: 0; }
 
-  /* Main area (editor + bottom panel stacked) */
-  .main-area {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    min-width: 0;
-  }
-
-  .editor-area {
-    flex: 1;
-    overflow: hidden;
-    min-height: 0;
+  .main-page {
+    flex: 1; display: flex; overflow: hidden;
+    min-width: 0; min-height: 0; background: var(--bg-0);
     position: relative;
   }
-
-  /* Side panel hint */
-  .panel-hint {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    color: var(--fg-2);
-    font-size: 11px;
-    font-family: var(--font-mono);
-    letter-spacing: 0.5px;
-    padding: 20px;
-    text-align: center;
+  .page-shell {
+    flex: 1; display: flex; min-width: 0; min-height: 0;
+    will-change: opacity;
   }
 
-  /* Side panel stub (home/nodes/topics/settings placeholders) */
-  .panel-stub {
-    padding: 14px 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .panel-stub-label {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--fg-2);
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-  }
-  .panel-stub-title {
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--fg-0);
-    letter-spacing: -0.3px;
-  }
-  .panel-stub-meta {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--fg-2);
-    margin-bottom: 8px;
-  }
-  .panel-stub-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
+  /* Bottom pinned terminal */
+  .bottom-pin {
+    flex-shrink: 0;
     border-top: 1px solid var(--border);
+    background: var(--bg-1);
+    display: flex; flex-direction: column; min-height: 0;
   }
-  .panel-stub-list li {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 9px 2px;
-    font-family: var(--font-mono);
-    font-size: 11px;
-    border-bottom: 1px solid var(--border);
+
+  /* Panel toggle buttons */
+  .panel-toggles {
+    display: flex; align-items: center; gap: 2px;
+    padding: 0 6px; flex-shrink: 0;
   }
-  .kv-k {
-    color: var(--fg-2);
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
+  .ptg {
+    width: 28px; height: 24px;
+    display: flex; align-items: center; justify-content: center;
+    background: transparent; border: 1px solid transparent; border-radius: 6px;
+    color: var(--fg-2); cursor: pointer; padding: 0;
+    transition:
+      color 160ms cubic-bezier(.2,.8,.2,1),
+      background 160ms cubic-bezier(.2,.8,.2,1),
+      border-color 160ms cubic-bezier(.2,.8,.2,1),
+      transform 120ms cubic-bezier(.2,.8,.2,1);
+    user-select: none;
   }
-  .kv-v {
-    color: var(--fg-0);
+  .ptg:hover { color: var(--fg-0); background: var(--bg-2); border-color: transparent; }
+  .ptg:active:not(:disabled) { transform: scale(0.88); filter: brightness(.92); }
+  .ptg.on { color: var(--accent); background: var(--accent-dim); }
+  .ptg.on:hover { color: var(--accent); background: var(--accent-dim); border-color: transparent; }
+  .bottom-pin-header {
+    height: 28px; display: flex; align-items: center;
+    padding: 0 12px; background: var(--bg-1);
+    border-bottom: 1px solid var(--border); flex-shrink: 0;
   }
+  .bp-label { font-family: var(--font-mono); font-size: 10px; color: var(--accent); letter-spacing: 1.5px; }
+  .bp-close {
+    background: transparent; border: 1px solid var(--border); color: var(--fg-2);
+    width: 22px; height: 22px; padding: 0; line-height: 1;
+    border-radius: 3px; font-size: 14px; cursor: pointer;
+  }
+  .bp-close:hover { color: var(--err); border-color: var(--err); }
+  .bottom-pin-body { flex: 1; overflow: hidden; display: flex; min-height: 0; }
+
+  /* Settings */
+  .settings-stub {
+    flex: 1; padding: 32px 36px; display: flex; flex-direction: column; gap: 16px;
+    max-width: 760px; width: 100%; margin: 0 auto; overflow-y: auto;
+  }
+  .stub-label { font-family: var(--font-mono); font-size: 10px; color: var(--accent); letter-spacing: 1.5px; }
+  .settings-title { font-size: 28px; font-weight: 600; letter-spacing: -.6px; margin-top: 4px; }
+
+  .settings-card {
+    background: var(--bg-1); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 18px 20px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+  .card-title { font-size: 15px; font-weight: 600; color: var(--fg-0); letter-spacing: -.2px; }
+  .card-sub { font-size: 12.5px; color: var(--fg-2); margin-top: 4px; line-height: 1.5; }
+  .card-sub code { background: var(--bg-3); padding: 1px 6px; border-radius: 4px; color: var(--accent); font-family: var(--font-mono); font-size: 11.5px; }
+  .card-actions { display: flex; gap: 8px; }
+
+  .key-status {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 999px;
+    font-family: var(--font-mono); font-size: 10px;
+    border: 1px solid var(--border-bright); color: var(--fg-2);
+    flex-shrink: 0;
+  }
+  .key-status[data-ok="true"] { color: var(--ok); border-color: rgba(108,208,107,.3); background: rgba(108,208,107,.08); }
+  .key-status[data-ok="false"] { color: var(--warn); border-color: rgba(242,200,75,.3); background: rgba(242,200,75,.06); }
+  .key-status .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .key-status .dot.ok { background: var(--ok); }
+  .key-status .dot.warn { background: var(--warn); }
+  .key-status .dot.idle { background: var(--fg-2); }
+
+  .btn {
+    padding: 8px 16px; font-size: 12.5px; font-weight: 500;
+    border-radius: var(--radius-sm); cursor: pointer;
+    border: 1px solid; font-family: var(--font-sans); text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn.ghost { background: transparent; border-color: var(--border-bright); color: var(--fg-1); }
+  .btn.ghost:hover { color: var(--fg-0); border-color: var(--fg-2); background: var(--bg-2); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #1a1408; font-weight: 600; }
+  .btn.primary:hover { opacity: .92; }
+
+  .stub-grid {
+    display: flex; flex-direction: column;
+    border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;
+  }
+  .stub-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 11px 16px; border-bottom: 1px solid var(--border);
+    font-family: var(--font-mono); font-size: 12px;
+  }
+  .stub-row:last-child { border-bottom: none; }
+  .stub-k { color: var(--fg-2); letter-spacing: .5px; text-transform: uppercase; font-size: 10px; }
+  .stub-v { color: var(--fg-0); }
 </style>

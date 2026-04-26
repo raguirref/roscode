@@ -1,64 +1,77 @@
 /* ═══════════════════════════════════════════════════════════════
-   roscode studio — Blueprint Ops palette
-   Dark technical HUD · warm amber accent · monospace-forward
+   roscode studio — Aurora palette
+   Modern · soft · rounded · less terminal more product
    ═══════════════════════════════════════════════════════════════ */
-@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap");
 
 :root {
-  font-family: "Geist", "Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  font-size: 13px;
+  font-family: "Inter", "Geist", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-size: 13.5px;
   color-scheme: dark;
 
-  /* Blueprint B background ladder */
-  --bg-0: #0a0c0b;
-  --bg-1: #0f1211;
-  --bg-2: #121615;
-  --bg-3: #181d1b;
-  --fg-0: #e4e6e1;
-  --fg-1: #9ea39a;
-  --fg-2: #636862;
-  --fg-3: #3a3e3a;
+  /* Background ladder — slightly warmer, softer than pure greenish-black */
+  --bg-0: #0d0f12;
+  --bg-1: #14171c;
+  --bg-2: #1a1e25;
+  --bg-3: #232831;
+  --bg-glass: rgba(26, 30, 37, 0.72);
 
-  /* Primary accent: warm amber (ROS-ish) */
+  --fg-0: #ecedef;
+  --fg-1: #b6bac0;
+  --fg-2: #777b83;
+  --fg-3: #4a4e57;
+
+  /* Primary accent: warm amber (kept) but with softer tints */
   --accent: #f2a83b;
+  --accent-soft: #f7c071;
   --accent-dim: rgba(242, 168, 59, 0.10);
   --accent-line: rgba(242, 168, 59, 0.28);
-  --accent-glow: rgba(242, 168, 59, 0.4);
+  --accent-glow: rgba(242, 168, 59, 0.35);
 
-  /* Secondary: teal */
-  --accent2: #6dd3c8;
+  /* Secondary: a softer teal-cyan */
+  --accent2: #7fdcd0;
 
-  /* Keep older name for components that still reference it (now = warn/golden) */
+  /* Tertiary: a calm violet for AI/agent flair */
+  --accent3: #a78bfa;
+  --accent3-dim: rgba(167, 139, 250, 0.12);
+
   --accent-warm: #f2c84b;
-  --accent-warm-dim: rgba(242, 200, 75, 0.12);
+  --accent-warm-dim: rgba(242, 200, 75, 0.10);
 
   /* Signals */
-  --green: #8bc34a;
-  --ok:    #8bc34a;
-  --warn:  #f2c84b;
-  --err:   #e06666;
-  --purple: #6dd3c8;
+  --green:  #6cd06b;
+  --ok:     #6cd06b;
+  --warn:   #f2c84b;
+  --err:    #f07c7c;
+  --purple: #a78bfa;
 
-  --border: #222826;
-  --border-bright: #333b38;
+  --border: #262b34;
+  --border-bright: #353c47;
 
-  /* Blueprint B uses tighter radii */
-  --radius: 4px;
-  --radius-sm: 3px;
+  /* Modern soft radii — bumped up across the board */
+  --radius:    10px;
+  --radius-sm: 6px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
 
-  /* Monospace stack */
+  /* Soft shadows for elevation */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.18);
+  --shadow-md: 0 6px 24px rgba(0,0,0,.28);
+  --shadow-lg: 0 24px 60px rgba(0,0,0,.45);
+
+  /* Type stacks */
+  --font-sans: "Inter", "Geist", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --font-mono: "Geist Mono", "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
 
-  /* IDE shell layout */
-  --activity-bar-width: 52px;
-  --sidebar-width: 260px;
-  --bottom-panel-height: 280px;
-  --statusbar-height: 22px;
-  --header-height: 40px;
-  --tab-bar-height: 32px;
-  --pane-title-height: 30px;
+  /* IDE shell layout — slightly larger header for breathing room */
+  --activity-bar-width: 56px;
+  --sidebar-width: 280px;
+  --bottom-panel-height: 320px;
+  --statusbar-height: 24px;
+  --header-height: 46px;
+  --tab-bar-height: 36px;
+  --pane-title-height: 32px;
 
-  /* Status dots */
   --dot-active: var(--ok);
   --dot-idle: var(--fg-2);
   --dot-warning: var(--warn);
@@ -74,48 +87,89 @@ html, body, #app {
   color: var(--fg-0);
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Dot-grid background utility (used by HUD panels) */
+/* Soft dot-grid background utility */
 .bp-grid {
   background-image: radial-gradient(var(--border-bright) 1px, transparent 1px);
-  background-size: 24px 24px;
+  background-size: 28px 28px;
+  opacity: .55;
 }
 
+/* Buttons — softer, less SHOUTY, with tactile press feedback */
 button {
-  font-family: var(--font-mono);
-  font-size: 11px;
+  font-family: var(--font-sans);
+  font-size: 12px;
   font-weight: 500;
   background: transparent;
   color: var(--fg-0);
   border: 1px solid var(--border-bright);
-  border-radius: var(--radius);
-  padding: 7px 12px;
+  border-radius: var(--radius-sm);
+  padding: 7px 14px;
   cursor: pointer;
-  transition: background 120ms, border-color 120ms, color 120ms;
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
+  transition:
+    background 160ms cubic-bezier(.2,.8,.2,1),
+    border-color 160ms cubic-bezier(.2,.8,.2,1),
+    color 160ms cubic-bezier(.2,.8,.2,1),
+    transform 120ms cubic-bezier(.2,.8,.2,1),
+    box-shadow 160ms cubic-bezier(.2,.8,.2,1);
+  letter-spacing: 0;
+  text-transform: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
-button:hover { background: var(--bg-2); border-color: var(--accent); color: var(--accent); }
-button:active { opacity: 0.8; }
+button:hover { background: var(--bg-2); border-color: var(--fg-2); color: var(--fg-0); }
+button:active:not(:disabled) {
+  transform: scale(0.96);
+  filter: brightness(.92);
+  transition-duration: 60ms, 60ms, 60ms, 60ms, 60ms;
+}
+button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-dim);
+  border-color: var(--accent);
+}
 button:disabled { opacity: 0.35; cursor: default; pointer-events: none; }
 
+/* Generic press-feedback for non-button interactive elements */
+.press, [role="button"]:not(button), a.btn-like {
+  transition: transform 120ms cubic-bezier(.2,.8,.2,1), filter 120ms cubic-bezier(.2,.8,.2,1);
+  user-select: none;
+}
+.press:active:not(:disabled),
+[role="button"]:active,
+a.btn-like:active { transform: scale(0.97); filter: brightness(.92); }
+
+/* Animation utilities */
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slide-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes pop-in { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: none; } }
+.fade-in { animation: fade-in 200ms ease both; }
+.slide-up { animation: slide-up 240ms cubic-bezier(.2,.8,.2,1) both; }
+.pop-in { animation: pop-in 200ms cubic-bezier(.2,.8,.2,1) both; }
+
+/* Inputs */
 input, textarea {
-  font-family: inherit;
+  font-family: var(--font-sans);
   background: var(--bg-0);
   color: var(--fg-0);
   border: 1px solid var(--border-bright);
   border-radius: var(--radius-sm);
   outline: none;
-  transition: border-color 120ms, box-shadow 120ms;
+  transition: border-color 140ms, box-shadow 140ms;
 }
 input:focus, textarea:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-dim);
 }
 
-::-webkit-scrollbar { width: 5px; height: 5px; }
+/* Scrollbars — thinner, less obtrusive */
+::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--fg-2); }
+::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 4px; border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: var(--fg-2); border: 2px solid transparent; background-clip: content-box; }
+
+/* Selection */
+::selection { background: var(--accent-dim); color: var(--fg-0); }

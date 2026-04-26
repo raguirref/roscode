@@ -138,100 +138,50 @@
   font-size: 13px !important;
 }
 
-/* Hide the layout-action-icons on the right of the titlebar (Cursor-clean) */
-.monaco-workbench .part.titlebar .titlebar-right .action-item[aria-label*="Layout" i],
-.monaco-workbench .part.titlebar .titlebar-right .action-item[aria-label*="Toggle Primary" i],
-.monaco-workbench .part.titlebar .titlebar-right .action-item[aria-label*="Toggle Panel" i],
-.monaco-workbench .part.titlebar .titlebar-right .action-item[aria-label*="Customize" i] {
-  display: none !important;
+/* Panel toggle buttons in titlebar — kept visible so users can toggle sidebar/panel.
+   Style them subtly so they feel like roscode chrome. */
+.monaco-workbench .part.titlebar .titlebar-right .action-item {
+  color: var(--roscode-ink-faint) !important;
+}
+.monaco-workbench .part.titlebar .titlebar-right .action-item:hover {
+  color: var(--roscode-accent) !important;
+  background: var(--roscode-accent-dim) !important;
+  border-radius: 4px !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   Activity bar — ONLY roscode tabs. Kill every native entry.
+   Activity bar — roscode icons only.
+   The 4 VS Code built-in icons (Explorer, Search, SCM, Extensions,
+   Debug, Testing) are hidden. Only roscode navigation icons show.
    ═══════════════════════════════════════════════════════════════ */
 .monaco-workbench .part.activitybar {
   background: var(--roscode-bg) !important;
-  width: 56px !important;
+  width: 52px !important;
   border-right: 1px solid var(--roscode-border) !important;
 }
 
-/* AGGRESSIVE nuke: every native VS Code activity bar item.
-   Match by codicon class (reliable) + aria-label (fallback) + activity-
-   workbench-view class (structural). Only roscode's own tabs survive.
-
-   Native codicons used by VSCodium activity bar:
-     codicon-files              → Explorer
-     codicon-search             → Search
-     codicon-source-control     → Source Control
-     codicon-debug-alt          → Run and Debug
-     codicon-extensions         → Extensions
-     codicon-beaker             → Testing
-     codicon-remote-explorer    → Remote Explorer
-     codicon-accounts-view-bar-icon → Accounts
-     codicon-settings-gear      → Manage (bottom)
-     codicon-layout-activitybar-left → layout toggle
-*/
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item:has(.codicon-files),
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item:has(.codicon-search),
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item:has(.codicon-source-control),
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item:has(.codicon-debug-alt),
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item:has(.codicon-run-view-icon),
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item:has(.codicon-extensions),
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item:has(.codicon-beaker),
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item:has(.codicon-remote-explorer),
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item:has(.codicon-accounts-view-bar-icon),
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item:has(.codicon-settings-gear),
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item:has([class*="activity-workbench-view-explorer"]),
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item:has([class*="activity-workbench-view-search"]),
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item:has([class*="activity-workbench-view-scm"]),
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item:has([class*="activity-workbench-view-debug"]),
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item:has([class*="activity-workbench-view-extensions"]),
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item:has([class*="activity-workbench-view-testing"]),
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item:has([class*="activity-workbench-view-remote"]),
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Explorer" i]:not([aria-label*="roscode" i]):not([aria-label*="HOM" i]):not([aria-label*="NET" i]):not([aria-label*="GRF" i]):not([aria-label*="NOD" i]):not([aria-label*="TOP" i]):not([aria-label*="PLT" i]):not([aria-label*="LIB" i]):not([aria-label*="TRM" i]),
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Search" i]:not([aria-label*="roscode" i]),
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Source Control" i],
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Run and Debug" i],
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Run & Debug" i],
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Extensions" i],
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Testing" i],
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Accounts" i],
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Remote Explorer" i],
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Remote Window" i],
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="User Menu" i],
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Profile" i],
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Manage" i],
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="Settings" i],
-/* Last-ditch: target action items in the global-activity (bottom) bar */
-.monaco-workbench .part.activitybar .global-activity,
-.monaco-workbench .part.activitybar .global-activity .action-item {
-  display: none !important;
-  visibility: hidden !important;
-  height: 0 !important;
-  width: 0 !important;
-  overflow: hidden !important;
-  pointer-events: none !important;
-}
-
-/* Also kill the bottom (remote/accounts/settings) row of the activity bar */
-.monaco-workbench .part.activitybar .actions-container.bottom {
+/* Hide the 4 VS Code built-in activity bar items by title prefix */
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[title^="Explorer"],
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[title^="Search ("],
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[title^="Source Control"],
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[title^="Run and Debug"],
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[title^="Extensions"],
+.monaco-workbench .part.activitybar .monaco-action-bar .action-item[title^="Testing"] {
   display: none !important;
 }
 
-/* roscode items — bigger, tighter, radius on active */
+/* roscode activity bar icon style */
 .monaco-workbench .part.activitybar .monaco-action-bar .action-item {
-  height: 58px !important;
+  height: 52px !important;
   margin: 0 !important;
-  border-radius: 0 !important;
 }
 .monaco-workbench .part.activitybar .monaco-action-bar .action-label {
-  width: 56px !important;
-  padding-bottom: 14px !important;
+  width: 52px !important;
 }
 .monaco-workbench .part.activitybar .action-item.active .active-item-indicator::before,
 .monaco-workbench .part.activitybar .action-item.checked .active-item-indicator::before {
   border-left: 2px solid var(--roscode-accent) !important;
-  box-shadow: 0 0 10px var(--roscode-accent-glow);
+  box-shadow: 0 0 8px var(--roscode-accent-glow);
 }
 .monaco-workbench .part.activitybar .codicon,
 .monaco-workbench .part.activitybar svg {
@@ -247,77 +197,70 @@
   background: var(--roscode-accent-dim) !important;
 }
 
-/* Mono 3-letter code under each roscode activity bar icon */
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="HOM" i]::after { content: "HOM"; }
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="NET" i]::after { content: "NET"; }
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="GRF" i]::after { content: "GRF"; }
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="NOD" i]::after { content: "NOD"; }
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="TOP" i]::after { content: "TOP"; }
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="PLT" i]::after { content: "PLT"; }
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="LIB" i]::after { content: "LIB"; }
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="TRM" i]::after { content: "TRM"; }
-
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="HOM" i]::after,
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="NET" i]::after,
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="GRF" i]::after,
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="NOD" i]::after,
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="TOP" i]::after,
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="PLT" i]::after,
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="LIB" i]::after,
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item[aria-label*="TRM" i]::after {
-  position: absolute;
-  bottom: 6px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-family: "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
-  font-size: 8.5px;
-  letter-spacing: 0.8px;
-  color: var(--roscode-ink-faint);
-  pointer-events: none;
-  text-transform: uppercase;
-  font-weight: 500;
-}
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item.active::after,
-.monaco-workbench .part.activitybar .monaco-action-bar .action-item.checked::after {
-  color: var(--roscode-accent) !important;
-}
-
 /* ═══════════════════════════════════════════════════════════════
-   Side bar — soft panels, amber pane headers
+   Primary sidebar — roscode inspector.
+   Shows Nodes (top) + Topics (bottom) split.
+   VS Code Explorer/Search/SCM chrome is hidden.
    ═══════════════════════════════════════════════════════════════ */
 .monaco-workbench .part.sidebar {
   background: var(--roscode-bg-soft) !important;
   border-right: 1px solid var(--roscode-border) !important;
 }
-.monaco-workbench .part.sidebar .title-actions .codicon {
-  color: var(--roscode-ink-dim) !important;
+
+/* Hide VS Code Explorer title bar ("EXPLORER" heading) */
+.monaco-workbench .part.sidebar .composite.title[aria-label*="Explorer" i],
+.monaco-workbench .part.sidebar .composite.title[id*="workbench.view.explorer"],
+.monaco-workbench .part.sidebar .composite.title[id*="workbench.view.search"],
+.monaco-workbench .part.sidebar .composite.title[id*="workbench.view.scm"],
+.monaco-workbench .part.sidebar .composite.title[id*="workbench.view.extensions"],
+.monaco-workbench .part.sidebar .composite.title[id*="workbench.view.debug"] {
+  display: none !important;
 }
-.monaco-workbench .part.sidebar .title-actions .codicon:hover {
-  color: var(--roscode-accent) !important;
+/* Hide Explorer/SCM/Search body panes */
+.monaco-workbench .part.sidebar .pane-header[id*="workbench.view.explorer"],
+.monaco-workbench .part.sidebar .pane-header[id*="outline"],
+.monaco-workbench .part.sidebar .pane-header[id*="timeline"],
+.monaco-workbench .part.sidebar .pane-header .title[title="Outline"],
+.monaco-workbench .part.sidebar .pane-header .title[title="Timeline"] {
+  display: none !important;
 }
+
+/* Sidebar section headers — roscode style */
 .monaco-workbench .part.sidebar .composite.title {
-  padding: 4px 12px !important;
+  padding: 4px 10px !important;
   border-bottom: 1px solid var(--roscode-border) !important;
   background: var(--roscode-bg) !important;
 }
 .monaco-workbench .part.sidebar .composite.title h2 {
   font-family: "Geist Mono", "JetBrains Mono", ui-monospace, monospace !important;
-  font-size: 10px !important;
+  font-size: 9.5px !important;
   letter-spacing: 1.2px !important;
   text-transform: uppercase !important;
   color: var(--roscode-accent) !important;
-  font-weight: 600 !important;
+  font-weight: 700 !important;
 }
 .monaco-workbench .part.sidebar .pane-header {
-  font-size: 10px !important;
+  font-size: 9.5px !important;
   letter-spacing: 0.8px !important;
   text-transform: uppercase !important;
-  font-weight: 500 !important;
+  font-weight: 600 !important;
   padding: 4px 10px !important;
   font-family: "Geist Mono", "JetBrains Mono", ui-monospace, monospace !important;
+  background: var(--roscode-bg-soft) !important;
+  border-bottom: 1px solid var(--roscode-border) !important;
 }
 .monaco-workbench .part.sidebar .pane-header .title {
   color: var(--roscode-ink-dim) !important;
+}
+.monaco-workbench .part.sidebar .title-actions .codicon { color: var(--roscode-ink-dim) !important; }
+.monaco-workbench .part.sidebar .title-actions .codicon:hover { color: var(--roscode-accent) !important; }
+
+/* Hide agent if VS Code drags it to the left sidebar (agent lives only in aux bar) */
+.monaco-workbench .part.sidebar .pane-header[data-viewlet-id="roscode-agent"],
+.monaco-workbench .part.sidebar [data-viewlet-id="roscode-agent"] > .pane-header,
+.monaco-workbench .part.sidebar .pane-header[aria-label*="AGENT" i]:not(.part.auxiliarybar *),
+.monaco-workbench .part.sidebar .composite.title[aria-label*="AGENT" i] {
+  display: none !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -520,15 +463,20 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   Auxiliary bar tuning — the agent lives here on the right.
-   Make it wider by default and give it a clear identity.
+   Auxiliary bar — AGENT HOME (Cursor-style right sidebar).
+   This is the primary non-editor chrome in roscode studio.
    ═══════════════════════════════════════════════════════════════ */
 .monaco-workbench .part.auxiliarybar {
-  min-width: 280px !important;
+  min-width: 340px !important;
+  max-width: 600px !important;
+  border-left: 1px solid var(--roscode-border-hi) !important;
 }
 .monaco-workbench .part.auxiliarybar .pane-header {
   background: var(--roscode-bg) !important;
   border-bottom: 1px solid var(--roscode-border) !important;
+  height: 32px !important;
+  display: flex !important;
+  align-items: center !important;
 }
 .monaco-workbench .part.auxiliarybar .pane-header .title {
   color: var(--roscode-accent) !important;
@@ -536,6 +484,25 @@
   font-size: 10.5px !important;
   letter-spacing: 1px !important;
   text-transform: uppercase !important;
+}
+/* The auxiliary bar's composite title (top strip) */
+.monaco-workbench .part.auxiliarybar > .content > .composite.title {
+  background: var(--roscode-bg) !important;
+  border-bottom: 1px solid var(--roscode-border-hi) !important;
+  height: 32px !important;
+}
+.monaco-workbench .part.auxiliarybar > .content > .composite.title h2 {
+  font-family: "Geist Mono", "JetBrains Mono", ui-monospace, monospace !important;
+  font-size: 10px !important;
+  letter-spacing: 1.4px !important;
+  text-transform: uppercase !important;
+  color: var(--roscode-accent) !important;
+  font-weight: 700 !important;
+}
+/* Amber accent on the auxiliarybar toggle button in the title bar */
+.monaco-workbench .part.titlebar .action-item[aria-label*="Secondary Side Bar" i],
+.monaco-workbench .part.titlebar .action-item[aria-label*="Auxiliary" i] {
+  color: var(--roscode-accent) !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -664,27 +631,7 @@
   outline-offset: 1px !important;
 }
 
-/* ── Hide VS Code native Explorer chrome ────────────────────────────────────
-   The sidebar is used as a quick-access panel for roscode views.
-   We hide the "EXPLORER" label, the outline/timeline panes, and the
-   native editor breadcrumbs to keep the IDE feel clean.             */
-/* Hide the Explorer composite title bar ("EXPLORER" heading + its buttons) */
-.monaco-workbench .part.sidebar .composite.title[id*="workbench.view.explorer"],
-.monaco-workbench .part.sidebar [id="workbench.view.explorer"] .composite.title {
-  display: none !important;
-}
-/* Hide OUTLINE and TIMELINE panes inside Explorer */
-.monaco-workbench .part.sidebar .pane-header[id*="outline"],
-.monaco-workbench .part.sidebar .pane-header[id*="timeline"],
-.monaco-workbench .part.sidebar .pane-body[id*="outline"],
-.monaco-workbench .part.sidebar .pane-body[id*="timeline"] {
-  display: none !important;
-}
-/* Hide "OUTLINE" / "TIMELINE" bottom rows in the Explorer sidebar */
-.monaco-workbench .part.sidebar .pane-header .title[title="Outline"],
-.monaco-workbench .part.sidebar .pane-header .title[title="Timeline"] {
-  display: none !important;
-}
+/* Explorer chrome CSS removed — sidebar is permanently hidden. */
 /* Breadcrumb bar — standalone IDE feel (hide VS Code editor breadcrumbs) */
 .monaco-workbench .part.editor .breadcrumbs-control {
   display: none !important;
@@ -729,4 +676,6 @@ body.roscode-splash .monaco-workbench .part.titlebar .command-center {
 .monaco-workbench .notification-list-item:has([aria-label*="corrupt" i]) {
   display: none !important;
   visibility: hidden !important;
+}
+dden !important;
 }

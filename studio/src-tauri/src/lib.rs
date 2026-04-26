@@ -47,6 +47,16 @@ pub fn run() {
             commands::runtime_status,
             commands::start_runtime,
             commands::send_chat_message,
+            commands::pick_workspace_folder,
+            commands::fs_read_dir,
+            commands::fs_read_file,
+            commands::fs_write_file,
+            commands::ros_call_tool,
+            commands::ros_node_info,
+            commands::container_exec,
+            commands::lan_scan,
+            commands::api_key_status,
+            commands::api_key_save,
         ])
         .run(tauri::generate_context!())
         .expect("error while running roscode studio");

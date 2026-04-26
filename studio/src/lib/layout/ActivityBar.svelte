@@ -1,15 +1,11 @@
 <script lang="ts">
-  import { createEventDispatcher } from "svelte";
-  import { activePanel, type ActivityPanel } from "../stores/layout";
+  import { activePage, type ActivePage } from "../stores/layout";
 
-  const dispatch = createEventDispatcher<{ select: ActivityPanel }>();
-
-  function select(panel: ActivityPanel) {
-    activePanel.set(panel);
-    dispatch("select", panel);
+  function go(page: ActivePage) {
+    activePage.set(page);
   }
 
-  const topIcons: { id: ActivityPanel; label: string; code: string; svg: string }[] = [
+  const topIcons: { id: ActivePage; label: string; code: string; svg: string }[] = [
     {
       id: "home",
       label: "Home",
@@ -17,14 +13,14 @@
       svg: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11L12 4l9 7"/><path d="M5 10v9a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1v-9"/></svg>`,
     },
     {
-      id: "editor",
+      id: "files",
       label: "Files",
       code: "FIL",
       svg: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg>`,
     },
     {
-      id: "graph",
-      label: "ROS Graph",
+      id: "network",
+      label: "Network",
       code: "NET",
       svg: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="18" r="2.2"/><circle cx="12" cy="7" r="2.2"/><circle cx="18" cy="15" r="2.2"/><path d="M7.5 16.5l3-8M13.5 8.5l3 5"/></svg>`,
     },
@@ -41,7 +37,7 @@
       svg: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l8 4 8-4"/><path d="M4 12l8 4 8-4"/><path d="M4 17l8 4 8-4"/></svg>`,
     },
     {
-      id: "packages",
+      id: "library",
       label: "Library",
       code: "LIB",
       svg: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11a2 2 0 012 2v13H7a2 2 0 00-2 2V4z"/><path d="M5 4v16"/></svg>`,
@@ -60,9 +56,9 @@
     {#each topIcons as icon}
       <button
         class="icon-btn"
-        class:active={$activePanel === icon.id}
+        class:active={$activePage === icon.id}
         title={icon.label}
-        on:click={() => select(icon.id)}
+        on:click={() => go(icon.id)}
       >
         <span class="ic">{@html icon.svg}</span>
         <span class="code">{icon.code}</span>
@@ -71,7 +67,7 @@
   </div>
 
   <div class="bottom">
-    <button class="icon-btn" title="Settings" on:click={() => select("settings")}>
+    <button class="icon-btn" title="Settings" on:click={() => go("settings")}>
       <span class="ic">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="3"/>
@@ -95,11 +91,11 @@
     z-index: 10;
   }
 
-  .top { display: flex; flex-direction: column; align-items: stretch; gap: 0; width: 100%; }
+  .top { display: flex; flex-direction: column; align-items: stretch; gap: 0; width: 100%; flex: 1; padding-top: 6px; }
   .bottom {
-    margin-top: auto;
     border-top: 1px solid var(--border);
     padding: 4px 0;
+    flex-shrink: 0;
   }
 
   .icon-btn {
@@ -108,29 +104,33 @@
     padding: 10px 0 8px;
     background: transparent;
     border: none;
-    border-left: 2px solid transparent;
+    /* Use a left rail via box-shadow inset rather than border so we don't
+       have to transition border-color (which caused two buttons to appear
+       half-selected during the 160ms swap). */
+    box-shadow: inset 2px 0 0 transparent;
     border-radius: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 4px;
     color: var(--fg-2);
-    transition: color 120ms, background 120ms;
+    /* Snappy on state change — 60ms is barely perceived as a transition. */
+    transition: transform 120ms cubic-bezier(.2,.8,.2,1);
     font-family: var(--font-mono);
     text-transform: uppercase;
+    cursor: pointer;
+    user-select: none;
   }
-  .icon-btn:hover {
-    background: transparent;
-    border: none;
-    border-left: 2px solid transparent;
+  .icon-btn:hover:not(.active) {
+    background: var(--bg-2);
     color: var(--fg-1);
   }
+  .icon-btn:active { transform: scale(0.94); filter: brightness(.92); }
   .icon-btn.active {
     color: var(--accent);
     background: var(--accent-dim);
-    border-left: 2px solid var(--accent);
+    box-shadow: inset 2px 0 0 var(--accent);
   }
-  .icon-btn.active:hover { color: var(--accent); }
 
   .ic {
     display: flex;

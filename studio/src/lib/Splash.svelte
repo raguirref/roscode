@@ -1,4 +1,6 @@
 <script lang="ts">
+  import lockupUrl from "./brand/lockup-roscode.svg";
+
   export let done = false;
   let visible = true;
   let fadeOut = false;
@@ -20,16 +22,10 @@
     </div>
 
     <div class="center">
-      <div class="logo-wrap">
-        <svg width="64" height="64" viewBox="0 0 32 32" fill="none">
-          <rect x="4" y="4" width="24" height="24" rx="4" stroke="#f2a83b" stroke-width="1.5"/>
-          <circle cx="16" cy="16" r="3.5" fill="#f2a83b"/>
-          <path d="M16 8v-3M16 27v-3M8 16h-3M27 16h-3" stroke="#f2a83b" stroke-width="1.5" stroke-linecap="round"/>
-        </svg>
+      <div class="logo-wrap-full">
+        <img src={lockupUrl} alt="roscode studio" class="hero-lockup" />
       </div>
-
-      <p class="brand">roscode<span class="sep">/</span>studio</p>
-      <p class="caption">// BLUEPRINT OPS · BOOTING</p>
+      <p class="caption">// booting</p>
 
       <div class="bar-track">
         <div class="bar-fill" class:done={fadeOut}></div>
@@ -121,9 +117,9 @@
     gap: 16px;
   }
 
-  .logo-wrap {
-    width: 64px;
-    height: 64px;
+  .logo-wrap-full {
+    width: 600px;
+    height: auto;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -133,17 +129,10 @@
     from { transform: scale(0.6); opacity: 0; }
     to   { transform: scale(1);   opacity: 1; }
   }
-
-  .brand {
-    font-family: "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
-    font-size: 22px;
-    font-weight: 600;
-    letter-spacing: 0.4px;
-    text-transform: uppercase;
-    color: #e4e6e1;
-    animation: fadein 400ms 200ms ease both;
+  .hero-lockup {
+    width: 100%; height: auto;
+    filter: drop-shadow(0 8px 32px rgba(242,168,59,.15));
   }
-  .sep { color: #f2a83b; }
 
   .caption {
     font-family: "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
