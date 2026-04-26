@@ -215,7 +215,7 @@
   /* ── Header ── */
   .w-header {
     display: flex; align-items: center; gap: 10px;
-    padding: 0 20px; height: 42px; flex-shrink: 0;
+    padding: 0 20px 0 2px; height: 42px; flex-shrink: 0;
     border-bottom: 1px solid var(--border);
     background: var(--bg-1);
     position: relative; z-index: 2;
@@ -223,12 +223,12 @@
   }
   .w-header > * { -webkit-app-region: no-drag; }
 
-  .brand { display: flex; align-items: center; color: var(--fg-0); }
+  .brand { display: flex; align-items: center; color: var(--fg-0); padding: 6px 8px; }
   .brand-icon {
     height: 30px; width: 30px; object-fit: contain;
   }
   .brand-name {
-    height: 12px; width: auto; margin-left: 9px; opacity: 0.85; filter: invert(1);
+    height: 18px; width: auto; margin-left: 9px; opacity: 0.85; filter: invert(1);
   }
 
   .pill {

@@ -443,7 +443,7 @@
     transition: filter 240ms ease;
   }
   .brand-name {
-    height: 12px; width: auto; flex-shrink: 0; margin-left: 9px;
+    height: 18px; width: auto; flex-shrink: 0; margin-left: 9px;
     opacity: 0.85; filter: invert(1);
     transition: filter 240ms ease, opacity 240ms ease;
   }
