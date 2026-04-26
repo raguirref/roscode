@@ -9,8 +9,7 @@ autonomously inspects the live ROS graph, reads source code, forms a hypothesis,
 proposes a patch, gets human confirmation, rebuilds the workspace, respawns the node,
 and verifies the fix. All in one uninterrupted loop.
 
-Built for the **Built with Opus 4.7** hackathon (Anthropic + Cerebral Valley,
-deadline Sun Apr 26 2026 8:00 PM EST).
+> **Looking for the desktop IDE?** → [`studio` branch](../../tree/studio) — Tauri app with a visual node graph, topic explorer, and integrated agent panel.
 
 ---
 
@@ -183,13 +182,10 @@ apt-get install -y ros-humble-rviz2 ros-humble-rqt ros-humble-rqt-plot ros-humbl
 
 ## Status
 
-- ✅ 24 tools implemented end-to-end (analysis / ros / fs / build / pkg / gui), 105 unit tests passing.
+- ✅ 37 tools implemented end-to-end (analysis / ros / fs / build / pkg / gui / runtime), 131 unit tests passing.
 - ✅ Transparent container backend for macOS / Windows (Docker or Podman).
-- ✅ Rich UI with diff previews for `write_source_file` and a confirmation gate on every destructive call.
+- ✅ Rich terminal UI with diff previews and confirmation gate on every destructive call.
 - ✅ Two reproducible demo workspaces under `demos/` with real ROS 2 packages.
-- ⏳ Demo recordings and walkthrough GIFs — coming before the hackathon deadline.
-
-See `CLAUDE.md` for the project's live context and development rules.
 
 ## License
 
