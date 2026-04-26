@@ -90,8 +90,10 @@ def run(
     system_prompt = build_system_prompt(workspace_path)
     messages: list[dict] = [{"role": "user", "content": user_request}]
 
-    for step_idx in range(1, max_iterations + 1):
-        ui.step(step_idx, max_iterations)
+    step_idx = 0
+    while True:
+        step_idx += 1
+        ui.step(step_idx, step_idx)
 
         with ui.thinking():
             response = client.messages.create(
@@ -155,5 +157,3 @@ def run(
 
         ui.agent_message(f"Unexpected stop_reason: {response.stop_reason!r}. Halting.")
         return
-
-    ui.agent_message("Max iterations reached. Stopping.")

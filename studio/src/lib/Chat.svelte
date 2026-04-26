@@ -167,6 +167,7 @@
     if (!text || $chatSessionActive || connState !== "open") return;
     chatMessages.update((ms) => [...ms, { kind: "user", text }]);
     input = "";
+    tick().then(() => { if (textarea) autoResize(textarea); });
     chatSessionActive.set(true);
     sessionStartTime = Date.now();
     reasoningCollector = [];
@@ -261,13 +262,33 @@
   function toggleReasoning(idx: number) {
     reasoningExpanded = { ...reasoningExpanded, [idx]: !reasoningExpanded[idx] };
   }
+
+  function autoResize(el: HTMLTextAreaElement) {
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 160) + "px";
+  }
+
+  function handleInput(e: Event) {
+    autoResize(e.currentTarget as HTMLTextAreaElement);
+  }
+
+  $: pendingConfirms = $chatMessages.filter(
+    (m) => m.kind === "confirm" && (m as any).resolved === "pending"
+  ) as Array<ChatMessage & { kind: "confirm" }>;
+
+  function approveAll() {
+    for (const m of pendingConfirms) respondConfirm(m, true);
+  }
+  function rejectAll() {
+    for (const m of pendingConfirms) respondConfirm(m, false);
+  }
 </script>
 
 <div class="chat">
   <div class="agent-head">
     <img src={iconUrl} alt="" class="mark" />
     <div class="title-block">
-      <span class="title">Agent · Claude</span>
+      <span class="title">roscode agent</span>
       <span class="subtitle">{TOOL_COUNT} tools loaded</span>
     </div>
     <span class="flex"></span>
@@ -443,6 +464,17 @@
     {/if}
   </div>
 
+  <!-- Approve-all bar — shown when the agent is waiting for confirmations -->
+  {#if pendingConfirms.length > 0}
+    <div class="approve-bar">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <span class="ab-label">{pendingConfirms.length} change{pendingConfirms.length > 1 ? "s" : ""} pending</span>
+      <span style="flex:1"></span>
+      <button class="ab-reject" on:click={rejectAll}>Reject all</button>
+      <button class="ab-approve" on:click={approveAll}>Accept all</button>
+    </div>
+  {/if}
+
   <form class="composer" on:submit|preventDefault={submit}>
     <div class="composer-top">
       <select class="mode-select" title="Execution Mode">
@@ -461,6 +493,7 @@
           ? "ask agent — describe the bug, the feature, whatever"
           : `connecting to ws://127.0.0.1:${port}…`}
         disabled={connState !== "open" || $chatSessionActive}
+        on:input={handleInput}
         on:keydown={(e) => {
           if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
             e.preventDefault();
@@ -914,5 +947,43 @@
     background: #050706; font-family: var(--font-mono); font-size: 11.5px;
     color: #c9d1d9; white-space: pre; overflow-x: auto; line-height: 1.5;
   }
+
+  /* ── Tool call — less compressed ── */
+  .msg.tool-call {
+    background: var(--bg-2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 14px;
+    font-family: var(--font-mono); font-size: 11px;
+  }
+  .msg.tool-call .head {
+    font-size: 11px; font-weight: 600; color: var(--fg-1);
+    letter-spacing: 0.3px; margin-bottom: 6px;
+  }
+  .msg.tool-call.destructive { border-left: 3px solid var(--warn); }
+  .msg.tool-call.destructive .head { color: var(--warn); }
+  .msg.tool-call .args { color: var(--fg-3); line-height: 1.7; }
+  .msg.tool-call .args .k { color: var(--fg-2); }
+
+  /* ── Approve-all bar ── */
+  .approve-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 14px;
+    background: rgba(242,168,59,.06);
+    border-top: 1px solid rgba(242,168,59,.2);
+    border-bottom: 1px solid rgba(242,168,59,.1);
+    flex-shrink: 0; font-size: 11px;
+  }
+  .approve-bar svg { color: var(--warn); flex-shrink: 0; }
+  .ab-label { font-family: var(--font-mono); font-size: 10px; color: var(--warn); letter-spacing: 0.5px; }
+  .ab-reject {
+    padding: 5px 12px; border-radius: 6px; font-size: 10px; font-weight: 600;
+    font-family: var(--font-mono); letter-spacing: 0.5px; cursor: pointer;
+    background: transparent; border: 1px solid var(--border-bright); color: var(--fg-2);
+  }
+  .ab-reject:hover { color: var(--err); border-color: rgba(224,102,102,.4); background: rgba(224,102,102,.05); }
+  .ab-approve {
+    padding: 5px 14px; border-radius: 6px; font-size: 10px; font-weight: 700;
+    font-family: var(--font-mono); letter-spacing: 0.5px; cursor: pointer;
+    background: var(--accent); border: none; color: #1a1408;
+  }
+  .ab-approve:hover { opacity: 0.9; }
 </style>
-yle>

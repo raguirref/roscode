@@ -48,7 +48,7 @@
   import { showApiKeyModal, apiKeyOk } from "./lib/modals/apiKeyState";
   import { apiKeyStatus } from "./lib/tauri";
   import iconUrl from "./lib/brand/icon-dark.svg";
-  import studioNameUrl from "./lib/brand/name-studio-white.svg";
+  import studioNameUrl from "./lib/brand/name-roscode-studio.svg";
 
   // ── State ──────────────────────────────────────────────────────────────────
   let splashDone = false;
@@ -443,8 +443,8 @@
     transition: filter 240ms ease;
   }
   .brand-name {
-    height: 17px; width: auto; flex-shrink: 0; margin-left: 9px;
-    opacity: 0.90;
+    height: 12px; width: auto; flex-shrink: 0; margin-left: 9px;
+    opacity: 0.85; filter: invert(1);
     transition: filter 240ms ease, opacity 240ms ease;
   }
   .brand:hover .brand-icon { filter: drop-shadow(0 0 10px rgba(242,168,59,.4)); }

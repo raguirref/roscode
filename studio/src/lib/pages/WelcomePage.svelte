@@ -4,7 +4,7 @@
   import { pickWorkspaceFolder } from "../tauri";
   import iconUrl from "../brand/icon-dark.svg";
   import nameIconUrl from "../brand/name-icon-white.svg";
-  import studioNameUrl from "../brand/name-studio-white.svg";
+  import studioNameUrl from "../brand/name-roscode-studio.svg";
 
   const dispatch = createEventDispatcher<{ open: string }>();
 
@@ -228,7 +228,7 @@
     height: 30px; width: 30px; object-fit: contain;
   }
   .brand-name {
-    height: 17px; width: auto; margin-left: 9px; opacity: 0.90;
+    height: 12px; width: auto; margin-left: 9px; opacity: 0.85; filter: invert(1);
   }
 
   .pill {
