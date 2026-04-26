@@ -87,6 +87,20 @@ fn kill_host_server(state: &Arc<RuntimeState>) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Augment PATH so limactl/nerdctl are found when launched from Finder
+    // (GUI apps on macOS don't inherit the shell PATH).
+    if let Ok(current) = std::env::var("PATH") {
+        let extra = "/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/local/sbin";
+        if !current.contains("/opt/homebrew/bin") {
+            std::env::set_var("PATH", format!("{extra}:{current}"));
+        }
+    } else {
+        std::env::set_var(
+            "PATH",
+            "/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin",
+        );
+    }
+
     // Load the repo-root .env so ANTHROPIC_API_KEY is in our process env
     // before we fork into Tauri. Fails silently if missing; the startup
     // flow later logs a warning and still brings the container up.
@@ -127,6 +141,9 @@ pub fn run() {
             commands::ros_call_tool,
             commands::ros_node_info,
             commands::container_exec,
+            commands::container_read_dir,
+            commands::container_read_file,
+            commands::container_write_file,
             commands::lan_scan,
             commands::api_key_status,
             commands::api_key_save,

@@ -77,16 +77,40 @@ pub enum StartupEvent {
 pub async fn runtime_status(
     state: State<'_, Arc<RuntimeState>>,
 ) -> Result<RuntimeStatusDto, String> {
-    let lima_state = state.lima.read().await;
-    let container_state = state.container.read().await;
+    // First check in-memory state from a completed start_runtime.
+    {
+        let container_state = state.container.read().await;
+        if container_state.server_running {
+            return Ok(RuntimeStatusDto::Ready {
+                vm_name: lima::VM_NAME.to_string(),
+                image: container::ROS_IMAGE.to_string(),
+                agent_ws_port: AGENT_WS_PORT,
+            });
+        }
+    }
 
-    if container_state.server_running {
+    // On app restart the in-memory state is reset, so probe port 9000 directly.
+    // If the agent WebSocket is already listening (from a previous session or the
+    // container startup), we can skip the whole boot sequence and go straight to Ready.
+    if tokio::net::TcpStream::connect(("127.0.0.1", AGENT_WS_PORT)).await.is_ok() {
+        // Sync in-memory state so future calls and start_runtime know we're live.
+        state.lima.write().await.vm_running = true;
+        {
+            let mut cs = state.container.write().await;
+            cs.running = true;
+            cs.image_pulled = true;
+            cs.agent_installed = true;
+            cs.server_running = true;
+        }
         return Ok(RuntimeStatusDto::Ready {
             vm_name: lima::VM_NAME.to_string(),
             image: container::ROS_IMAGE.to_string(),
             agent_ws_port: AGENT_WS_PORT,
         });
     }
+
+    let lima_state = state.lima.read().await;
+    let container_state = state.container.read().await;
     if container_state.running {
         return Ok(RuntimeStatusDto::Starting {
             message: "container up, bootstrapping agent...".to_string(),
@@ -254,6 +278,101 @@ pub async fn fs_write_file(path: String, content: String) -> Result<(), String> 
     let full = expand_home(&path);
     std::fs::write(&full, content)
         .map_err(|e| format!("fs_write_file({path}): {e}"))
+}
+
+// ── Container filesystem (reads directly from the ROS container) ─────────────
+
+/// List a directory inside the running ROS container at the given path.
+/// Path must be absolute (e.g. "/workspace", "/workspace/src/my_pkg").
+#[tauri::command]
+pub async fn container_read_dir(
+    path: String,
+    state: State<'_, Arc<RuntimeState>>,
+) -> Result<Vec<FsNode>, String> {
+    let container_state = state.container.read().await;
+    if !container_state.running {
+        return Err("runtime not ready".to_string());
+    }
+    drop(container_state);
+
+    let path_hex = hex_encode(&path);
+    let script = format!(
+        "python3 -c \"\
+import os, json; \
+p=bytes.fromhex('{path_hex}').decode(); \
+entries=[]; \
+[entries.append({{'name':n,'path':os.path.join(p,n),'is_dir':os.path.isdir(os.path.join(p,n))}}) \
+ for n in sorted(os.listdir(p)) if not n.startswith('.')]; \
+entries.sort(key=lambda x: (not x['is_dir'], x['name'])); \
+print(json.dumps(entries))\""
+    );
+
+    let out = container::exec(&script)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let nodes: Vec<serde_json::Value> =
+        serde_json::from_str(out.trim()).map_err(|e| format!("parse error: {e}"))?;
+
+    Ok(nodes
+        .into_iter()
+        .filter_map(|v| {
+            Some(FsNode {
+                name: v["name"].as_str()?.to_string(),
+                path: v["path"].as_str()?.to_string(),
+                is_dir: v["is_dir"].as_bool().unwrap_or(false),
+            })
+        })
+        .collect())
+}
+
+/// Write content to a file inside the running ROS container.
+#[tauri::command]
+pub async fn container_write_file(
+    path: String,
+    content: String,
+    state: State<'_, Arc<RuntimeState>>,
+) -> Result<(), String> {
+    let container_state = state.container.read().await;
+    if !container_state.running {
+        return Err("runtime not ready".to_string());
+    }
+    drop(container_state);
+
+    let path_hex = hex_encode(&path);
+    let content_hex = hex_encode(&content);
+    let script = format!(
+        "python3 -c \"\
+p=bytes.fromhex('{path_hex}').decode(); \
+c=bytes.fromhex('{content_hex}').decode(); \
+open(p,'w').write(c)\""
+    );
+    container::exec(&script)
+        .await
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+/// Read a file from inside the running ROS container.
+#[tauri::command]
+pub async fn container_read_file(
+    path: String,
+    state: State<'_, Arc<RuntimeState>>,
+) -> Result<String, String> {
+    let container_state = state.container.read().await;
+    if !container_state.running {
+        return Err("runtime not ready".to_string());
+    }
+    drop(container_state);
+
+    let path_hex = hex_encode(&path);
+    let script = format!(
+        "python3 -c \"\
+p=bytes.fromhex('{path_hex}').decode(); \
+print(open(p).read(),end='')\""
+    );
+
+    container::exec(&script).await.map_err(|e| e.to_string())
 }
 
 // ── ROS tool execution ────────────────────────────────────────────────────────
@@ -437,11 +556,12 @@ pub async fn ros_call_tool(
     let args_hex = hex_encode(&args_json);
 
     // Hex-decode inside Python to avoid ALL shell-quoting edge-cases.
-    // Single quotes inside bash double-quoted strings are literals — safe.
+    // set_workspace must be called before any tool that touches the FS.
     let cmd = format!(
         "python3 -c \"\
 import json; \
-from roscode.tools import TOOL_MAP; \
+from roscode.tools import TOOL_MAP, set_workspace; \
+set_workspace('/workspace'); \
 tool=bytes.fromhex('{tool_hex}').decode(); \
 args=json.loads(bytes.fromhex('{args_hex}').decode()); \
 print(TOOL_MAP[tool](**args))\""

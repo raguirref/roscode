@@ -147,6 +147,13 @@ export function clearChatHistory() {
 
 export const runtimeStatus = writable<RuntimeStatus>({ kind: "uninitialized" });
 
+/** Bump this to trigger a file-tree reload in FilesPage. */
+export const filesRefreshTick = writable<number>(0);
+
+export function refreshFiles() {
+  filesRefreshTick.update((n) => n + 1);
+}
+
 export const isRuntimeReady = derived(
   runtimeStatus,
   ($s) => $s.kind === "ready",

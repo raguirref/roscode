@@ -32,7 +32,7 @@
     try {
       const raw = await rosCallTool("ros_graph", {});
       const parsed = parseRosGraph(raw);
-      nodes = parsed.nodes.map((n) => ({ name: n }));
+      nodes = parsed.nodes.filter((n) => n && n !== "(none)").map((n) => ({ name: n }));
       lastRefresh = new Date().toLocaleTimeString();
       if (!selected && nodes.length > 0) selectNode(nodes[0]);
     } catch (e) {

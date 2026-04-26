@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { workspacePath, openFile, activeFile, openFiles } from "../stores/layout";
-  import { fsReadDir, fsReadFile, type FsNode } from "../tauri";
+  import { workspacePath, openFile, activeFile, openFiles, filesRefreshTick, isRuntimeReady } from "../stores/layout";
+  import { fsReadDir, fsReadFile, containerReadDir, containerReadFile, type FsNode } from "../tauri";
   import MonacoEditor from "../editor/MonacoEditor.svelte";
 
   // ── Tree node type ──────────────────────────────────────────────────────────
@@ -66,14 +66,26 @@
     : visibleNodes;
 
   // ── Load workspace root ─────────────────────────────────────────────────────
-  $: if ($workspacePath) loadRoot($workspacePath);
+  // When runtime is ready, always read from container at /workspace.
+  // When runtime is not ready, fall back to host fs using workspacePath.
+  $: treeRoot = $isRuntimeReady ? "/workspace" : $workspacePath;
+  $: if (treeRoot) loadRoot(treeRoot);
+  $: if ($filesRefreshTick && treeRoot) loadRoot(treeRoot);
+
+  async function readDir(path: string): Promise<FsNode[]> {
+    return $isRuntimeReady ? containerReadDir(path) : fsReadDir(path);
+  }
+
+  async function readFile(path: string): Promise<string> {
+    return $isRuntimeReady ? containerReadFile(path) : fsReadFile(path);
+  }
 
   async function loadRoot(path: string) {
     if (!path) return;
     loadingRoot = true;
     errorMsg = "";
     try {
-      const entries = await fsReadDir(path);
+      const entries = await readDir(path);
       roots = entries.map((e) => toTreeNode(e, 0));
     } catch (e) {
       errorMsg = String(e);
@@ -89,7 +101,7 @@
       node.loading = true;
       roots = roots;
       try {
-        const entries = await fsReadDir(node.path);
+        const entries = await readDir(node.path);
         node.children = entries.map((e) => toTreeNode(e, node.depth + 1));
       } catch {}
       node.loading = false;
@@ -109,7 +121,7 @@
       return;
     }
     try {
-      const content = await fsReadFile(node.path);
+      const content = await readFile(node.path);
       openFile({
         path: node.path,
         name: node.name,
@@ -157,10 +169,10 @@
     </div>
 
     <!-- workspace label -->
-    {#if $workspacePath}
-      <div class="ws-label" title={$workspacePath}>
+    {#if treeRoot}
+      <div class="ws-label" title={treeRoot}>
         <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" opacity=".5"><path d="M3 7a2 2 0 012-2h4l2 2h9a2 2 0 012 2v7a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg>
-        {$workspacePath.split("/").pop() ?? "workspace"}
+        {treeRoot.split("/").pop() ?? "workspace"}
       </div>
     {/if}
 
@@ -170,7 +182,7 @@
         <div class="tree-loading">loading…</div>
       {:else if errorMsg}
         <div class="tree-error">{errorMsg}</div>
-      {:else if !$workspacePath}
+      {:else if !treeRoot}
         <div class="tree-empty">No workspace open.<br/>Start the runtime to load a workspace.</div>
       {:else if filteredNodes.length === 0 && filter}
         <div class="tree-empty">No files match "{filter}"</div>

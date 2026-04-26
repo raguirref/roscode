@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount, onDestroy, afterUpdate } from "svelte";
   import { openFiles, activeFile, updateFileContent, closeFile, markFileSaved, workspacePath, type FileTab } from "../stores/layout";
-  import { fsWriteFile } from "../tauri";
+  import { fsWriteFile, containerWriteFile } from "../tauri";
+  import { isRuntimeReady } from "../stores/layout";
   import nameIconUrl from "../brand/name-icon-white.svg";
   import * as monaco from "monaco-editor";
   import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
@@ -67,7 +68,7 @@
     saving = true;
     saveError = "";
     try {
-      await fsWriteFile($activeFile, editor.getValue());
+      await ($isRuntimeReady ? containerWriteFile($activeFile, editor.getValue()) : fsWriteFile($activeFile, editor.getValue()));
       markFileSaved($activeFile);
     } catch (e) {
       saveError = String(e);
@@ -126,18 +127,20 @@
     };
   });
 
-  // Reactively switch model when active file changes
+  // Sync models first, then switch — order matters to avoid race where
+  // switchToFile runs before the model exists in the map.
+  $: if (editor && $openFiles) {
+    syncModels($openFiles);
+    // After syncing, re-check active file in case it just got its model created.
+    if ($activeFile && $activeFile !== currentPath) switchToFile($activeFile);
+  }
+
   $: if (editor && $activeFile !== currentPath) {
     switchToFile($activeFile);
   }
 
-  $: if (editor && $openFiles) {
-    syncModels($openFiles);
-  }
-
   function syncModels(tabs: FileTab[]) {
     if (!editor) return;
-    // Create missing models
     for (const tab of tabs) {
       if (!models.has(tab.path)) {
         const uri = monaco.Uri.parse(`file://${tab.path}`);
@@ -146,7 +149,6 @@
         models.set(tab.path, model);
       }
     }
-    // Dispose removed models
     const paths = new Set(tabs.map((t) => t.path));
     for (const [path, model] of models) {
       if (!paths.has(path)) {
@@ -162,6 +164,7 @@
     const model = models.get(path);
     if (model) {
       editor.setModel(model);
+      editor.layout();
       editor.focus();
     }
   }

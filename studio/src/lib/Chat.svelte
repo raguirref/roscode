@@ -6,6 +6,7 @@
     chatSessionActive,
     clearChatHistory,
     rightPanelOpen,
+    refreshFiles,
     type ChatMessage,
   } from "./stores/layout";
   import { apiKeyOk, showApiKeyModal } from "./modals/apiKeyState";
@@ -23,7 +24,7 @@
 
   export function fill(text: string) {
     input = text;
-    tick().then(() => textarea?.focus());
+    tick().then(() => { textarea?.focus(); submit(); });
   }
 
   let input = "";
@@ -99,12 +100,15 @@
       case "tool_call":
         chatMessages.update((ms) => [...ms, { kind: "tool_call", name: ev.name, args: ev.args }]);
         break;
-      case "tool_result":
+      case "tool_result": {
         chatMessages.update((ms) => [
           ...ms,
           { kind: "tool_result", name: ev.name, result: ev.result, isError: ev.is_error },
         ]);
+        const FILE_TOOLS = new Set(["write_source_file", "package_scaffold", "workspace_build"]);
+        if (FILE_TOOLS.has(ev.name) && !ev.is_error) refreshFiles();
         break;
+      }
       case "confirm_request":
         chatMessages.update((ms) => [
           ...ms,
@@ -124,6 +128,7 @@
       case "session_end": {
         chatSessionActive.set(false);
         thinking = false;
+        refreshFiles();
         const durationSec = sessionStartTime ? Math.round((Date.now() - sessionStartTime) / 1000) : 0;
         sessionStartTime = null;
         chatMessages.update((ms) => [...ms, { kind: "session_complete", durationSec }]);

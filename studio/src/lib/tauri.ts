@@ -74,6 +74,21 @@ export async function fsWriteFile(path: string, content: string): Promise<void> 
   return invoke<void>("fs_write_file", { path, content });
 }
 
+export async function containerReadDir(path: string): Promise<FsNode[]> {
+  if (!IS_TAURI) return [];
+  return invoke<FsNode[]>("container_read_dir", { path });
+}
+
+export async function containerReadFile(path: string): Promise<string> {
+  if (!IS_TAURI) return "";
+  return invoke<string>("container_read_file", { path });
+}
+
+export async function containerWriteFile(path: string, content: string): Promise<void> {
+  if (!IS_TAURI) return;
+  return invoke<void>("container_write_file", { path, content });
+}
+
 // ── ROS tool execution ────────────────────────────────────────────────────────
 
 export async function rosCallTool(
