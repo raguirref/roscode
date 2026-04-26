@@ -11,15 +11,18 @@ from __future__ import annotations
 
 import difflib
 from contextlib import AbstractContextManager, contextmanager, nullcontext
+from pathlib import Path
 from typing import Any, Iterator
 
+from rich.columns import Columns
 from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Confirm
 from rich.syntax import Syntax
 from rich.text import Text
+from rich.tree import Tree
 
-# Tools that mutate the workspace or the live ROS graph.  Kept in sync with
+# Tools that mutate the workspace or the live ROS graph. Kept in sync with
 # ``roscode.agent.DESTRUCTIVE_TOOLS`` — used only for UI styling, not gating.
 _DESTRUCTIVE_TOOLS: frozenset[str] = frozenset(
     {
@@ -27,13 +30,18 @@ _DESTRUCTIVE_TOOLS: frozenset[str] = frozenset(
         "workspace_build",
         "node_spawn",
         "node_kill",
+        "ros_launch",
         "param_set",
         "package_scaffold",
+        "pkg_install",
         "topic_publish",
         "action_send_goal",
         "relay_autotune",
     }
 )
+
+# Palette for package blocks — cycles through so each package has a distinct colour.
+_PKG_COLOURS = ["cyan", "magenta", "green", "yellow", "blue", "red"]
 
 
 class TerminalSink:
@@ -109,6 +117,11 @@ class TerminalSink:
         )
 
     def tool_result(self, name: str, result: Any) -> None:
+        # workspace_map gets a rich block-diagram renderer instead of plain text.
+        if name == "workspace_map" and not _is_error(str(result)):
+            self._render_workspace_blocks()
+            return
+
         body = str(result)
         if body.count("\n") > 60:
             lines = body.splitlines()
@@ -172,6 +185,75 @@ class TerminalSink:
                 border_style="yellow",
             )
         )
+
+    def _render_workspace_blocks(self) -> None:
+        """Render workspace_map result as coloured Rich block panels — one per package."""
+        from roscode.tools.analysis_tools import _get_workspace_data  # lazy import
+
+        data = _get_workspace_data()
+        if isinstance(data, str):
+            self._console.print(Panel(data, title="⚠️ workspace_map", border_style="red"))
+            return
+
+        pkg_data = data["packages"]
+        topic_graph = data["topic_graph"]
+
+        header = Text.assemble(
+            ("WORKSPACE  ", "bold white"),
+            (f"{len(pkg_data)} pkg  ·  {data['total_nodes']} nodes  ·  {data['total_topics']} topics",
+             "dim"),
+        )
+        self._console.print(header)
+        self._console.print()
+
+        # ── Package blocks (side-by-side via Columns) ─────────────────────────
+        panels: list[Panel] = []
+        for idx, (pkg_name, pdata) in enumerate(pkg_data.items()):
+            colour = _PKG_COLOURS[idx % len(_PKG_COLOURS)]
+            tree = Tree(f"[bold]{pkg_name}[/bold]", guide_style=colour)
+
+            meaningful_deps = [d for d in pdata["deps"] if d not in ("rclpy",) and not d.startswith("ament_")]
+            if meaningful_deps:
+                dep_branch = tree.add("[dim]deps[/dim]")
+                for dep in meaningful_deps[:6]:
+                    dep_branch.add(f"[dim]{dep}[/dim]")
+                if len(meaningful_deps) > 6:
+                    dep_branch.add(f"[dim]… +{len(meaningful_deps) - 6} more[/dim]")
+
+            for file_rel, a in pdata["files"].items():
+                fname = Path(file_rel).name
+                node_label = ", ".join(a["node_classes"]) or fname.replace(".py", "")
+                hz = f"  [dim]@ {a['timer_hz'][0]} Hz[/dim]" if a["timer_hz"] else ""
+                node_branch = tree.add(f"[bold {colour}]{node_label}[/bold {colour}]{hz}")
+
+                for topic, msg in a["publishers"]:
+                    node_branch.add(f"[green]▶ pub[/green]  {topic}  [dim]{msg}[/dim]")
+                for topic, msg in a["subscribers"]:
+                    node_branch.add(f"[blue]◀ sub[/blue]  {topic}  [dim]{msg}[/dim]")
+                for svc, srv in a["services"]:
+                    node_branch.add(f"[yellow]⚙ srv[/yellow]  {svc}  [dim]{srv}[/dim]")
+                for pname, default in a["parameters"]:
+                    val = f"[dim] = {default!r}[/dim]" if default is not None else ""
+                    node_branch.add(f"[yellow]⚙ param[/yellow]  {pname}{val}")
+
+            if not pdata["files"]:
+                tree.add("[dim](no Python nodes found)[/dim]")
+
+            panels.append(Panel(tree, border_style=colour, padding=(0, 1)))
+
+        self._console.print(Columns(panels, equal=False, expand=True))
+        self._console.print()
+
+        # ── Data flow graph ───────────────────────────────────────────────────
+        if topic_graph:
+            flow_tree = Tree("[bold yellow]DATA FLOW[/bold yellow]", guide_style="yellow")
+            for topic in sorted(topic_graph):
+                tg = topic_graph[topic]
+                pubs_str = " [dim]+[/dim] ".join(f"[green]{p}[/green]" for p in tg["pubs"]) or "[dim](external)[/dim]"
+                subs_str = " [dim]+[/dim] ".join(f"[blue]{s}[/blue]" for s in tg["subs"]) or "[dim]∅[/dim]"
+                branch = flow_tree.add(f"[bold]{topic}[/bold]")
+                branch.add(f"{pubs_str}  [yellow]──▶[/yellow]  {subs_str}")
+            self._console.print(Panel(flow_tree, border_style="yellow", padding=(0, 1)))
 
 
 @contextmanager

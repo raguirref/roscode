@@ -90,13 +90,12 @@ roscode-extension/node_modules/
 vscodium-build/
 roscode-studio-build/
 
-
-# ---- Local handoff notes ----
+# ---- Claude Code / Handoff session transcripts ----
 HANDOFF-*.txt
 handoff-*.txt
-2026-*-local-command-caveat*.txt
+2026-*-local-command-*.txt
+[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-*-local-command-*.txt
 
 # ---- Design reference bundles (local only) ----
 .design-ref/
 .design-ref-b/
-
