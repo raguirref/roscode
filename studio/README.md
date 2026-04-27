@@ -202,3 +202,26 @@ studio/
 | **Safety caps** | Max linear 0.3 m/s, angular 0.5 rad/s — cannot be overridden via prompt |
 | **E-stop** | `robot_estop` is never gated — fires immediately as a hardware failsafe |
 | **Confirmation gate** | Every destructive tool shows a diff preview; agentic mode batches all approvals |
+
+---
+
+## roscode CLI (no UI)
+
+Prefer the terminal? The same agent runs headless — no app, no VM, just Python and a running ROS 2 system.
+
+```bash
+pip install -e .
+export ANTHROPIC_API_KEY=sk-ant-...
+roscode "why is the robot drifting right?"
+```
+
+The agent gets the same 37 tools and streams its reasoning to the terminal in real time.
+
+| Category | Tools |
+|---|---|
+| Inspection | `ros_graph`, `topic_echo`, `topic_hz`, `ros_node_info`, `log_tail` |
+| Build | `workspace_build`, `package_scaffold`, `write_source_file` |
+| Runtime | `node_spawn`, `node_kill`, `ros_launch`, `param_get`, `param_set` |
+| Safety | `robot_estop` (never gated), velocity caps (0.3 m/s / 0.5 rad/s) |
+
+**Requirements:** Python 3.10+, ROS 2 Humble on PATH, `ANTHROPIC_API_KEY`.
