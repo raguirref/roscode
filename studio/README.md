@@ -2,41 +2,71 @@
 
 > AI-native desktop IDE for ROS 2 — one `.dmg`, zero setup.
 
-[![macOS](https://img.shields.io/badge/macOS-Apple%20Silicon-black?logo=apple)](releases/)
+[![macOS Apple Silicon](https://img.shields.io/badge/macOS-Apple%20Silicon-black?logo=apple)](../releases/)
 [![ROS 2 Humble](https://img.shields.io/badge/ROS%202-Humble-blue?logo=ros)](https://docs.ros.org/en/humble/)
-[![Claude Opus 4](https://img.shields.io/badge/Claude-Opus%204.7-orange?logo=anthropic)](https://anthropic.com)
+[![Claude Opus 4.7](https://img.shields.io/badge/Claude-Opus%204.7-orange)](https://anthropic.com)
 [![Tauri 2](https://img.shields.io/badge/Tauri-2-blueviolet?logo=tauri)](https://tauri.app)
 
 **No Docker. No ROS install. No Python setup.**  
-Download, open, and your robot stack is running in under a minute.
+Download the `.dmg`, open, and your robot stack is live in under a minute.
 
 ---
 
 ## Screenshots
 
-<!-- Replace these with real screenshots once you have them -->
-<!-- Drop .png files into docs/screenshots/ and update the paths below -->
-
-| IDE overview | Agent in action |
+| Workspace dashboard | Live topic echo + agent |
 |---|---|
-| ![IDE overview](../docs/screenshots/studio-overview.png) | ![Agent chat](../docs/screenshots/studio-agent.png) |
+| ![Workspace](../docs/screenshots/workspace-home.png) | ![Topics](../docs/screenshots/topics-echo.png) |
 
-| Node graph | Topics panel |
+| Package library | Multi-terminal + agent steps |
 |---|---|
-| ![Node graph](../docs/screenshots/studio-nodes.png) | ![Topics](../docs/screenshots/studio-topics.png) |
+| ![Library](../docs/screenshots/library.png) | ![Terminal](../docs/screenshots/terminal.png) |
 
 ---
 
-## Download
+## Install
 
-| Platform | File | Notes |
-|---|---|---|
-| **macOS Apple Silicon** | [`roscode studio_0.1.0_aarch64.dmg`](../releases/roscode%20studio_0.1.0_aarch64.dmg) | Requires macOS 13+ |
+### Option A — Download the DMG (recommended)
 
-> **First launch**: macOS may block the app. Run once to bypass Gatekeeper:
-> ```bash
-> xattr -cr "/Applications/roscode studio.app"
-> ```
+1. Download [`roscode studio_0.1.0_aarch64.dmg`](../releases/roscode%20studio_0.1.0_aarch64.dmg)
+2. Open the `.dmg` and drag **roscode studio** to `/Applications`
+3. First launch — macOS will block it (unsigned). Run once in Terminal:
+   ```bash
+   xattr -cr "/Applications/roscode studio.app"
+   open "/Applications/roscode studio.app"
+   ```
+4. On first boot the app downloads the ROS 2 container (~500 MB). Subsequent launches are instant.
+
+> **Requirements:** macOS 13+, Apple Silicon (M1/M2/M3/M4), ~2 GB free disk space.
+
+### Option B — Build from source
+
+```bash
+# Prerequisites
+brew install lima pnpm
+
+# Clone
+git clone -b studio https://github.com/raguirref/roscode.git
+cd roscode/studio
+
+# Install frontend deps
+pnpm install
+
+# Dev window with hot-reload
+pnpm tauri dev
+
+# Or build a release DMG
+pnpm tauri build
+```
+
+---
+
+## First steps
+
+1. **Set your API key** — Settings → API Key → paste your `sk-ant-...` key
+2. **Open a workspace** — Settings → Workspace → point to a ROS 2 workspace folder
+3. **Start the runtime** — click **Start Runtime** in the top bar; the Lima VM + ROS container boot
+4. **Ask the agent** — type anything in the chat panel, e.g. *"describe the ROS graph"* or *"why is the robot drifting?"*
 
 ---
 
@@ -46,25 +76,23 @@ Download, open, and your robot stack is running in under a minute.
 ┌─ roscode studio (Tauri 2 native window) ────────────────────────────┐
 │                                                                       │
 │  Svelte + TypeScript webview                                          │
+│    ├─ Workspace home  — live node/topic/service counters + quick nav  │
 │    ├─ Monaco editor   — read/write files inside the ROS container     │
 │    ├─ Agent chat      — Claude Opus 4.7 · 37 ROS-aware tools          │
-│    ├─ File explorer   — live container filesystem (create/rename/del) │
-│    ├─ Nodes page      — live node graph · pub/sub/service inspector   │
-│    ├─ Topics page     — topic list · echo · type browser              │
+│    ├─ File explorer   — live container FS (create/rename/delete)      │
+│    ├─ Nodes page      — node graph · pub/sub/service inspector        │
+│    ├─ Topics page     — topic list · live echo · type browser         │
 │    ├─ Terminal        — full pty shell inside the container           │
 │    └─ Package library — curated ROS 2 package registry               │
-│                         ▲                                             │
-│                    Tauri IPC                                          │
-│                         ▼                                             │
+│                              ▲  Tauri IPC  ▼                          │
 │  Rust backend                                                         │
-│    ├─ lima.rs         → Lima VM lifecycle (start / shell_exec)        │
-│    ├─ container.rs    → nerdctl pull / run / exec / agent bootstrap   │
+│    ├─ lima.rs         → Lima VM lifecycle                             │
+│    ├─ container.rs    → nerdctl pull / run / exec / bootstrap         │
 │    └─ commands.rs     → ~25 Tauri command handlers                    │
-│                         ▲                                             │
-│                         ▼                                             │
+│                              ▲             ▼                          │
 │  Lima VM  (Ubuntu 22.04 · rootless containerd)                        │
 │    └─ ros:humble-ros-base                                             │
-│        ├─ /workspace           ← bind-mounted from host (r/w)        │
+│        ├─ /workspace           ← bind-mounted from host               │
 │        ├─ /opt/roscode-src     ← Python agent (editable install)      │
 │        └─ roscode.server :9000 ← forwarded to host by Lima           │
 └───────────────────────────────────────────────────────────────────────┘
@@ -76,63 +104,39 @@ Download, open, and your robot stack is running in under a minute.
 
 ### Claude-powered ROS agent
 - **37 tools** — `ros_graph`, `topic_echo`, `workspace_build`, `node_spawn`, `ros_launch`, `write_source_file`, `package_scaffold`, and more
-- **Agentic mode** — auto-approves all confirmations, shows a summary at the end
-- **Plan mode** — agent outputs a step-by-step plan without executing anything
+- **Agentic mode** — auto-approves all confirmations, shows a diff summary at the end
+- **Plan mode** — step-by-step plan output, no execution
 - **Chat mode** — conversational only, no tool calls
-- Collapsible tool-call chips showing live argument previews and result snippets
+- Collapsible tool-call chips with live argument previews and result snippets
 - Confirmation gate for destructive operations (write, build, spawn, kill)
-- E-stop (`robot_estop`) fires instantly, never gated
+- After `colcon build`, newly built packages are found automatically on the next `ros_launch` / `node_spawn`
 
 ### Monaco editor
 - Syntax highlighting for Python, C++, XML, YAML, JSON
 - Breadcrumb navigation — click any path segment to browse the container filesystem
-- Reads/writes files directly inside `/workspace` in the container
+- Direct read/write to `/workspace` inside the container
 
 ### File explorer
 - Live container filesystem tree
-- Create file / create folder / rename / delete via right-click context menu
-- Auto-expands to the currently open file (VSCode-style)
+- Right-click context menu: new file, new folder, rename, delete
+- Auto-reveals and scrolls to the currently open file (VSCode-style)
 - Preserves folder expansion state after any file operation
 
 ### Nodes & Topics
 - Node list auto-refreshes every 5 seconds
 - Connection diagram — subscribers → node → publishers with SVG arrows
-- Topic echo, type browser, message inspector
-- Live error display if ROS is not reachable
+- Topic echo, type browser, publish-rate measurement
+- Live error display when ROS is not reachable
+
+### Package library
+- Curated registry of 20+ ROS 2 packages
+- Filter by category (MANIPULATORS, MOBILE, SENSORS, SIMULATION, UTILITIES)
+- One-click "Ask Agent →" to install and configure any package
 
 ### Terminal
 - Full pty shell inside the ROS container
-- Resize-aware (SIGWINCH forwarded)
-
----
-
-## Run in development
-
-```bash
-# Prerequisites (macOS)
-brew install lima pnpm
-
-# 1 — install frontend deps (once)
-cd studio
-pnpm install
-
-# 2 — dev window with hot-reload
-pnpm tauri dev
-```
-
-The Lima VM (`roscode`) is created on first launch and reused on every restart.
-Port 9000 (agent WebSocket) is forwarded VM → host automatically by Lima.
-
----
-
-## Build a release
-
-```bash
-cd studio
-pnpm tauri build
-# → src-tauri/target/release/bundle/macos/roscode studio.app
-# → src-tauri/target/release/bundle/dmg/roscode studio_*.dmg
-```
+- Multiple tabs, resize-aware (SIGWINCH forwarded)
+- Pinnable to bottom of screen
 
 ---
 
@@ -144,8 +148,20 @@ Create `.env` at the **repo root** (one level above `studio/`):
 ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-The Tauri binary loads it automatically at startup via `dotenvy`.  
-The key is also forwarded into the Lima container so the agent server can call Claude.
+The Tauri binary loads it at startup and forwards it into the Lima container so the agent can call Claude.
+
+---
+
+## Demo workspace
+
+A ready-to-run differential-drive robot demo lives in `demos/demo_recording/`.
+
+1. Set workspace → `demos/demo_recording/workspace`
+2. Start runtime → build: `colcon build --packages-select robot_demo`
+3. Launch: `ros2 launch robot_demo demo.launch.py`
+4. Ask the agent: *"why is the robot drifting right?"*
+
+The agent inspects `/imu/data` (gyro Z bias), `/odom` (lateral drift), patches `robot_base.py` to zero the bias, rebuilds, and the drift disappears.
 
 ---
 
@@ -154,26 +170,23 @@ The key is also forwarded into the Lima container so the agent server can call C
 ```
 studio/
 ├── src/
-│   ├── App.svelte            top-level IDE shell + Welcome screen
+│   ├── App.svelte            top-level IDE shell
 │   ├── app.css               global dark theme + CSS variables
 │   └── lib/
-│       ├── tauri.ts          Tauri invoke() wrappers + ROS graph parsers
+│       ├── tauri.ts          Tauri invoke() wrappers + ROS parsers
 │       ├── chat.ts           WebSocket agent client
-│       ├── Chat.svelte       agent chat panel (streaming, tool chips, modes)
+│       ├── Chat.svelte       agent chat panel
 │       ├── Terminal.svelte   xterm.js + pty bridge
 │       ├── editor/           Monaco editor + breadcrumb
-│       ├── layout/           ActivityBar, LeftToolPanel, AgentPanel, StatusBar
+│       ├── layout/           ActivityBar, panels, status bar
 │       ├── pages/            Files, Nodes, Topics, Network, Library, Terminal
-│       ├── modals/           ApiKeyModal, NewPackageModal, CommandPalette
-│       └── stores/layout.ts  all Svelte stores (runtime state, open files, …)
+│       ├── modals/           ApiKey, NewPackage, CommandPalette
+│       └── stores/layout.ts  all Svelte stores
 ├── src-tauri/
 │   ├── src/
-│   │   ├── lib.rs            Tauri builder + PATH fix + host server auto-spawn
-│   │   ├── lima.rs           limactl VM detect / start / shell_exec
-│   │   ├── container.rs      nerdctl pull / run / exec / bootstrap / server start
+│   │   ├── lima.rs           limactl VM lifecycle
+│   │   ├── container.rs      nerdctl container lifecycle + agent bootstrap
 │   │   └── commands.rs       all #[tauri::command] handlers
-│   ├── capabilities/         Tauri 2 permission declarations
-│   ├── icons/                app icons (png, icns, ico)
 │   └── tauri.conf.json
 └── package.json
 ```
@@ -185,19 +198,7 @@ studio/
 | Feature | Detail |
 |---|---|
 | **Auto-detect runtime** | Probes :9000 on startup — skips VM boot if agent is already live |
-| **Workspace build → launch** | After `colcon build`, agent sources `install/setup.bash` automatically before `ros2 run` / `ros2 launch` |
-| **Container filesystem** | Files panel reads/writes `/workspace` inside the container without any host-side mounts beyond what Lima provides |
+| **Workspace build → launch** | Agent sources `install/setup.bash` after `colcon build` so `ros_launch` / `node_spawn` find new packages immediately |
 | **Safety caps** | Max linear 0.3 m/s, angular 0.5 rad/s — cannot be overridden via prompt |
-| **Confirmation gate** | Every destructive tool shows a diff preview; agentic mode batches approvals |
 | **E-stop** | `robot_estop` is never gated — fires immediately as a hardware failsafe |
-
----
-
-## Demo workspace
-
-A ready-to-run differential-drive drift demo lives in `demos/demo_recording/`.  
-Point the workspace setting to `demos/demo_recording/workspace`, start the runtime, then ask the agent:
-
-> *"why is the robot drifting right?"*
-
-The agent will inspect `/imu/data`, find the gyro bias, patch `robot_base.py`, rebuild, and the drift disappears in `/odom`.
+| **Confirmation gate** | Every destructive tool shows a diff preview; agentic mode batches all approvals |
