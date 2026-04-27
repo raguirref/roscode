@@ -49,6 +49,7 @@
   import { apiKeyStatus } from "./lib/tauri";
   import iconUrl from "./lib/brand/icon-dark.svg";
   import studioNameUrl from "./lib/brand/name-roscode-studio.svg";
+  import { terminalSessions, createTerminalSession, connectSession } from "./lib/stores/terminalStore";
 
   // ── State ──────────────────────────────────────────────────────────────────
   let splashDone = false;
@@ -91,9 +92,15 @@
     }
   }
 
-  // Auto-close bottom terminal if main terminal page is opened
-  $: if ($activePage === "terminal" && $bottomPanelOpen && $activeBottomTab === "terminal") {
+  // Auto-close bottom terminal pin if main terminal page is opened (avoid dual mounts)
+  $: if ($activePage === "terminal" && $bottomPanelOpen) {
     bottomPanelOpen.set(false);
+  }
+
+  // Create a default terminal session when runtime becomes ready
+  $: if (status.kind === "ready" && $terminalSessions.length === 0) {
+    const _sid = createTerminalSession((status as any).agent_ws_port, "Terminal 1");
+    connectSession(_sid);
   }
 
   // ── Global keyboard shortcuts ─────────────────────────────────────────────

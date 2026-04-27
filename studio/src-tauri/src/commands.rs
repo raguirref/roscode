@@ -375,6 +375,87 @@ print(open(p).read(),end='')\""
     container::exec(&script).await.map_err(|e| e.to_string())
 }
 
+/// Delete a file or directory on the host filesystem (auto-detects type).
+#[tauri::command]
+pub async fn fs_remove(path: String) -> Result<(), String> {
+    let full = expand_home(&path);
+    let meta = std::fs::metadata(&full)
+        .map_err(|e| format!("fs_remove stat({path}): {e}"))?;
+    if meta.is_dir() {
+        std::fs::remove_dir_all(&full).map_err(|e| format!("fs_remove_dir({path}): {e}"))
+    } else {
+        std::fs::remove_file(&full).map_err(|e| format!("fs_remove_file({path}): {e}"))
+    }
+}
+
+/// Create a directory (and parents) on the host filesystem.
+#[tauri::command]
+pub async fn fs_create_dir(path: String) -> Result<(), String> {
+    let full = expand_home(&path);
+    std::fs::create_dir_all(&full).map_err(|e| format!("fs_create_dir({path}): {e}"))
+}
+
+/// Rename/move a file or directory on the host filesystem.
+#[tauri::command]
+pub async fn fs_rename(old_path: String, new_path: String) -> Result<(), String> {
+    let old = expand_home(&old_path);
+    let new = expand_home(&new_path);
+    std::fs::rename(&old, &new).map_err(|e| format!("fs_rename({old_path} -> {new_path}): {e}"))
+}
+
+/// Delete a file or directory inside the running ROS container (auto-detects type).
+#[tauri::command]
+pub async fn container_remove(
+    path: String,
+    state: State<'_, Arc<RuntimeState>>,
+) -> Result<(), String> {
+    let cs = state.container.read().await;
+    if !cs.running { return Err("runtime not ready".to_string()); }
+    drop(cs);
+    let path_hex = hex_encode(&path);
+    let script = format!(
+        "python3 -c \"\
+import os, shutil; \
+p=bytes.fromhex('{path_hex}').decode(); \
+shutil.rmtree(p) if os.path.isdir(p) else os.remove(p)\""
+    );
+    container::exec(&script).await.map(|_| ()).map_err(|e| e.to_string())
+}
+
+/// Create a directory (and parents) inside the running ROS container.
+#[tauri::command]
+pub async fn container_create_dir(
+    path: String,
+    state: State<'_, Arc<RuntimeState>>,
+) -> Result<(), String> {
+    let cs = state.container.read().await;
+    if !cs.running { return Err("runtime not ready".to_string()); }
+    drop(cs);
+    let path_hex = hex_encode(&path);
+    let script = format!(
+        "python3 -c \"import os; os.makedirs(bytes.fromhex('{path_hex}').decode(), exist_ok=True)\""
+    );
+    container::exec(&script).await.map(|_| ()).map_err(|e| e.to_string())
+}
+
+/// Rename/move a file or directory inside the running ROS container.
+#[tauri::command]
+pub async fn container_rename(
+    old_path: String,
+    new_path: String,
+    state: State<'_, Arc<RuntimeState>>,
+) -> Result<(), String> {
+    let cs = state.container.read().await;
+    if !cs.running { return Err("runtime not ready".to_string()); }
+    drop(cs);
+    let old_hex = hex_encode(&old_path);
+    let new_hex = hex_encode(&new_path);
+    let script = format!(
+        "python3 -c \"import os; os.rename(bytes.fromhex('{old_hex}').decode(), bytes.fromhex('{new_hex}').decode())\""
+    );
+    container::exec(&script).await.map(|_| ()).map_err(|e| e.to_string())
+}
+
 // ── ROS tool execution ────────────────────────────────────────────────────────
 
 // ── API key management ────────────────────────────────────────────────────────

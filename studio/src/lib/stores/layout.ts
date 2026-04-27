@@ -113,7 +113,7 @@ export function markFileSaved(path: string) {
   );
 }
 
-// ── Chat history (persists across tab switches within a session) ──────────────
+// ── Chat history (persisted to localStorage, capped at 300 messages) ─────────
 
 export type ChatMessage =
   | { kind: "user"; text: string }
@@ -135,13 +135,30 @@ export type ChatMessage =
       resolved: "pending" | "approved" | "denied";
     };
 
-export const chatMessages = writable<ChatMessage[]>([]);
+const MAX_HISTORY = 300;
+function loadChatHistory(): ChatMessage[] {
+  try {
+    const raw = localStorage.getItem("rs-chat-history");
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+export const chatMessages = writable<ChatMessage[]>(loadChatHistory());
+chatMessages.subscribe((msgs) => {
+  try {
+    localStorage.setItem("rs-chat-history", JSON.stringify(msgs.slice(-MAX_HISTORY)));
+  } catch {}
+});
+
 export const chatSessionActive = writable<boolean>(false);
 
 export function clearChatHistory() {
   chatMessages.set([]);
   chatSessionActive.set(false);
 }
+
+/** Set this to trigger the agent panel's Chat component to send a prompt. */
+export const pendingAgentPrompt = writable<string | null>(null);
 
 // ── Runtime state ─────────────────────────────────────────────────────────────
 

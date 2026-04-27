@@ -7,6 +7,7 @@
     clearChatHistory,
     rightPanelOpen,
     refreshFiles,
+    pendingAgentPrompt,
     type ChatMessage,
   } from "./stores/layout";
   import { apiKeyOk, showApiKeyModal } from "./modals/apiKeyState";
@@ -22,9 +23,38 @@
 
   let textarea: HTMLTextAreaElement;
 
+  // ── Chat mode ──────────────────────────────────────────────────────────────
+  type ChatMode = "agentic" | "plan" | "chat";
+  let chatMode: ChatMode = (() => {
+    try { return (localStorage.getItem("rs-chat-mode") as ChatMode) ?? "agentic"; } catch { return "agentic"; }
+  })();
+  $: try { localStorage.setItem("rs-chat-mode", chatMode); } catch {}
+
+  // Collapsible tool call/result messages
+  let toolExpanded: Record<number, boolean> = {};
+  function toggleTool(idx: number) { toolExpanded = { ...toolExpanded, [idx]: !toolExpanded[idx] }; }
+
+  // Tracks auto-approved confirms in agentic mode (not added to chatMessages)
+  let agenticConfirms: Array<Extract<ChatMessage, { kind: "confirm" }>> = [];
+
   export function fill(text: string) {
     input = text;
-    tick().then(() => { textarea?.focus(); submit(); });
+    tick().then(() => {
+      if (textarea) {
+        autoResize(textarea);
+        textarea.focus();
+      }
+      if (connState === "open" && !$chatSessionActive) {
+        submit();
+      }
+    });
+  }
+
+  // React to pendingAgentPrompt set from other pages (e.g. Library)
+  $: if ($pendingAgentPrompt !== null) {
+    const p = $pendingAgentPrompt;
+    pendingAgentPrompt.set(null);
+    fill(p);
   }
 
   let input = "";
@@ -109,19 +139,24 @@
         if (FILE_TOOLS.has(ev.name) && !ev.is_error) refreshFiles();
         break;
       }
-      case "confirm_request":
-        chatMessages.update((ms) => [
-          ...ms,
-          {
-            kind: "confirm",
-            id: ev.id,
-            name: ev.name,
-            args: ev.args,
-            diffPreview: ev.diff_preview,
-            resolved: "pending",
-          },
-        ]);
+      case "confirm_request": {
+        const confirmEntry = {
+          kind: "confirm" as const,
+          id: ev.id,
+          name: ev.name,
+          args: ev.args,
+          diffPreview: ev.diff_preview,
+          resolved: "pending" as const,
+        };
+        if (chatMode === "agentic") {
+          // Auto-approve silently — track separately for end-of-session summary
+          agenticConfirms.push({ ...confirmEntry, resolved: "approved" });
+          client.respondToConfirm(ev.id, true);
+        } else {
+          chatMessages.update((ms) => [...ms, confirmEntry]);
+        }
         break;
+      }
       case "agent_message":
         chatMessages.update((ms) => [...ms, { kind: "agent", text: ev.text }]);
         break;
@@ -132,12 +167,17 @@
         const durationSec = sessionStartTime ? Math.round((Date.now() - sessionStartTime) / 1000) : 0;
         sessionStartTime = null;
         chatMessages.update((ms) => [...ms, { kind: "session_complete", durationSec }]);
-        // Files modified summary
+        // Files modified summary (includes agentic auto-approved)
+        const _agenticSnap = [...agenticConfirms];
+        agenticConfirms = [];
         chatMessages.update((ms) => {
-          const confirmed = ms.filter(
-            (m): m is Extract<ChatMessage, { kind: "confirm" }> =>
-              m.kind === "confirm" && m.name === "write_source_file" && m.resolved === "approved"
-          );
+          const confirmed = [
+            ...ms.filter(
+              (m): m is Extract<ChatMessage, { kind: "confirm" }> =>
+                m.kind === "confirm" && m.name === "write_source_file" && m.resolved === "approved"
+            ),
+            ..._agenticSnap.filter((m) => m.name === "write_source_file"),
+          ];
           if (confirmed.length === 0) return ms;
           const files = confirmed.map((m) => {
             const lines = (m.diffPreview ?? "").split("\n");
@@ -176,7 +216,15 @@
     chatSessionActive.set(true);
     sessionStartTime = Date.now();
     reasoningCollector = [];
-    client.sendPrompt({ text, workspace });
+    agenticConfirms = [];
+
+    let promptText = text;
+    if (chatMode === "plan") {
+      promptText = `[PLAN ONLY — Do NOT execute anything. Output a numbered step-by-step plan of what you would do. No file writes, no shell commands, no tool calls.]\n\n${text}`;
+    } else if (chatMode === "chat") {
+      promptText = `[CHAT ONLY — Do NOT use any tools. Answer conversationally only.]\n\n${text}`;
+    }
+    client.sendPrompt({ text: promptText, workspace });
   }
 
   async function resetSession() {
@@ -300,8 +348,8 @@
     <button class="icon-btn" on:click={resetSession} title="Reset agent session (reconnect)" disabled={$chatSessionActive}>
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 4v4h-4"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16M3 20v-4h4"/></svg>
     </button>
-    <button class="icon-btn" title="Chat History">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    <button class="icon-btn" on:click={clearChatHistory} title="Clear chat history">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
     </button>
     <span class="pill" class:live={connState === "open"}>
       <span class="d"></span>{connState === "open" ? "ready" : "offline"}
@@ -363,33 +411,47 @@
         </div>
 
       {:else if m.kind === "tool_call"}
-        <div class="msg tool-call" class:destructive={destructive.has(m.name)}>
-          <span class="head">
-            {destructive.has(m.name) ? "✎" : "◎"}
-            {m.name}
-          </span>
-          <div class="args">
-            {#each Object.entries(m.args) as [k, v]}
-              <div><span class="k">{k}</span>: {fmtArg(v)}</div>
-            {/each}
-          </div>
+        <div class="msg tool-call" class:destructive={destructive.has(m.name)} class:tc-open={toolExpanded[idx]}>
+          <button class="tc-head" on:click={() => toggleTool(idx)}>
+            <svg class="tc-chevron" class:open={toolExpanded[idx]} width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"/></svg>
+            <span class="tc-icon">{destructive.has(m.name) ? "✎" : "◎"}</span>
+            <span class="tc-name">{m.name.replace(/_/g, " ")}</span>
+            <span class="tc-hint">{Object.entries(m.args).map(([k,v]) => { const s = typeof v === "string" ? v : JSON.stringify(v); return s.length > 40 ? s.slice(0,40)+"…" : s; }).join(" · ").slice(0, 80)}</span>
+          </button>
+          {#if toolExpanded[idx]}
+            <div class="tc-args">
+              {#each Object.entries(m.args) as [k, v]}
+                <div><span class="k">{k}</span>: {fmtArg(v)}</div>
+              {/each}
+            </div>
+          {/if}
         </div>
 
       {:else if m.kind === "tool_result"}
         {#if shellTools.has(m.name)}
           <div class="msg tool-terminal" class:t-error={m.isError}>
-            <div class="tt-header">
+            <button class="tt-header" on:click={() => toggleTool(idx)}>
+              <svg class="tc-chevron" class:open={toolExpanded[idx]} width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"/></svg>
               <span class="tt-prompt">$</span>
               <span class="tt-cmd">{m.name.replace(/_/g, " ")}</span>
               {#if m.isError}<span class="tt-badge tt-err">ERROR</span>{:else}<span class="tt-badge tt-ok">OK</span>{/if}
-            </div>
-            <pre class="tt-output">{m.result.length > 2000 ? m.result.slice(0, 2000) + "\n…(truncated)" : m.result}</pre>
+            </button>
+            {#if toolExpanded[idx]}
+              <pre class="tt-output">{m.result.length > 2000 ? m.result.slice(0, 2000) + "\n…(truncated)" : m.result}</pre>
+            {/if}
           </div>
         {:else}
-          <pre class="msg tool-result" class:error={m.isError}>
-{m.isError ? "✗ " : "✓ "}{m.name}
-
-{m.result.length > 1200 ? m.result.slice(0, 1200) + "\n…(truncated)" : m.result}</pre>
+          <div class="msg tool-result-wrap" class:tr-error={m.isError} class:tr-open={toolExpanded[idx]}>
+            <button class="tr-head" on:click={() => toggleTool(idx)}>
+              <svg class="tc-chevron" class:open={toolExpanded[idx]} width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"/></svg>
+              <span class="tr-status">{m.isError ? "✗" : "✓"}</span>
+              <span class="tr-name">{m.name.replace(/_/g, " ")}</span>
+              <span class="tr-preview">{m.result.split("\n")[0].slice(0, 70)}{m.result.length > 70 ? "…" : ""}</span>
+            </button>
+            {#if toolExpanded[idx]}
+              <pre class="tr-output">{m.result.length > 1200 ? m.result.slice(0, 1200) + "\n…(truncated)" : m.result}</pre>
+            {/if}
+          </div>
         {/if}
 
       {:else if m.kind === "agent"}
@@ -482,10 +544,10 @@
 
   <form class="composer" on:submit|preventDefault={submit}>
     <div class="composer-top">
-      <select class="mode-select" title="Execution Mode">
-        <option>Agentic Mode</option>
-        <option>Plan Mode</option>
-        <option>Chat Only</option>
+      <select class="mode-select" title="Execution Mode" bind:value={chatMode}>
+        <option value="agentic">Agentic</option>
+        <option value="plan">Plan Mode</option>
+        <option value="chat">Chat Only</option>
       </select>
       <span class="model-badge" title="Model">CLAUDE OPUS 4.7</span>
     </div>
@@ -601,6 +663,7 @@
   }
 
   .msg {
+    flex-shrink: 0;
     line-height: 1.6;
     word-wrap: break-word;
     max-width: 94%;
@@ -702,35 +765,63 @@
     border-left: 2px solid var(--border);
   }
 
+  /* Tool call — collapsible chip */
   .msg.tool-call {
-    background: var(--bg-2);
-    border: 1px solid var(--border);
+    background: var(--bg-3);
+    border: 1px solid var(--border-bright);
     border-left: 3px solid var(--accent);
-    padding: 10px 12px;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border-radius: 7px;
+    overflow: hidden;
   }
   .msg.tool-call.destructive { border-left-color: var(--warn); }
-  .msg.tool-call .head { font-weight: 700; font-size: 10px; letter-spacing: 0.8px; color: var(--accent); text-transform: uppercase; font-family: var(--font-mono); }
-  .msg.tool-call.destructive .head { color: var(--warn); }
-  .msg.tool-call .args { color: var(--fg-2); font-size: 11px; margin-top: 8px; line-height: 1.5; font-family: var(--font-mono); }
-  .msg.tool-call .args .k { color: var(--fg-3); font-weight: 600; }
-
-  pre.msg.tool-result {
-    margin: 0;
-    padding: 12px;
-    background: #050706;
-    border: 1px solid var(--border);
-    border-left: 3px solid var(--ok);
-    border-radius: 8px;
+  .tc-head {
+    display: flex; align-items: center; gap: 8px;
+    width: 100%; background: transparent; border: none;
+    padding: 9px 12px; cursor: pointer; text-align: left;
     font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--fg-2);
-    white-space: pre-wrap;
-    max-height: 300px;
-    overflow: auto;
   }
-  pre.msg.tool-result.error { border-left-color: var(--err); color: var(--err); background: rgba(224,102,102,0.02); }
+  .tc-head:hover { background: rgba(255,255,255,0.05); }
+  .tc-chevron { flex-shrink: 0; color: var(--fg-2); transition: transform 140ms; }
+  .tc-chevron.open { transform: rotate(90deg); }
+  .tc-icon { font-size: 12px; color: var(--accent); flex-shrink: 0; }
+  .msg.tool-call.destructive .tc-icon { color: var(--warn); }
+  .tc-name { font-size: 12px; font-weight: 600; color: var(--fg-0); flex-shrink: 0; }
+  .msg.tool-call.destructive .tc-name { color: var(--warn); }
+  .tc-hint { font-size: 10.5px; color: var(--fg-2); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tc-args {
+    padding: 8px 12px 10px 30px;
+    font-family: var(--font-mono); font-size: 11px;
+    color: var(--fg-2); line-height: 1.7;
+    border-top: 1px solid var(--border);
+    background: rgba(0,0,0,0.25);
+  }
+  .tc-args .k { color: var(--fg-1); }
+
+  /* Tool result (non-shell) — collapsible */
+  .msg.tool-result-wrap {
+    border: 1px solid var(--border-bright);
+    border-left: 3px solid var(--ok);
+    border-radius: 7px; overflow: hidden;
+    background: var(--bg-3);
+  }
+  .msg.tool-result-wrap.tr-error { border-left-color: var(--err); }
+  .tr-head {
+    display: flex; align-items: center; gap: 8px;
+    width: 100%; background: transparent; border: none;
+    padding: 9px 12px; cursor: pointer; text-align: left;
+    font-family: var(--font-mono);
+  }
+  .tr-head:hover { background: rgba(255,255,255,0.05); }
+  .tr-status { font-size: 12px; color: var(--ok); flex-shrink: 0; font-weight: 700; }
+  .msg.tool-result-wrap.tr-error .tr-status { color: var(--err); }
+  .tr-name { font-size: 12px; color: var(--fg-0); font-weight: 600; flex-shrink: 0; }
+  .tr-preview { font-size: 10.5px; color: var(--fg-2); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tr-output {
+    margin: 0; padding: 10px 12px;
+    background: #050706; font-family: var(--font-mono); font-size: 11px;
+    color: var(--fg-2); white-space: pre-wrap; max-height: 300px; overflow: auto;
+    border-top: 1px solid var(--border);
+  }
 
   /* Confirm / Keep-Discard */
   .msg.confirm {
@@ -916,15 +1007,17 @@
 
   /* ── Terminal tool result ── */
   .msg.tool-terminal {
-    background: #050706; border: 1px solid var(--border);
+    background: #050706; border: 1px solid var(--border-bright);
     border-left: 3px solid var(--ok); border-radius: 8px; overflow: hidden;
   }
   .msg.tool-terminal.t-error { border-left-color: var(--err); }
   .tt-header {
     display: flex; align-items: center; gap: 8px;
-    padding: 7px 12px; border-bottom: 1px solid rgba(255,255,255,0.04);
-    background: rgba(255,255,255,0.015);
+    padding: 9px 12px;
+    background: rgba(255,255,255,0.03);
+    width: 100%; border: none; cursor: pointer; text-align: left;
   }
+  .tt-header:hover { background: rgba(255,255,255,0.06); }
   .tt-prompt { font-family: var(--font-mono); font-size: 13px; color: var(--ok); }
   .tt-cmd { font-family: var(--font-mono); font-size: 11px; color: var(--fg-1); flex: 1; letter-spacing: 0.3px; }
   .tt-badge { font-family: var(--font-mono); font-size: 9px; padding: 2px 6px; border-radius: 3px; }
@@ -953,20 +1046,6 @@
     color: #c9d1d9; white-space: pre; overflow-x: auto; line-height: 1.5;
   }
 
-  /* ── Tool call — less compressed ── */
-  .msg.tool-call {
-    background: var(--bg-2); border: 1px solid var(--border);
-    border-radius: 8px; padding: 10px 14px;
-    font-family: var(--font-mono); font-size: 11px;
-  }
-  .msg.tool-call .head {
-    font-size: 11px; font-weight: 600; color: var(--fg-1);
-    letter-spacing: 0.3px; margin-bottom: 6px;
-  }
-  .msg.tool-call.destructive { border-left: 3px solid var(--warn); }
-  .msg.tool-call.destructive .head { color: var(--warn); }
-  .msg.tool-call .args { color: var(--fg-3); line-height: 1.7; }
-  .msg.tool-call .args .k { color: var(--fg-2); }
 
   /* ── Approve-all bar ── */
   .approve-bar {

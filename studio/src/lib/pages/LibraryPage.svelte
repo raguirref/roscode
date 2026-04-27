@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { chatMessages, chatSessionActive, runtimeStatus } from "../stores/layout";
-  import { rightPanelOpen } from "../stores/layout";
+  import { runtimeStatus, rightPanelOpen, pendingAgentPrompt } from "../stores/layout";
   import { containerExec } from "../tauri";
 
   interface Pkg {
@@ -95,12 +94,11 @@
 
   function askAgent(pkg: Pkg) {
     const prompt = pkg.apt
-      ? `Install the ROS 2 package ${pkg.name} (apt: ${pkg.apt}) in the ROS container and verify it installed correctly.`
-      : `Install the ROS 2 package ${pkg.name} from source (repo: ${pkg.repo}) in the container workspace.`;
-    chatMessages.update((ms) => [...ms, { kind: "user", text: prompt }]);
-    chatSessionActive.set(false);
+      ? `Install the ROS 2 package ${pkg.name} (apt: ${pkg.apt}) in the ROS container, verify it installed correctly, and update the workspace package.xml if applicable.`
+      : `Install the ROS 2 package ${pkg.name} from source (repo: ${pkg.repo}) inside the container workspace (/workspace/src) and build it.`;
+    pendingAgentPrompt.set(prompt);
     rightPanelOpen.set(true);
-    toast(`Sent to agent — see Agent panel →`, "info");
+    toast(`Opening agent panel…`, "info");
   }
 
   function catCount(cat: string) {

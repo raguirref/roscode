@@ -99,3 +99,4 @@ handoff-*.txt
 # ---- Design reference bundles (local only) ----
 .design-ref/
 .design-ref-b/
+.roscode-thoughts-*.md

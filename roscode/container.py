@@ -112,6 +112,15 @@ def stop() -> None:
     _started = False
 
 
+def _ros_preamble() -> str:
+    """Shell preamble that sources ROS and the workspace install overlay (if built)."""
+    return (
+        "source /opt/ros/humble/setup.bash"
+        " && { [ -f /workspace/install/setup.bash ]"
+        " && source /workspace/install/setup.bash || true; }"
+    )
+
+
 def exec_cmd(
     cmd: list[str],
     *,
@@ -129,10 +138,7 @@ def exec_cmd(
         )
 
     container_cwd = _translate_cwd(cwd)
-    ros_cmd = (
-        "source /opt/ros/humble/setup.bash && "
-        + " ".join(shlex.quote(c) for c in cmd)
-    )
+    ros_cmd = _ros_preamble() + " && " + " ".join(shlex.quote(c) for c in cmd)
 
     exec_args = [
         _runtime, "exec",
@@ -177,10 +183,7 @@ def spawn_background(cmd: list[str]) -> None:
     if _runtime is None:
         raise RuntimeError("Container not started.")
 
-    ros_cmd = (
-        "source /opt/ros/humble/setup.bash && "
-        + " ".join(shlex.quote(c) for c in cmd)
-    )
+    ros_cmd = _ros_preamble() + " && " + " ".join(shlex.quote(c) for c in cmd)
     subprocess.run(
         [_runtime, "exec", "-d", _CONTAINER, "bash", "-c", ros_cmd],
         capture_output=True,
@@ -201,10 +204,7 @@ def spawn_gui_background(cmd: list[str]) -> None:
         raise RuntimeError("Container not started — call ensure_running() first.")
 
     display = os.environ.get("DISPLAY", ":0")
-    ros_cmd = (
-        "source /opt/ros/humble/setup.bash && "
-        + " ".join(shlex.quote(c) for c in cmd)
-    )
+    ros_cmd = _ros_preamble() + " && " + " ".join(shlex.quote(c) for c in cmd)
     subprocess.run(
         [
             _runtime, "exec", "-d",

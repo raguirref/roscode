@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { onMount, onDestroy, afterUpdate } from "svelte";
-  import { openFiles, activeFile, updateFileContent, closeFile, markFileSaved, workspacePath, type FileTab } from "../stores/layout";
-  import { fsWriteFile, containerWriteFile } from "../tauri";
+  import { onMount, onDestroy } from "svelte";
+  import { openFiles, activeFile, updateFileContent, closeFile, markFileSaved, workspacePath, openFile, type FileTab } from "../stores/layout";
+  import { fsWriteFile, containerWriteFile, fsReadDir, containerReadDir, fsReadFile, containerReadFile, type FsNode } from "../tauri";
   import { isRuntimeReady } from "../stores/layout";
   import nameIconUrl from "../brand/name-icon-white.svg";
   import * as monaco from "monaco-editor";
@@ -191,6 +191,60 @@
     };
     return map[lang] ?? "var(--fg-2)";
   }
+
+  // ── Breadcrumb dropdown ──────────────────────────────────────────────────────
+  interface CrumbDropdown {
+    dirPath: string;
+    items: FsNode[];
+    left: number;
+    top: number;
+  }
+
+  let crumbDropdown: CrumbDropdown | null = null;
+
+  async function openCrumbDropdown(event: MouseEvent, dirPath: string) {
+    // Capture rect BEFORE any await — currentTarget is cleared after the handler yields
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    event.stopPropagation();
+    try {
+      const entries = await ($isRuntimeReady ? containerReadDir(dirPath) : fsReadDir(dirPath));
+      crumbDropdown = { dirPath, items: entries, left: rect.left, top: rect.bottom + 4 };
+    } catch (e) {
+      console.error("openCrumbDropdown failed:", e);
+    }
+  }
+
+  function closeCrumbDropdown() { crumbDropdown = null; }
+
+  async function crumbPickFile(item: FsNode) {
+    if (item.is_dir) {
+      // Navigate into directory — reload dropdown for this dir
+      try {
+        const entries = await ($isRuntimeReady ? containerReadDir(item.path) : fsReadDir(item.path));
+        if (crumbDropdown) {
+          crumbDropdown = { ...crumbDropdown, dirPath: item.path, items: entries };
+        }
+      } catch {}
+      return;
+    }
+    closeCrumbDropdown();
+    if ($openFiles.find((f) => f.path === item.path)) {
+      activeFile.set(item.path);
+      return;
+    }
+    try {
+      const content = await ($isRuntimeReady ? containerReadFile(item.path) : fsReadFile(item.path));
+      const ext = item.name.split(".").pop()?.toLowerCase() ?? "";
+      const langMap: Record<string, string> = {
+        py: "python", ts: "typescript", js: "javascript",
+        json: "json", yaml: "yaml", yml: "yaml", xml: "xml",
+        cpp: "cpp", hpp: "cpp", h: "cpp", c: "cpp",
+        md: "markdown", sh: "shell", txt: "plaintext",
+      };
+      openFile({ path: item.path, name: item.name, content, language: langMap[ext] ?? "plaintext", dirty: false });
+    } catch {}
+  }
+
 </script>
 
 <div class="editor-wrap">
@@ -217,15 +271,26 @@
 
     <!-- Breadcrumb + save status -->
     {#if $activeFile}
-      {@const wsName = $workspacePath ? $workspacePath.split("/").pop() : "workspace"}
-      {@const relPath = $workspacePath ? $activeFile.replace($workspacePath, "") : $activeFile}
-      {@const parts = relPath.replace(/^\//, "").split("/")}
-      <div class="breadcrumb">
-        <span class="crumb ws-crumb">{wsName}</span>
+      {@const _root = $isRuntimeReady ? "/workspace" : ($workspacePath || "")}
+      {@const wsName = _root ? _root.split("/").pop() || "workspace" : "workspace"}
+      {@const relPath = _root ? $activeFile.replace(_root, "") : $activeFile}
+      {@const parts = relPath.replace(/^\//, "").split("/").filter(Boolean)}
+      <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+      <div class="breadcrumb" on:click={closeCrumbDropdown}>
+        <button class="crumb ws-crumb crumb-btn" on:click|stopPropagation={(e) => openCrumbDropdown(e, _root || "/workspace")}>
+          {wsName}
+        </button>
         <span class="crumb-sep">›</span>
         {#each parts as part, i}
-          <span class="crumb">{part}</span>
-          {#if i < parts.length - 1}<span class="crumb-sep">›</span>{/if}
+          {#if i < parts.length - 1}
+            <button
+              class="crumb crumb-btn"
+              on:click|stopPropagation={(e) => openCrumbDropdown(e, _root + "/" + parts.slice(0, i + 1).join("/"))}
+            >{part}</button>
+            <span class="crumb-sep">›</span>
+          {:else}
+            <span class="crumb crumb-file">{part}</span>
+          {/if}
         {/each}
         <div style="flex:1"></div>
         {#if saving}
@@ -235,6 +300,31 @@
         {:else}
           <span class="save-hint">⌘S to save</span>
         {/if}
+      </div>
+    {/if}
+
+    <!-- Breadcrumb dropdown -->
+    {#if crumbDropdown}
+      <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+      <div
+        class="crumb-overlay"
+        on:click={closeCrumbDropdown}
+      ></div>
+      <div
+        class="crumb-dropdown"
+        style="left:{crumbDropdown.left}px;top:{crumbDropdown.top}px"
+      >
+        {#each crumbDropdown.items as item}
+          <button class="crumb-item" on:click={() => crumbPickFile(item)}>
+            {#if item.is_dir}
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" opacity=".6" style="flex-shrink:0"><path d="M3 7a2 2 0 012-2h4l2 2h9a2 2 0 012 2v7a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg>
+            {:else}
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="flex-shrink:0;opacity:.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            {/if}
+            <span class="crumb-item-name">{item.name}</span>
+            {#if item.is_dir}<span class="crumb-item-arrow">›</span>{/if}
+          </button>
+        {/each}
       </div>
     {/if}
   {:else}
@@ -355,14 +445,52 @@
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
     overflow: hidden;
+    position: relative;
   }
-  .crumb:last-child { color: var(--fg-0); }
+  .crumb-btn {
+    background: transparent; border: none; cursor: pointer;
+    font-family: inherit; font-size: 11px; color: var(--fg-2);
+    padding: 2px 4px; border-radius: 3px;
+    transition: background 100ms, color 100ms;
+  }
+  .crumb-btn:hover { background: var(--bg-2); color: var(--fg-0); }
   .ws-crumb { font-weight: 600; color: var(--fg-1); }
+  .crumb-file { color: var(--fg-0); padding: 2px 4px; }
   .crumb-sep { color: var(--fg-2); opacity: 0.5; }
   .save-hint { font-family: var(--font-mono); font-size: 10px; color: var(--fg-3); }
   .save-status { font-family: var(--font-mono); font-size: 10px; }
   .save-status.saving { color: var(--accent); }
   .save-status.error { color: var(--err); }
+
+  /* Breadcrumb dropdown */
+  .crumb-overlay {
+    position: fixed; inset: 0; z-index: 999;
+    background: transparent;
+  }
+  .crumb-dropdown {
+    position: fixed;
+    z-index: 1000;
+    background: var(--bg-1);
+    border: 1px solid var(--border-bright);
+    border-radius: var(--radius);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    min-width: 200px;
+    max-width: 340px;
+    max-height: 320px;
+    overflow-y: auto;
+    padding: 4px 0;
+  }
+  .crumb-item {
+    display: flex; align-items: center; gap: 8px;
+    width: 100%; padding: 5px 12px;
+    background: transparent; border: none; cursor: pointer;
+    font-family: var(--font-mono); font-size: 11.5px; color: var(--fg-1);
+    text-align: left; border-left: 2px solid transparent;
+    transition: background 60ms;
+  }
+  .crumb-item:hover { background: var(--bg-2); color: var(--fg-0); border-left-color: var(--accent); }
+  .crumb-item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .crumb-item-arrow { color: var(--fg-3); flex-shrink: 0; }
 
   /* Monaco container */
   .monaco-container {

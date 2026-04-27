@@ -89,6 +89,36 @@ export async function containerWriteFile(path: string, content: string): Promise
   return invoke<void>("container_write_file", { path, content });
 }
 
+export async function fsRemove(path: string): Promise<void> {
+  if (!IS_TAURI) return;
+  return invoke<void>("fs_remove", { path });
+}
+
+export async function fsCreateDir(path: string): Promise<void> {
+  if (!IS_TAURI) return;
+  return invoke<void>("fs_create_dir", { path });
+}
+
+export async function fsRename(oldPath: string, newPath: string): Promise<void> {
+  if (!IS_TAURI) return;
+  return invoke<void>("fs_rename", { old_path: oldPath, new_path: newPath });
+}
+
+export async function containerRemove(path: string): Promise<void> {
+  if (!IS_TAURI) return;
+  return invoke<void>("container_remove", { path });
+}
+
+export async function containerCreateDir(path: string): Promise<void> {
+  if (!IS_TAURI) return;
+  return invoke<void>("container_create_dir", { path });
+}
+
+export async function containerRename(oldPath: string, newPath: string): Promise<void> {
+  if (!IS_TAURI) return;
+  return invoke<void>("container_rename", { old_path: oldPath, new_path: newPath });
+}
+
 // ── ROS tool execution ────────────────────────────────────────────────────────
 
 export async function rosCallTool(

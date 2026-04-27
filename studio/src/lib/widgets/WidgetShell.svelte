@@ -4,7 +4,29 @@
   export let onRemove: () => void;
   export let badge: string | undefined = undefined;
   export let loading: boolean = false;
+
+  let bodyHeight = 200;
+  let resizing = false;
+  let startY = 0;
+  let startH = 0;
+
+  function onResizerDown(e: MouseEvent) {
+    resizing = true;
+    startY = e.clientY;
+    startH = bodyHeight;
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  function onMouseMove(e: MouseEvent) {
+    if (!resizing) return;
+    bodyHeight = Math.max(80, Math.min(600, startH + (e.clientY - startY)));
+  }
+
+  function onMouseUp() { resizing = false; }
 </script>
+
+<svelte:window on:mousemove={onMouseMove} on:mouseup={onMouseUp} />
 
 <div class="widget">
   <div class="head">
@@ -17,12 +39,13 @@
     {/if}
     <button class="x" on:click={onRemove} aria-label="Remove" title="Remove">×</button>
   </div>
-  <div class="body">
+  <div class="body" style="height:{bodyHeight}px">
     {#if loading}
       <div class="loader-line"></div>
     {/if}
     <slot />
   </div>
+  <div class="resize-handle" on:mousedown={onResizerDown} class:resizing role="separator" aria-label="Resize widget"></div>
 </div>
 
 <style>
@@ -75,7 +98,14 @@
   }
   .x:hover { color: var(--err); border-color: var(--err); }
 
-  .body { display: flex; flex-direction: column; max-height: 240px; overflow: auto; position: relative; }
+  .body { display: flex; flex-direction: column; overflow: auto; position: relative; min-height: 60px; }
+  .resize-handle {
+    height: 4px; cursor: row-resize; background: transparent;
+    border-top: 1px solid var(--border);
+    transition: background 120ms;
+    flex-shrink: 0;
+  }
+  .resize-handle:hover, .resize-handle.resizing { background: var(--accent); opacity: 0.5; }
 
   .loader-line {
     position: absolute; top: 0; left: 0; right: 0; height: 2px;

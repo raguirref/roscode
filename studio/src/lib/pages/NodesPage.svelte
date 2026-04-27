@@ -21,6 +21,7 @@
   let loading = false;
   let detailLoading = false;
   let lastRefresh = "";
+  let loadError = "";
   let activeTab = "CONNECTIONS";
   const tabs = ["CONNECTIONS", "SERVICES", "LOGS"];
   let pollInterval: ReturnType<typeof setInterval> | null = null;
@@ -29,13 +30,20 @@
   async function loadNodes() {
     if (!$isRuntimeReady) return;
     loading = true;
+    loadError = "";
     try {
       const raw = await rosCallTool("ros_graph", {});
+      if (raw.startsWith("Error:")) {
+        loadError = raw;
+        loading = false;
+        return;
+      }
       const parsed = parseRosGraph(raw);
       nodes = parsed.nodes.filter((n) => n && n !== "(none)").map((n) => ({ name: n }));
       lastRefresh = new Date().toLocaleTimeString();
       if (!selected && nodes.length > 0) selectNode(nodes[0]);
     } catch (e) {
+      loadError = String(e);
       console.error("ros_graph failed:", e);
     }
     loading = false;
@@ -66,7 +74,7 @@
     loadNodes();
     pollInterval = setInterval(() => {
       if ($isRuntimeReady) loadNodes();
-    }, 15_000);
+    }, 5_000);
   });
 
   onDestroy(() => {
@@ -89,8 +97,10 @@
         <div class="empty-state">Start the runtime to view live nodes.</div>
       {:else if loading && nodes.length === 0}
         <div class="empty-state">loading ros graph…</div>
+      {:else if loadError}
+        <div class="empty-state err-state">{loadError}</div>
       {:else if nodes.length === 0}
-        <div class="empty-state">No nodes found. Is ROS running?</div>
+        <div class="empty-state">No nodes found — launch your package first.</div>
       {:else}
         {#each nodes as n}
           <button
@@ -276,6 +286,7 @@
   .mono-label { font-family:var(--font-mono); font-size:10px; color:var(--fg-2); letter-spacing:1.5px; text-transform:uppercase; }
 
   .empty-state { padding:16px; font-family:var(--font-mono); font-size:11px; color:var(--fg-3); }
+  .err-state { color: var(--err); white-space: pre-wrap; word-break: break-all; }
 
   .node-row {
     display:flex; align-items:center; gap:8px; padding:9px 12px;
