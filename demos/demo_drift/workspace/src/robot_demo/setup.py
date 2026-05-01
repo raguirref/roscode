@@ -1,3 +1,4 @@
+# src/robot_demo/setup.py (30 lines)
 from setuptools import find_packages, setup
 
 package_name = 'robot_demo'
@@ -25,6 +26,7 @@ setup(
             'imu_node = robot_demo.imu_node:main',
             'cmd_vel_pub = robot_demo.cmd_vel_pub:main',
             'diagnostics = robot_demo.diagnostics:main',
+            'cmd_vel_listener = robot_demo.cmd_vel_listener:main',
         ],
     },
 )
